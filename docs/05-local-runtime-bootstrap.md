@@ -25,13 +25,18 @@ Before starting:
 
 Use the root scripts in `package.json`:
 
-- `pnpm compose:config`
-- `pnpm compose:up`
-- `pnpm compose:down`
-- `pnpm compose:logs`
-- `pnpm compose:restart`
-- `pnpm lint`
-- `pnpm typecheck`
+- `pnpm compose:config`: inspect the resolved Docker Compose configuration before starting containers.
+- `pnpm compose:up`: build and start the full stack in detached mode.
+- `pnpm compose:down`: stop and remove the running stack.
+- `pnpm compose:logs`: follow the combined logs for every service.
+- `pnpm compose:logs:web`: follow only the frontend logs.
+- `pnpm compose:logs:api`: follow only the API logs.
+- `pnpm compose:logs:analytics`: follow only the analytics logs.
+- `pnpm compose:logs:db`: follow infrastructure logs for PostgreSQL, Redis, and Nginx.
+- `pnpm compose:ps`: view current container status and health at a glance.
+- `pnpm compose:restart`: rebuild the local runtime with a down/up cycle in detached mode.
+- `pnpm lint`: run the shared lint checks from the repository root.
+- `pnpm typecheck`: run the shared TypeScript checks from the repository root.
 
 ## Stack Overview
 
@@ -74,12 +79,30 @@ Use the root scripts in `package.json`:
 1. Copy `.env.example` to `.env` if you need local overrides.
 2. Run `pnpm compose:config` if you want to inspect the resolved stack.
 3. Run `pnpm compose:up`.
-4. Open `http://localhost:8080/`.
+4. Run `pnpm compose:ps` if you want a quick container status check.
+5. Open `http://localhost:8080/`.
+
+## Recommended Terminal Flow
+
+To avoid a cluttered CLI while the stack is running:
+
+- use `pnpm compose:up` in detached mode
+- keep your main terminal free for Git, editor tasks, and one-off commands
+- open focused log streams only when needed
+
+Useful examples:
+
+- `pnpm compose:logs:api`
+- `pnpm compose:logs:web`
+- `pnpm compose:logs:analytics`
+- `pnpm compose:logs:db`
+- `pnpm compose:logs`
 
 ## Verification Checklist
 
 After the stack starts, verify:
 
+- `pnpm compose:ps` shows the expected services
 - `http://localhost:8080/` loads the frontend placeholder
 - `http://localhost:8080/api/health` returns a healthy API liveness payload
 - `http://localhost:8080/api/ready` returns API readiness when PostgreSQL and Redis are reachable

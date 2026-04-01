@@ -23,21 +23,36 @@ This phase is intentionally limited to runtime scaffolding, health checks, and l
 
 ## Local Commands
 
-- `pnpm install --no-frozen-lockfile`
-- `pnpm lint`
-- `pnpm typecheck`
-- `pnpm compose:config`
-- `pnpm compose:up`
-- `pnpm compose:down`
-- `pnpm compose:logs`
-- `pnpm compose:restart`
+- `pnpm install --no-frozen-lockfile`: install or refresh all workspace dependencies from the repo root.
+- `pnpm lint`: run lint checks for the shared packages and the JS/TS apps.
+- `pnpm typecheck`: run TypeScript type checks for the shared packages and the JS/TS apps.
+- `pnpm compose:config`: render the resolved Docker Compose configuration to confirm env and service wiring.
+- `pnpm compose:up`: build images if needed and start the full local stack in detached mode.
+- `pnpm compose:down`: stop and remove the local stack containers and networks.
+- `pnpm compose:logs`: stream the combined logs for the whole stack.
+- `pnpm compose:logs:web`: follow logs only for the frontend container.
+- `pnpm compose:logs:api`: follow logs only for the NestJS API container.
+- `pnpm compose:logs:analytics`: follow logs only for the FastAPI analytics container.
+- `pnpm compose:logs:db`: follow logs for infrastructure services such as PostgreSQL, Redis, and Nginx.
+- `pnpm compose:ps`: show current container status for the stack.
+- `pnpm compose:restart`: recreate the local stack with a clean down/up cycle in detached mode.
 
 ## Local Setup
 
 1. Make sure Docker Desktop or your local Docker daemon is running.
 2. Copy `.env.example` to `.env` if you need to override local defaults.
 3. Run `pnpm compose:up`.
-4. Open `http://localhost:8080/`.
+4. Run `pnpm compose:ps` if you want a quick status check.
+5. Open `http://localhost:8080/`.
+
+## Terminal Workflow
+
+Recommended local flow:
+
+- keep `pnpm compose:up` detached so your main shell stays usable
+- use `pnpm compose:logs` only when you want combined logs
+- prefer targeted logs such as `pnpm compose:logs:api` or `pnpm compose:logs:web` while implementing one area
+- use `pnpm compose:ps` for a quick container status check
 
 ## Current App Status
 
