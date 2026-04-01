@@ -27,6 +27,12 @@ This phase is intentionally limited to runtime scaffolding, health checks, and l
 - `apps/api`: NestJS health and readiness scaffolded
 - `apps/analytics`: FastAPI health and readiness scaffolded
 
+## Current Infra Status
+
+- base Docker Compose stack scaffolded for `web`, `api`, `analytics`, `postgres`, and `redis`
+- PostGIS init script added for the local database
+- Nginx routing remains the next infra slice
+
 ## Planned Health Surfaces
 
 - `web`: browser placeholder page
