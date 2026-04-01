@@ -25,7 +25,7 @@ This phase is intentionally limited to runtime scaffolding, health checks, and l
 
 - `apps/web`: placeholder frontend scaffolded
 - `apps/api`: NestJS health and readiness scaffolded
-- `apps/analytics`: planned for the next phase
+- `apps/analytics`: FastAPI health and readiness scaffolded
 
 ## Planned Health Surfaces
 
