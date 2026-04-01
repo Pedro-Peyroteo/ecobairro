@@ -2,7 +2,21 @@
 
 This document tracks the main open questions that affect architecture decisions.
 
-## Current Priority Questions
+## Resolved For The Foundation Phase
+
+The following decisions are already locked for the current runtime foundation:
+
+- the repository is a monorepo
+- there is one frontend app in `apps/web`
+- the main backend is a NestJS service in `apps/api`
+- the analytics service is a FastAPI app in `apps/analytics`
+- local development is fully containerized with Docker Compose
+- PostgreSQL + PostGIS is the primary database
+- Redis is included in the base stack
+- Nginx routes local traffic through one entrypoint on `http://localhost:8080`
+- this phase is limited to bootable scaffolds, health checks, and dependency readiness
+
+## Remaining Priority Questions
 
 ### Product / Scope
 
@@ -17,7 +31,6 @@ This document tracks the main open questions that affect architecture decisions.
 
 ### Backend
 
-- Is NestJS the chosen framework for the main backend?
 - What belongs in the main backend from day one?
 - What should explicitly not belong in the main backend?
 
@@ -29,7 +42,6 @@ This document tracks the main open questions that affect architecture decisions.
 
 ### Data
 
-- Do we use one PostgreSQL database with PostGIS for everything?
 - Should data be separated by schema?
 - What data is canonical vs derived?
 
@@ -41,5 +53,4 @@ This document tracks the main open questions that affect architecture decisions.
 
 ### Repo / Delivery
 
-- What is the minimal monorepo structure for the first iteration?
 - What CI checks are required before merging to main?

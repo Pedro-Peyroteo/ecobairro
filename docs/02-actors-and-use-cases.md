@@ -35,6 +35,14 @@ Internal system actor responsible for:
 - processing asynchronous heavy jobs
 - running route/planning/optimization calculations when required
 
+### Developer
+
+Interacts with the repository during the current foundation phase to:
+
+- boot the local stack
+- verify service health and readiness
+- extend the runtime skeleton safely
+
 ## Main Use Cases
 
 ### Citizen Side
@@ -59,3 +67,10 @@ Internal system actor responsible for:
 - validate incoming data
 - process asynchronous jobs
 - update derived operational information
+
+### Foundation Runtime Side
+
+- start the local containerized stack with a single command
+- route local traffic through one entrypoint
+- verify PostgreSQL, Redis, API, and analytics connectivity
+- confirm the frontend placeholder is reachable

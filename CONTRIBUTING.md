@@ -90,6 +90,39 @@ Do not mix unrelated concerns in the same commit.
 
 ---
 
+## Local Development
+
+### First-time setup
+
+Before working on the project locally:
+
+- make sure Docker Desktop or your local Docker daemon is running
+- install workspace dependencies with `pnpm install --no-frozen-lockfile`
+- review the local runtime notes in `README.md` and `docs/05-local-runtime-bootstrap.md`
+
+### Common commands
+
+Use the root scripts when possible:
+
+- `pnpm lint`
+- `pnpm typecheck`
+- `pnpm compose:config`
+- `pnpm compose:up`
+- `pnpm compose:down`
+- `pnpm compose:logs`
+- `pnpm compose:restart`
+
+### Runtime expectation for this phase
+
+The current repository foundation is considered healthy when:
+
+- `web` is reachable through `http://localhost:8080/`
+- `api` responds on `/api/health` and `/api/ready`
+- `analytics` responds on `/analytics/health` and `/analytics/ready`
+- PostgreSQL and Redis are healthy in Docker Compose
+
+---
+
 ## Coding Expectations
 
 ### General
@@ -109,6 +142,8 @@ Do not mix unrelated concerns in the same commit.
 Update documentation when changing:
 
 - architecture
+- local setup flow
+- developer commands
 - service responsibilities
 - major workflows
 - shared contracts
@@ -158,6 +193,7 @@ A change is considered done when:
 
 - code is implemented
 - relevant tests pass
+- local setup or runtime docs are updated if developer workflow changed
 - documentation is updated if needed
 - PR is reviewed
 - conversations are resolved
