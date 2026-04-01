@@ -21,6 +21,12 @@ This phase is intentionally limited to runtime scaffolding, health checks, and l
 - `pnpm compose:config`
 - `pnpm compose:up`
 
+## Local Setup
+
+1. Copy `.env.example` to `.env` if you need to override local defaults.
+2. Run `docker compose -f infra/compose/docker-compose.yml up --build`.
+3. Open `http://localhost:8080/`.
+
 ## Current App Status
 
 - `apps/web`: placeholder frontend scaffolded
@@ -31,13 +37,21 @@ This phase is intentionally limited to runtime scaffolding, health checks, and l
 
 - base Docker Compose stack scaffolded for `web`, `api`, `analytics`, `postgres`, and `redis`
 - PostGIS init script added for the local database
-- Nginx routing remains the next infra slice
+- Nginx routes all local traffic through a single entrypoint on `http://localhost:8080`
 
 ## Planned Health Surfaces
 
 - `web`: browser placeholder page
 - `api`: `/health` and `/ready`
 - `analytics`: `/health` and `/ready`
+
+## Local Endpoints
+
+- `http://localhost:8080/`
+- `http://localhost:8080/api/health`
+- `http://localhost:8080/api/ready`
+- `http://localhost:8080/analytics/health`
+- `http://localhost:8080/analytics/ready`
 
 ## Repository Structure
 
