@@ -6,10 +6,10 @@
     "rootDir": "src",
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
+    "ignoreDeprecations": "6.0",
     "noEmit": true
   },
   "include": [
     "src/**/*.ts"
   ]
 }
-
