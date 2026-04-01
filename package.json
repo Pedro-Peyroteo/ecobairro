@@ -3,8 +3,8 @@
   "private": true,
   "packageManager": "pnpm@10.30.1",
   "scripts": {
-    "lint": "pnpm -r --if-present run lint",
-    "typecheck": "pnpm -r --if-present run typecheck",
+    "lint": "pnpm --dir packages/config lint && pnpm --dir packages/contracts lint && pnpm --dir apps/web lint && pnpm --dir apps/api lint",
+    "typecheck": "pnpm --dir packages/config typecheck && pnpm --dir packages/contracts typecheck && pnpm --dir apps/web typecheck && pnpm --dir apps/api typecheck",
     "compose:config": "docker compose -f infra/compose/docker-compose.yml config",
     "compose:up": "docker compose -f infra/compose/docker-compose.yml up --build"
   },
@@ -17,4 +17,3 @@
     "typescript-eslint": "^8.26.1"
   }
 }
-

@@ -2,6 +2,7 @@ node_modules/
 .pnpm-store/
 dist/
 coverage/
+*.tsbuildinfo
 .env
 .env.*
 !.env.example
@@ -10,4 +11,3 @@ __pycache__/
 *.pyc
 *.pyo
 .DS_Store
-

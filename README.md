@@ -23,9 +23,10 @@ This phase is intentionally limited to runtime scaffolding, health checks, and l
 
 ## Local Setup
 
-1. Copy `.env.example` to `.env` if you need to override local defaults.
-2. Run `docker compose -f infra/compose/docker-compose.yml up --build`.
-3. Open `http://localhost:8080/`.
+1. Make sure Docker Desktop or your local Docker daemon is running.
+2. Copy `.env.example` to `.env` if you need to override local defaults.
+3. Run `docker compose -f infra/compose/docker-compose.yml up --build`.
+4. Open `http://localhost:8080/`.
 
 ## Current App Status
 
