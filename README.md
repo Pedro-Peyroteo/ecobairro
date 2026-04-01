@@ -21,6 +21,18 @@ This phase is intentionally limited to runtime scaffolding, health checks, and l
 - `pnpm compose:config`
 - `pnpm compose:up`
 
+## Current App Status
+
+- `apps/web`: placeholder frontend scaffolded
+- `apps/api`: NestJS health and readiness scaffolded
+- `apps/analytics`: planned for the next phase
+
+## Planned Health Surfaces
+
+- `web`: browser placeholder page
+- `api`: `/health` and `/ready`
+- `analytics`: `/health` and `/ready`
+
 ## Repository Structure
 
 ```text
