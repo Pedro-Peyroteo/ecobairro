@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find /c/Users/moise/Documents/GitHub/ecobairro -name *.prisma -o -name schema.prisma)",
+      "Bash(xargs grep:*)",
+      "Bash(npx prisma:*)",
+      "Bash(npx prisma@5 validate --schema=apps/api/prisma/schema.prisma)",
+      "Bash(DATABASE_URL=\"postgresql://user:pass@localhost:5432/db\" npx prisma@5 validate --schema=apps/api/prisma/schema.prisma)"
+    ]
+  }
+}

@@ -1,0 +1,983 @@
+// This is the Prisma schema for EcoBairro Digital.
+// Implements all models documented in docs/models.
+//
+// Requirements:
+//   - PostgreSQL >= 13 (gen_random_uuid() built-in)
+//   - PostGIS extension (for geography columns)
+//
+// ASSUMPTIONS (flagged where applied in the schema):
+//   1. cidadao_consentimentos — no dedicated schema file exists; fields inferred
+//      from endpoint docs (C2 body: finalidade, versao_texto, aceite) and the
+//      archival note that consent can be revoked (revogado_em).
+//   2. cidadao_gamificacao — no dedicated schema file exists; fields inferred
+//      from endpoint G3 ("score, badges, streak") and quiz participation tracking.
+//   3. cidadao_ecopontos_favoritos — no dedicated schema file exists; inferred as
+//      a minimal junction table (cidadao_id + ecoponto_id) from endpoint F2.
+//   4. Prisma enum types (e.g. Role, TipoZona) create PostgreSQL ENUM types.
+//      The documentation uses VARCHAR + CHECK constraints. The Prisma enum approach
+//      provides stronger type safety at the cost of requiring ALTER TYPE for new values.
+//   5. Array fields (tipologias, tipos_alerta, zonas_responsabilidade, etc.) are
+//      stored as String[] in Prisma, mapping to TEXT[] in PostgreSQL. UUID-typed
+//      arrays (zonas_responsabilidade, ecopontos_planeados, etc.) should be cast
+//      to uuid[] in raw migrations for stricter validation.
+//   6. sensor_leituras, notificacoes, and audit_log are documented as PARTITIONED
+//      BY RANGE. Prisma does not support native table partitioning. Each is defined
+//      as a regular model; partitioning must be applied via raw SQL migrations.
+//   7. @updatedAt is applied to all atualizado_em fields. Updates made via raw SQL
+//      (e.g. the IoT pipeline writing to ecoponto_estado_atual) will NOT auto-update
+//      this field — those paths must set atualizado_em explicitly.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum Role {
+  CIDADAO
+  OPERADOR_VEOLIA
+  TECNICO_AUTARQUIA
+  TECNICO_CCDR
+  ADMIN
+}
+
+enum TipoZona {
+  OPERACIONAL
+  RESIDENCIAL
+  PRIORITARIA_IOT
+  ADMINISTRATIVA
+}
+
+enum TipologiaEcoponto {
+  VIDRO
+  PAPEL
+  PLASTICO
+  ORGANICO
+  GERAL
+  OUTROS
+}
+
+enum EstadoEcoponto {
+  CHEIO
+  DISPONIVEL
+  SEM_SENSOR
+  AVARIADO
+  MANUTENCAO
+  OFFLINE
+}
+
+enum TipoDispositivo {
+  NIVEL_ULTRASONICO
+  NIVEL_INFRAVERMELHO
+  PESO
+  COMPACTACAO_SOLAR
+  MULTIPARAMETRO
+}
+
+enum EstadoDispositivo {
+  ATIVO
+  INATIVO
+  MANUTENCAO
+  AVARIADO
+  DESCONTINUADO
+}
+
+enum ProtocoloComunicacao {
+  HTTP
+  MQTT
+  LORAWAN
+  SIGFOX
+  NB_IOT
+}
+
+enum EstadoCalculadoSensor {
+  CHEIO
+  DISPONIVEL
+  AVARIADO
+  MANUTENCAO
+}
+
+enum TipoAlertaIot {
+  ECOPONTO_CHEIO
+  ECOPONTO_AVARIADO
+  SENSOR_OFFLINE
+  BATERIA_FRACA
+  LEITURA_ANOMALA
+  SENSOR_RECUPERADO
+}
+
+enum SeveridadeAlerta {
+  INFO
+  AVISO
+  CRITICO
+}
+
+enum EstadoAlerta {
+  PENDENTE
+  NOTIFICADO
+  RECONHECIDO
+  RESOLVIDO
+  FALSO_POSITIVO
+}
+
+enum CategoriaReport {
+  ECOPONTO_CHEIO
+  ECOPONTO_PARTIDO
+  DEPOSICAO_ILEGAL
+  ODORES
+  GAIVOTAS_ORGANICOS
+  VANDALISMO
+  OUTRO
+}
+
+enum EstadoReport {
+  RECEBIDO
+  EM_ANALISE
+  EM_RESOLUCAO
+  RESOLVIDO
+  REJEITADO
+}
+
+enum TipoResiduo {
+  MONO
+  ENTULHO_PEQUENO
+  ELECTRODOMESTICO
+  MOBILIARIO
+  OUTRO
+}
+
+enum EstadoRecolha {
+  PENDENTE
+  AGENDADO
+  EM_CURSO
+  CONCLUIDO
+  CANCELADO
+  REJEITADO
+}
+
+enum TipoMaterial {
+  ENTULHO
+  AZULEJO_CERAMICA
+  MADEIRA
+  METAL
+  OUTRO
+}
+
+enum EstadoPartilha {
+  DISPONIVEL
+  RESERVADO
+  CONCLUIDO
+  EXPIRADO
+  REMOVIDO
+}
+
+enum TipoNotificacao {
+  REPORT_ESTADO
+  ECOPONTO_CHEIO
+  RECOLHA_AGENDADA
+  RECOLHA_CONCLUIDA
+  BADGE_GANHO
+  QUIZ_DISPONIVEL
+  MENSAGEM_PARTILHA
+  AVISO_INSTITUCIONAL
+}
+
+enum CanalNotificacao {
+  PUSH
+  EMAIL
+  SMS
+  IN_APP
+}
+
+enum EstadoEnvioNotificacao {
+  PENDENTE
+  ENVIADO
+  ENTREGUE
+  FALHOU
+}
+
+enum TipoMensagemInstitucional {
+  ALTERACAO_ROTA
+  CAMPANHA
+  AVISO_OPERACIONAL
+  INFORMACAO_GERAL
+}
+
+enum CriterioCampanha {
+  QUIZ_PARTICIPACAO
+  RECOLHA_AGENDADA
+  REPORTS_COUNT
+  COMBINADO
+}
+
+enum EstadoRota {
+  ACEITE
+  EM_CURSO
+  CONCLUIDA
+  CANCELADA
+}
+
+enum TipoQuiz {
+  SEMANAL
+  DIARIO
+}
+
+enum CategoriaBadge {
+  QUIZ
+  REPORTS
+  PARTICIPACAO
+  ESPECIAL
+  EDUCATIVO
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// IDENTITY & AUTHENTICATION
+// ─────────────────────────────────────────────────────────────────────────────
+
+model User {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email           String    @unique
+  passwordHash    String    @map("password_hash")
+  phone           String?
+  emailVerified   Boolean   @default(false) @map("email_verified")
+  emailVerifiedAt DateTime? @map("email_verified_at") @db.Timestamptz
+  role            Role
+  twoFaEnabled    Boolean   @default(false) @map("2fa_enabled")
+  twoFaSecret     String?   @map("2fa_secret")
+  criadoEm        DateTime  @default(now()) @map("criado_em") @db.Timestamptz
+  atualizadoEm    DateTime  @updatedAt @map("atualizado_em") @db.Timestamptz
+  eliminadoEm     DateTime? @map("eliminado_em") @db.Timestamptz
+
+  // Relations
+  cidadaoPerfil                CidadaoPerfil?
+  operadorPerfil               OperadorPerfil?
+  consentimentos               CidadaoConsentimento[]
+  gamificacao                  CidadaoGamificacao?
+  badges                       CidadaoBadge[]
+  ecopontosFavoritos           CidadaoEcopontoFavorito[]
+  quizSessoes                  QuizSessao[]
+  quizzesCriados               Quiz[]
+  reports                      Report[]                  @relation("ReportCidadao")
+  reportsAtribuidos            Report[]                  @relation("ReportAtribuido")
+  pedidosRecolha               PedidoRecolha[]           @relation("PedidoRecolhaCidadao")
+  pedidosRecolhaOperador       PedidoRecolha[]           @relation("PedidoRecolhaOperador")
+  partilhasMateriais           PartilhaMaterial[]
+  partilhasMensagensEnviadas   PartilhaMensagem[]        @relation("MensagemRemetente")
+  partilhasMensagensRecebidas  PartilhaMensagem[]        @relation("MensagemDestinatario")
+  notificacoes                 Notificacao[]
+  mensagensInstitucionais      MensagemInstitucional[]
+  campanhasCriadas             CampanhaBeneficio[]
+  rotasExecucao                RotaExecucao[]
+  auditLog                     AuditLog[]
+  iotDispositivosCriados       IotDispositivo[]
+  iotAlertasReconhecidos       IotAlerta[]
+  iotContactosSms              IotContactoSms[]
+  reportTimelines              ReportTimeline[]
+  zonasHistorico               ZonaHistorico[]
+  iotDispositivosHistorico     IotDispositivoHistorico[]
+  reportSubscricoes            ReportSubscricao[]
+
+  @@map("users")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// USER PROFILES
+// ─────────────────────────────────────────────────────────────────────────────
+
+model CidadaoPerfil {
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId            String    @unique @map("user_id") @db.Uuid
+  nomeCompleto      String?   @map("nome_completo")
+  nifCifrado        Bytes?    @map("nif_cifrado")
+  nifHash           String?   @map("nif_hash") @db.VarChar(64)
+  moradaCifrada     Bytes?    @map("morada_cifrada")
+  zonaResidenciaId  String?   @map("zona_residencia_id") @db.Uuid
+  // ASSUMPTION 4: PostGIS geography — Unsupported type; raw SQL required for spatial queries
+  localizacaoUltima Unsupported("geography(Point, 4326)")? @map("localizacao_ultima")
+  gamificationOptIn Boolean   @default(false) @map("gamification_opt_in")
+  notificacaoPrefs  Json?     @map("notificacao_prefs")
+  dashboardWidgets  Json?     @map("dashboard_widgets")
+  rgpdAccepted      Boolean   @map("rgpd_accepted")
+  criadoEm          DateTime  @default(now()) @map("criado_em") @db.Timestamptz
+  atualizadoEm      DateTime  @updatedAt @map("atualizado_em") @db.Timestamptz
+
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  zonaResidencia    Zona?     @relation(fields: [zonaResidenciaId], references: [id])
+
+  @@map("cidadao_perfis")
+}
+
+model OperadorPerfil {
+  id                    String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId                String   @unique @map("user_id") @db.Uuid
+  nomeCompleto          String   @map("nome_completo")
+  entidadeEmpregadora   String   @map("entidade_empregadora") @db.VarChar(100)
+  cargo                 String?  @db.VarChar(100)
+  // ASSUMPTION 5: UUID[] stored as String[]; cast to uuid[] in raw migration
+  zonasResponsabilidade String[] @map("zonas_responsabilidade")
+  criadoEm              DateTime @default(now()) @map("criado_em") @db.Timestamptz
+  atualizadoEm          DateTime @updatedAt @map("atualizado_em") @db.Timestamptz
+
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("operador_perfis")
+}
+
+// ASSUMPTION 1: cidadao_consentimentos — append-only RGPD audit trail.
+// Fields inferred from: endpoint C2 body (finalidade, versao_texto, aceite)
+// and C3 DELETE (revogado_em marks revocation without hard delete).
+model CidadaoConsentimento {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  cidadaoId   String    @map("cidadao_id") @db.Uuid
+  finalidade  String    @db.VarChar(100)
+  versaoTexto String    @map("versao_texto") @db.VarChar(50)
+  aceite      Boolean
+  criadoEm    DateTime  @default(now()) @map("criado_em") @db.Timestamptz
+  revogadoEm  DateTime? @map("revogado_em") @db.Timestamptz
+
+  cidadao     User      @relation(fields: [cidadaoId], references: [id])
+
+  @@map("cidadao_consentimentos")
+}
+
+// ASSUMPTION 2: cidadao_gamificacao — 1:1 denormalized gamification state.
+// Fields inferred from endpoint G3 returning score, streak and last quiz timestamp.
+model CidadaoGamificacao {
+  cidadaoId    String    @id @map("cidadao_id") @db.Uuid
+  scoreTotal   Int       @default(0) @map("score_total")
+  streakAtual  Int       @default(0) @map("streak_atual")
+  streakMaximo Int       @default(0) @map("streak_maximo")
+  ultimoQuizEm DateTime? @map("ultimo_quiz_em") @db.Timestamptz
+  atualizadoEm DateTime  @updatedAt @map("atualizado_em") @db.Timestamptz
+
+  cidadao      User      @relation(fields: [cidadaoId], references: [id], onDelete: Cascade)
+
+  @@map("cidadao_gamificacao")
+}
+
+// ASSUMPTION 3: cidadao_ecopontos_favoritos — minimal junction table (N:M).
+// Fields inferred from endpoints F2 (add) and F3 (remove).
+model CidadaoEcopontoFavorito {
+  cidadaoId  String   @map("cidadao_id") @db.Uuid
+  ecopontoId String   @map("ecoponto_id") @db.Uuid
+  criadoEm   DateTime @default(now()) @map("criado_em") @db.Timestamptz
+
+  cidadao    User     @relation(fields: [cidadaoId], references: [id], onDelete: Cascade)
+  ecoponto   Ecoponto @relation(fields: [ecopontoId], references: [id], onDelete: Cascade)
+
+  @@id([cidadaoId, ecopontoId])
+  @@map("cidadao_ecopontos_favoritos")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ZONES
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Zona {
+  id                    String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nome                  String   @unique @db.VarChar(100)
+  descricao             String?
+  geometria             Unsupported("geography(MultiPolygon, 4326)")
+  tipo                  TipoZona
+  ativa                 Boolean  @default(true)
+  limiteAntispamReports Int      @default(2) @map("limite_antispam_reports") @db.SmallInt
+  janelaAntispamHoras   Int      @default(24) @map("janela_antispam_horas") @db.SmallInt
+  entidadeResponsavel   String?  @map("entidade_responsavel") @db.VarChar(100)
+  alertasConfig         Json     @default("{}") @map("alertas_config")
+  criadoEm              DateTime @default(now()) @map("criado_em") @db.Timestamptz
+  atualizadoEm          DateTime @updatedAt @map("atualizado_em") @db.Timestamptz
+
+  // Relations
+  historico          ZonaHistorico[]
+  ecopontos          Ecoponto[]
+  cidadaoPerfis      CidadaoPerfil[]
+  reports            Report[]
+  pedidosRecolha     PedidoRecolha[]
+  partilhasMateriais PartilhaMaterial[]
+  iotAlertas         IotAlerta[]
+  iotContactosSms    IotContactoSms[]
+  rotasExecucao      RotaExecucao[]
+  campanhas          CampanhaBeneficio[]
+
+  @@map("zonas")
+}
+
+model ZonaHistorico {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  zonaId      String    @map("zona_id") @db.Uuid
+  snapshot    Json
+  alteradoPor String?   @map("alterado_por") @db.Uuid
+  alteradoEm  DateTime  @default(now()) @map("alterado_em") @db.Timestamptz
+  motivo      String?
+
+  zona             Zona  @relation(fields: [zonaId], references: [id])
+  alteradoPorUser  User? @relation(fields: [alteradoPor], references: [id])
+
+  @@map("zonas_historico")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ECOPONTOS
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Ecoponto {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  codigoExterno  String?   @unique @map("codigo_externo") @db.VarChar(50)
+  nome           String    @db.VarChar(200)
+  descricao      String?
+  localizacao    Unsupported("geography(Point, 4326)")
+  moradaTextual  String?   @map("morada_textual") @db.VarChar(300)
+  zonaId         String    @map("zona_id") @db.Uuid
+  // ASSUMPTION 5: String[] maps to TEXT[]; app layer enforces TipologiaEcoponto values
+  tipologias     String[]
+  temSensor      Boolean   @default(false) @map("tem_sensor")
+  acessibilidade Json      @default("{}")
+  horario        Json?
+  ativo          Boolean   @default(true)
+  criadoEm       DateTime  @default(now()) @map("criado_em") @db.Timestamptz
+  atualizadoEm   DateTime  @updatedAt @map("atualizado_em") @db.Timestamptz
+  eliminadoEm    DateTime? @map("eliminado_em") @db.Timestamptz
+
+  // Relations
+  zona                     Zona                      @relation(fields: [zonaId], references: [id])
+  estadoAtual              EcopontoEstadoAtual?
+  dispositivos             IotDispositivo[]
+  sensorLeituras           SensorLeitura[]
+  iotAlertas               IotAlerta[]
+  favoritos                CidadaoEcopontoFavorito[]
+  reports                  Report[]
+  iotDispositivosHistorico IotDispositivoHistorico[]
+
+  @@map("ecopontos")
+}
+
+model EcopontoEstadoAtual {
+  ecopontoId      String         @id @map("ecoponto_id") @db.Uuid
+  dispositivoId   String?        @unique @map("dispositivo_id") @db.Uuid
+  nivelEnchimento Int?           @map("nivel_enchimento") @db.SmallInt
+  estado          EstadoEcoponto @default(SEM_SENSOR)
+  ultimaLeituraEm DateTime?      @map("ultima_leitura_em") @db.Timestamptz
+  leituraValida   Boolean        @default(true) @map("leitura_valida")
+  offlineDesde    DateTime?      @map("offline_desde") @db.Timestamptz
+  batteryPct      Int?           @map("battery_pct") @db.SmallInt
+  signalRssi      Int?           @map("signal_rssi") @db.SmallInt
+  // ASSUMPTION 7: @updatedAt used here; IoT pipeline updates must set atualizado_em explicitly
+  atualizadoEm    DateTime       @updatedAt @map("atualizado_em") @db.Timestamptz
+
+  ecoponto    Ecoponto        @relation(fields: [ecopontoId], references: [id], onDelete: Cascade)
+  dispositivo IotDispositivo? @relation(fields: [dispositivoId], references: [id])
+
+  @@map("ecoponto_estado_atual")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// IoT DEVICES
+// ─────────────────────────────────────────────────────────────────────────────
+
+model IotDispositivo {
+  id                    String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  deviceId              String               @unique @map("device_id") @db.VarChar(100)
+  nome                  String               @db.VarChar(150)
+  tipo                  TipoDispositivo
+  fabricante            String?              @db.VarChar(100)
+  modelo                String?              @db.VarChar(100)
+  versaoFirmware        String?              @map("versao_firmware") @db.VarChar(50)
+  numeroSerie           String?              @unique @map("numero_serie") @db.VarChar(100)
+  ecopontoId            String?              @map("ecoponto_id") @db.Uuid
+  instaladoEm           DateTime?            @map("instalado_em") @db.Timestamptz
+  estado                EstadoDispositivo    @default(INATIVO)
+  ultimoHeartbeatEm     DateTime?            @map("ultimo_heartbeat_em") @db.Timestamptz
+  ultimoNivelBatteryPct Int?                 @map("ultimo_nivel_battery_pct") @db.SmallInt
+  ultimoSignalRssi      Int?                 @map("ultimo_signal_rssi") @db.SmallInt
+  protocoloComunicacao  ProtocoloComunicacao @map("protocolo_comunicacao")
+  intervaloLeituraSeg   Int                  @default(300) @map("intervalo_leitura_seg")
+  config                Json                 @default("{}")
+  apiKeyHash            String               @map("api_key_hash") @db.VarChar(255)
+  criadoPor             String?              @map("criado_por") @db.Uuid
+  criadoEm              DateTime             @default(now()) @map("criado_em") @db.Timestamptz
+  atualizadoEm          DateTime             @updatedAt @map("atualizado_em") @db.Timestamptz
+
+  // Relations
+  ecoponto            Ecoponto?                @relation(fields: [ecopontoId], references: [id])
+  criadoPorUser       User?                    @relation(fields: [criadoPor], references: [id])
+  estadoAtualEcoponto EcopontoEstadoAtual?
+  sensorLeituras      SensorLeitura[]
+  historico           IotDispositivoHistorico[]
+  alertas             IotAlerta[]
+
+  @@map("iot_dispositivos")
+}
+
+model IotDispositivoHistorico {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  dispositivoId  String    @map("dispositivo_id") @db.Uuid
+  ecopontoId     String?   @map("ecoponto_id") @db.Uuid
+  estadoAnterior String    @map("estado_anterior") @db.VarChar(20)
+  estadoNovo     String    @map("estado_novo") @db.VarChar(20)
+  motivo         String?
+  alteradoPor    String?   @map("alterado_por") @db.Uuid
+  alteradoEm     DateTime  @default(now()) @map("alterado_em") @db.Timestamptz
+
+  dispositivo     IotDispositivo @relation(fields: [dispositivoId], references: [id])
+  ecoponto        Ecoponto?      @relation(fields: [ecopontoId], references: [id])
+  alteradoPorUser User?          @relation(fields: [alteradoPor], references: [id])
+
+  @@map("iot_dispositivos_historico")
+}
+
+// NOTE: Documented as PARTITIONED BY RANGE(timestamp_leitura) — monthly.
+// ASSUMPTION 6: Defined as regular table. Composite PK (id, timestamp_leitura)
+// reflects the partition key requirement for PostgreSQL range partitioning.
+// Apply partitioning via raw SQL in the initial migration.
+model SensorLeitura {
+  id                    String                @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  timestampLeitura      DateTime              @map("timestamp_leitura") @db.Timestamptz
+  dispositivoId         String                @map("dispositivo_id") @db.Uuid
+  ecopontoId            String                @map("ecoponto_id") @db.Uuid
+  nivelEnchimento       Int?                  @map("nivel_enchimento") @db.SmallInt
+  nivelRawCm            Int?                  @map("nivel_raw_cm") @db.SmallInt
+  estadoCalculado       EstadoCalculadoSensor @map("estado_calculado")
+  estadoReportadoSensor String?               @map("estado_reportado_sensor") @db.VarChar(20)
+  batteryPct            Int?                  @map("battery_pct") @db.SmallInt
+  signalRssi            Int?                  @map("signal_rssi") @db.SmallInt
+  temperaturaC          Decimal?              @map("temperatura_c") @db.Decimal(5, 2)
+  versaoFirmware        String?               @map("versao_firmware") @db.VarChar(50)
+  metadataExtra         Json?                 @map("metadata_extra")
+  valida                Boolean               @default(true)
+  motivoInvalida        String?               @map("motivo_invalida") @db.VarChar(100)
+  criadoEm              DateTime              @default(now()) @map("criado_em") @db.Timestamptz
+
+  dispositivo IotDispositivo @relation(fields: [dispositivoId], references: [id])
+  ecoponto    Ecoponto       @relation(fields: [ecopontoId], references: [id])
+
+  @@id([id, timestampLeitura])
+  @@map("sensor_leituras")
+}
+
+model IotAlerta {
+  id               String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tipo             TipoAlertaIot
+  severidade       SeveridadeAlerta
+  dispositivoId    String?          @map("dispositivo_id") @db.Uuid
+  ecopontoId       String?          @map("ecoponto_id") @db.Uuid
+  zonaId           String?          @map("zona_id") @db.Uuid
+  valorGatilho     Decimal?         @map("valor_gatilho") @db.Decimal(8, 2)
+  limiarConfigurado Decimal?        @map("limiar_configurado") @db.Decimal(8, 2)
+  payload          Json             @default("{}")
+  estado           EstadoAlerta     @default(PENDENTE)
+  reconhecidoPor   String?          @map("reconhecido_por") @db.Uuid
+  reconhecidoEm    DateTime?        @map("reconhecido_em") @db.Timestamptz
+  resolvidoEm      DateTime?        @map("resolvido_em") @db.Timestamptz
+  notasResolucao   String?          @map("notas_resolucao")
+  criadoEm         DateTime         @default(now()) @map("criado_em") @db.Timestamptz
+  notificadoEm     DateTime?        @map("notificado_em") @db.Timestamptz
+
+  dispositivo        IotDispositivo? @relation(fields: [dispositivoId], references: [id])
+  ecoponto           Ecoponto?       @relation(fields: [ecopontoId], references: [id])
+  zona               Zona?           @relation(fields: [zonaId], references: [id])
+  reconhecidoPorUser User?           @relation(fields: [reconhecidoPor], references: [id])
+
+  @@map("iot_alertas")
+}
+
+model IotContactoSms {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  zonaId       String    @map("zona_id") @db.Uuid
+  nomeContacto String    @map("nome_contacto") @db.VarChar(150)
+  telefone     String    @db.VarChar(20)
+  papel        String?   @db.VarChar(50)
+  // ASSUMPTION 5: String[] stores TipoAlertaIot values; app layer enforces valid values
+  tiposAlerta  String[]  @map("tipos_alerta")
+  ativo        Boolean   @default(true)
+  optInEm      DateTime  @default(now()) @map("opt_in_em") @db.Timestamptz
+  optOutEm     DateTime? @map("opt_out_em") @db.Timestamptz
+  criadoPor    String?   @map("criado_por") @db.Uuid
+  criadoEm     DateTime  @default(now()) @map("criado_em") @db.Timestamptz
+
+  zona          Zona  @relation(fields: [zonaId], references: [id])
+  criadoPorUser User? @relation(fields: [criadoPor], references: [id])
+
+  @@map("iot_contactos_sms")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BADGES & GAMIFICATION
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Badge {
+  id               String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  codigo           String         @unique @db.VarChar(50)
+  nome             String         @db.VarChar(100)
+  descricao        String
+  iconeUrl         String?        @map("icone_url") @db.VarChar(500)
+  categoria        CategoriaBadge
+  criterioTipo     String         @map("criterio_tipo") @db.VarChar(50)
+  criterioValor    Int?           @map("criterio_valor")
+  criterioConfig   Json?          @map("criterio_config")
+  pontosRecompensa Int            @default(0) @map("pontos_recompensa")
+  ativo            Boolean        @default(true)
+  secreto          Boolean        @default(false)
+  criadoEm         DateTime       @default(now()) @map("criado_em") @db.Timestamptz
+
+  cidadaoBadges CidadaoBadge[]
+
+  @@map("badges")
+}
+
+model CidadaoBadge {
+  cidadaoId   String   @map("cidadao_id") @db.Uuid
+  badgeId     String   @map("badge_id") @db.Uuid
+  atribuidoEm DateTime @default(now()) @map("atribuido_em") @db.Timestamptz
+  motivo      Json?
+
+  cidadao User  @relation(fields: [cidadaoId], references: [id])
+  badge   Badge @relation(fields: [badgeId], references: [id])
+
+  @@id([cidadaoId, badgeId])
+  @@map("cidadao_badges")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// QUIZZES
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Quiz {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  titulo          String    @db.VarChar(200)
+  descricao       String?
+  tipo            TipoQuiz
+  disponivelDe    DateTime  @map("disponivel_de") @db.Timestamptz
+  disponivelAte   DateTime  @map("disponivel_ate") @db.Timestamptz
+  numeroPerguntas Int       @map("numero_perguntas") @db.SmallInt
+  pontosMaximo    Int       @default(0) @map("pontos_maximo")
+  categoriaTema   String?   @map("categoria_tema") @db.VarChar(50)
+  ativo           Boolean   @default(true)
+  criadoPor       String?   @map("criado_por") @db.Uuid
+  criadoEm        DateTime  @default(now()) @map("criado_em") @db.Timestamptz
+
+  criadoPorUser User?          @relation(fields: [criadoPor], references: [id])
+  perguntas     QuizPergunta[]
+  sessoes       QuizSessao[]
+
+  @@map("quizzes")
+}
+
+model QuizPergunta {
+  id                  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  quizId              String    @map("quiz_id") @db.Uuid
+  ordem               Int       @db.SmallInt
+  textoPergunta       String    @map("texto_pergunta")
+  explicacaoEducativa String    @map("explicacao_educativa")
+  pontos              Int       @default(10) @db.SmallInt
+  imagemUrl           String?   @map("imagem_url") @db.VarChar(500)
+  criadoEm            DateTime  @default(now()) @map("criado_em") @db.Timestamptz
+
+  quiz   Quiz        @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  opcoes QuizOpcao[]
+
+  @@unique([quizId, ordem])
+  @@map("quiz_perguntas")
+}
+
+model QuizOpcao {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  perguntaId String   @map("pergunta_id") @db.Uuid
+  ordem      Int      @db.SmallInt
+  texto      String
+  correta    Boolean  @default(false)
+  criadoEm   DateTime @default(now()) @map("criado_em") @db.Timestamptz
+
+  pergunta QuizPergunta @relation(fields: [perguntaId], references: [id], onDelete: Cascade)
+
+  @@unique([perguntaId, ordem])
+  @@map("quiz_opcoes")
+}
+
+model QuizSessao {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  cidadaoId      String    @map("cidadao_id") @db.Uuid
+  quizId         String    @map("quiz_id") @db.Uuid
+  tipo           TipoQuiz
+  respostas      Json?
+  scoreObtido    Int?      @map("score_obtido")
+  totalPerguntas Int?      @map("total_perguntas") @db.SmallInt
+  concluidoEm    DateTime? @map("concluido_em") @db.Timestamptz
+
+  cidadao User @relation(fields: [cidadaoId], references: [id])
+  quiz    Quiz @relation(fields: [quizId], references: [id])
+
+  @@map("quiz_sessoes")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// REPORTS
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Report {
+  id                  String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  numero              BigInt          @unique @default(autoincrement())
+  cidadaoId           String          @map("cidadao_id") @db.Uuid
+  ecopontoId          String?         @map("ecoponto_id") @db.Uuid
+  zonaId              String          @map("zona_id") @db.Uuid
+  categoria           CategoriaReport
+  descricao           String?
+  localizacao         Unsupported("geography(Point, 4326)")
+  localizacaoManual   Boolean         @default(false) @map("localizacao_manual")
+  fotoUrl             String?         @map("foto_url") @db.VarChar(500)
+  fotoThumbnailUrl    String?         @map("foto_thumbnail_url") @db.VarChar(500)
+  estado              EstadoReport    @default(RECEBIDO)
+  motivoRejeicao      String?         @map("motivo_rejeicao")
+  entidadeResponsavel String?         @map("entidade_responsavel") @db.VarChar(50)
+  atribuidoA          String?         @map("atribuido_a") @db.Uuid
+  atribuidoEm         DateTime?       @map("atribuido_em") @db.Timestamptz
+  reportPaiId         String?         @map("report_pai_id") @db.Uuid
+  primeiraRespostaEm  DateTime?       @map("primeira_resposta_em") @db.Timestamptz
+  resolvidoEm         DateTime?       @map("resolvido_em") @db.Timestamptz
+  numSubscricoes      Int             @default(0) @map("num_subscricoes")
+  criadoEm            DateTime        @default(now()) @map("criado_em") @db.Timestamptz
+  atualizadoEm        DateTime        @updatedAt @map("atualizado_em") @db.Timestamptz
+  eliminadoEm         DateTime?       @map("eliminado_em") @db.Timestamptz
+
+  cidadao           User               @relation("ReportCidadao", fields: [cidadaoId], references: [id])
+  ecoponto          Ecoponto?          @relation(fields: [ecopontoId], references: [id])
+  zona              Zona               @relation(fields: [zonaId], references: [id])
+  atribuidoAUser    User?              @relation("ReportAtribuido", fields: [atribuidoA], references: [id])
+  reportPai         Report?            @relation("ReportDuplicado", fields: [reportPaiId], references: [id])
+  reportsDuplicados Report[]           @relation("ReportDuplicado")
+  timeline          ReportTimeline[]
+  subscricoes       ReportSubscricao[]
+
+  @@map("reports")
+}
+
+model ReportTimeline {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  reportId       String    @map("report_id") @db.Uuid
+  estadoAnterior String?   @map("estado_anterior") @db.VarChar(20)
+  estadoNovo     String    @map("estado_novo") @db.VarChar(20)
+  nota           String?
+  alteradoPor    String?   @map("alterado_por") @db.Uuid
+  alteradoEm     DateTime  @default(now()) @map("alterado_em") @db.Timestamptz
+
+  report          Report @relation(fields: [reportId], references: [id])
+  alteradoPorUser User?  @relation(fields: [alteradoPor], references: [id])
+
+  @@map("reports_timeline")
+}
+
+model ReportSubscricao {
+  reportId  String   @map("report_id") @db.Uuid
+  cidadaoId String   @map("cidadao_id") @db.Uuid
+  criadoEm  DateTime @default(now()) @map("criado_em") @db.Timestamptz
+
+  report  Report @relation(fields: [reportId], references: [id])
+  cidadao User   @relation(fields: [cidadaoId], references: [id])
+
+  @@id([reportId, cidadaoId])
+  @@map("reports_subscricoes")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COLLECTION REQUESTS (Monos)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model PedidoRecolha {
+  id                 String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  numero             BigInt        @unique @default(autoincrement())
+  cidadaoId          String        @map("cidadao_id") @db.Uuid
+  zonaId             String        @map("zona_id") @db.Uuid
+  moradaRecolha      String        @map("morada_recolha")
+  localizacaoRecolha Unsupported("geography(Point, 4326)")? @map("localizacao_recolha")
+  tipoResiduo        TipoResiduo   @map("tipo_residuo")
+  descricao          String
+  volumeEstimado     String?       @map("volume_estimado") @db.VarChar(20)
+  fotoUrl            String?       @map("foto_url") @db.VarChar(500)
+  estado             EstadoRecolha @default(PENDENTE)
+  dataAgendada       DateTime?     @map("data_agendada") @db.Date
+  operadorId         String?       @map("operador_id") @db.Uuid
+  notasOperador      String?       @map("notas_operador")
+  motivoRejeicao     String?       @map("motivo_rejeicao")
+  criadoEm           DateTime      @default(now()) @map("criado_em") @db.Timestamptz
+  atualizadoEm       DateTime      @updatedAt @map("atualizado_em") @db.Timestamptz
+  eliminadoEm        DateTime?     @map("eliminado_em") @db.Timestamptz
+
+  cidadao  User  @relation("PedidoRecolhaCidadao", fields: [cidadaoId], references: [id])
+  zona     Zona  @relation(fields: [zonaId], references: [id])
+  operador User? @relation("PedidoRecolhaOperador", fields: [operadorId], references: [id])
+
+  @@map("pedidos_recolha")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MATERIAL SHARING
+// ─────────────────────────────────────────────────────────────────────────────
+
+model PartilhaMaterial {
+  id               String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  cidadaoId        String         @map("cidadao_id") @db.Uuid
+  titulo           String         @db.VarChar(200)
+  descricao        String
+  tipoMaterial     TipoMaterial   @map("tipo_material")
+  quantidade       String?        @db.VarChar(100)
+  fotoUrl          String?        @map("foto_url") @db.VarChar(500)
+  zonaId           String         @map("zona_id") @db.Uuid
+  estado           EstadoPartilha @default(DISPONIVEL)
+  expiraEm         DateTime       @map("expira_em") @db.Timestamptz
+  disclaimerAceite Boolean        @default(false) @map("disclaimer_aceite")
+  criadoEm         DateTime       @default(now()) @map("criado_em") @db.Timestamptz
+  atualizadoEm     DateTime       @updatedAt @map("atualizado_em") @db.Timestamptz
+
+  cidadao   User               @relation(fields: [cidadaoId], references: [id])
+  zona      Zona               @relation(fields: [zonaId], references: [id])
+  mensagens PartilhaMensagem[]
+
+  @@map("partilhas_materiais")
+}
+
+model PartilhaMensagem {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  partilhaId     String   @map("partilha_id") @db.Uuid
+  remetenteId    String   @map("remetente_id") @db.Uuid
+  destinatarioId String   @map("destinatario_id") @db.Uuid
+  texto          String
+  lida           Boolean  @default(false)
+  criadoEm       DateTime @default(now()) @map("criado_em") @db.Timestamptz
+
+  partilha     PartilhaMaterial @relation(fields: [partilhaId], references: [id])
+  remetente    User             @relation("MensagemRemetente", fields: [remetenteId], references: [id])
+  destinatario User             @relation("MensagemDestinatario", fields: [destinatarioId], references: [id])
+
+  @@map("partilhas_mensagens")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NOTIFICATIONS
+// ─────────────────────────────────────────────────────────────────────────────
+
+// NOTE: Documented as PARTITIONED BY RANGE(criado_em) — monthly.
+// ASSUMPTION 6: Defined as regular table. Apply partitioning via raw SQL in migration.
+model Notificacao {
+  id          String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  cidadaoId   String                 @map("cidadao_id") @db.Uuid
+  tipo        TipoNotificacao
+  titulo      String                 @db.VarChar(200)
+  corpo       String
+  payload     Json                   @default("{}")
+  canal       CanalNotificacao
+  estadoEnvio EstadoEnvioNotificacao @default(PENDENTE) @map("estado_envio")
+  lida        Boolean                @default(false)
+  lidaEm      DateTime?              @map("lida_em") @db.Timestamptz
+  enviadoEm   DateTime?              @map("enviado_em") @db.Timestamptz
+  criadoEm    DateTime               @default(now()) @map("criado_em") @db.Timestamptz
+
+  cidadao User @relation(fields: [cidadaoId], references: [id])
+
+  @@map("notificacoes")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// INSTITUTIONAL MESSAGES
+// ─────────────────────────────────────────────────────────────────────────────
+
+model MensagemInstitucional {
+  id           String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  titulo       String                    @db.VarChar(200)
+  corpo        String
+  tipo         TipoMensagemInstitucional
+  // ASSUMPTION 5: UUID[] stored as String[]; cast to uuid[] in raw migration
+  zonasDestino String[]                  @map("zonas_destino")
+  publicada    Boolean                   @default(false)
+  publicadaEm  DateTime?                 @map("publicada_em") @db.Timestamptz
+  expiraEm     DateTime?                 @map("expira_em") @db.Timestamptz
+  criadoPor    String                    @map("criado_por") @db.Uuid
+  criadoEm     DateTime                  @default(now()) @map("criado_em") @db.Timestamptz
+
+  criadoPorUser User @relation(fields: [criadoPor], references: [id])
+
+  @@map("mensagens_institucionais")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BENEFIT CAMPAIGNS
+// ─────────────────────────────────────────────────────────────────────────────
+
+model CampanhaBeneficio {
+  id                 String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  titulo             String           @db.VarChar(200)
+  descricao          String
+  textoElegibilidade String           @map("texto_elegibilidade")
+  zonaId             String           @map("zona_id") @db.Uuid
+  criterioTipo       CriterioCampanha @map("criterio_tipo")
+  criterioConfig     Json             @map("criterio_config")
+  beneficioDescricao String           @map("beneficio_descricao")
+  ativa              Boolean          @default(false)
+  inicioEm           DateTime         @map("inicio_em") @db.Timestamptz
+  fimEm              DateTime         @map("fim_em") @db.Timestamptz
+  criadoPor          String           @map("criado_por") @db.Uuid
+  criadoEm           DateTime         @default(now()) @map("criado_em") @db.Timestamptz
+
+  zona          Zona @relation(fields: [zonaId], references: [id])
+  criadoPorUser User @relation(fields: [criadoPor], references: [id])
+
+  @@map("campanhas_beneficio")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// OPERATIONAL ROUTES
+// ─────────────────────────────────────────────────────────────────────────────
+
+model RotaExecucao {
+  id                  String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  zonaId              String     @map("zona_id") @db.Uuid
+  operadorId          String     @map("operador_id") @db.Uuid
+  aceiteEm            DateTime   @map("aceite_em") @db.Timestamptz
+  // ASSUMPTION 5: UUID[] stored as String[]; cast to uuid[] in raw migration
+  ecopontosPlaneados  String[]   @map("ecopontos_planeados")
+  ecopontosVisitados  String[]   @default([]) @map("ecopontos_visitados")
+  geometriaRota       Unsupported("geography(LineString, 4326)")? @map("geometria_rota")
+  estado              EstadoRota @default(ACEITE)
+  iniciadaEm          DateTime?  @map("iniciada_em") @db.Timestamptz
+  concluidaEm         DateTime?  @map("concluida_em") @db.Timestamptz
+  notas               String?
+  criadoEm            DateTime   @default(now()) @map("criado_em") @db.Timestamptz
+
+  zona     Zona @relation(fields: [zonaId], references: [id])
+  operador User @relation(fields: [operadorId], references: [id])
+
+  @@map("rotas_execucao")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AUDIT LOG
+// ─────────────────────────────────────────────────────────────────────────────
+
+// NOTE: Documented as PARTITIONED BY RANGE(criado_em) — monthly, append-only.
+// ASSUMPTION 6: Defined as regular table. Composite PK (id, criado_em) reflects
+// the partition key requirement. Apply partitioning via raw SQL in migration.
+model AuditLog {
+  id             String    @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  criadoEm       DateTime  @default(now()) @map("criado_em") @db.Timestamptz
+  actorId        String?   @map("actor_id") @db.Uuid
+  actorRole      String?   @map("actor_role") @db.VarChar(50)
+  actorIp        String?   @map("actor_ip") @db.Inet
+  actorUserAgent String?   @map("actor_user_agent")
+  accao          String    @db.VarChar(50)
+  entidadeTipo   String    @map("entidade_tipo") @db.VarChar(50)
+  entidadeId     String?   @map("entidade_id") @db.Uuid
+  payloadAntes   Json?     @map("payload_antes")
+  payloadDepois  Json?     @map("payload_depois")
+  sucesso        Boolean   @default(true)
+  erroMensagem   String?   @map("erro_mensagem")
+
+  actor User? @relation(fields: [actorId], references: [id])
+
+  @@id([id, criadoEm])
+  @@map("audit_log")
+}
