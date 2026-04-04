@@ -6,7 +6,9 @@ shift
 
 WORKSPACE_ROOT="/workspace"
 LOCK_DIR="${WORKSPACE_ROOT}/node_modules/.install-lock"
+LOCK_TIMESTAMP="${LOCK_DIR}/timestamp"
 MARKER_FILE="${WORKSPACE_ROOT}/node_modules/.workspace-ready"
+LOCK_TIMEOUT=300  # seconds — treat lock as stale after 5 minutes
 
 needs_install() {
   if [ ! -f "${MARKER_FILE}" ]; then
@@ -31,15 +33,40 @@ needs_install() {
   return 1
 }
 
+acquire_lock() {
+  while true; do
+    if mkdir "${LOCK_DIR}" 2>/dev/null; then
+      date +%s > "${LOCK_TIMESTAMP}"
+      return 0
+    fi
+
+    # Remove stale lock if the holder died (no cleanup on SIGKILL)
+    if [ ! -f "${LOCK_TIMESTAMP}" ]; then
+      # Lock dir exists but no timestamp — orphaned lock from a crashed container
+      echo "Orphaned lock detected (no timestamp), removing..."
+      rm -rf "${LOCK_DIR}"
+      continue
+    fi
+
+    lock_time=$(cat "${LOCK_TIMESTAMP}" 2>/dev/null || echo 0)
+    age=$(( $(date +%s) - lock_time ))
+    if [ "${age}" -gt "${LOCK_TIMEOUT}" ]; then
+      echo "Stale lock detected (age: ${age}s), removing..."
+      rm -rf "${LOCK_DIR}"
+      continue
+    fi
+
+    echo "Waiting for pnpm workspace dependency lock..."
+    sleep 2
+  done
+}
+
 mkdir -p "${WORKSPACE_ROOT}/node_modules"
 
-while ! mkdir "${LOCK_DIR}" 2>/dev/null; do
-  echo "Waiting for pnpm workspace dependency lock..."
-  sleep 2
-done
+acquire_lock
 
 cleanup() {
-  rmdir "${LOCK_DIR}" >/dev/null 2>&1 || true
+  rm -rf "${LOCK_DIR}" >/dev/null 2>&1 || true
 }
 
 trap cleanup EXIT
@@ -56,4 +83,3 @@ cleanup
 trap - EXIT
 
 exec pnpm --filter "${PACKAGE_NAME}" "$@"
-
