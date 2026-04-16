@@ -4,17 +4,18 @@
 
 ### Frontend
 
-A React + TypeScript application responsible for:
+A React + TypeScript application in `apps/web` responsible for:
 
 - user interface
 - map interaction
 - dashboards
 - report submission flows
 - operator views
+- acting as the initial browser-visible placeholder runtime
 
 ### Main Backend
 
-A Node.js + TypeScript backend responsible for:
+A NestJS + TypeScript backend in `apps/api` responsible for:
 
 - API endpoints
 - business rules
@@ -23,14 +24,16 @@ A Node.js + TypeScript backend responsible for:
 - core domain workflows
 - telemetry ingestion
 - report handling
+- exposing `/health` and `/ready` during the foundation phase
 
-### Worker / Compute Service
+### Analytics / Compute Service
 
-A separate service responsible for:
+A FastAPI service in `apps/analytics` responsible for:
 
 - asynchronous heavy processing
 - route or planning calculations
 - compute-intensive background jobs
+- foundation-phase health and readiness verification
 
 This service may later use a different implementation language if justified by workload needs.
 
@@ -51,6 +54,23 @@ A PostgreSQL database with PostGIS support responsible for:
 - telemetry-related persistence
 - derived or computed results where appropriate
 
+### Redis
+
+Redis is included in the base stack for:
+
+- shared dependency readiness in the main backend
+- future queue or cache support
+- keeping the runtime foundation aligned with the intended architecture
+
+### Nginx
+
+A minimal Nginx reverse proxy is used to:
+
+- provide one stable local entrypoint
+- route `/` to `web`
+- route `/api/` to `api`
+- route `/analytics/` to `analytics`
+
 ## Initial Direction
 
 The current architectural direction is:
@@ -60,3 +80,27 @@ The current architectural direction is:
 - one separate path for heavier computation
 - one central relational + geospatial data layer
 - asynchronous processing where compute cost justifies separation
+
+## Current Runtime Topology
+
+The current local stack is:
+
+- `nginx`
+- `web`
+- `api`
+- `analytics`
+- `postgres`
+- `redis`
+
+All of these are orchestrated through Docker Compose during local development.
+
+## Foundation-Phase Health Model
+
+The current baseline is intentionally simple:
+
+- `web` must be reachable in the browser
+- `api` must expose `/health` and `/ready`
+- `analytics` must expose `/health` and `/ready`
+- `api` readiness checks PostgreSQL and Redis
+- `analytics` readiness checks PostgreSQL
+- PostgreSQL and Redis use Compose health checks
