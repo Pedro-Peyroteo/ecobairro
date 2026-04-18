@@ -56,6 +56,10 @@ services:
     environment:
       NODE_ENV: development
       PORT: '3000'
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-dev-access-secret-change-me}
+      JWT_ACCESS_TTL_MINUTES: ${JWT_ACCESS_TTL_MINUTES:-15}
+      REFRESH_TOKEN_TTL_DAYS: ${REFRESH_TOKEN_TTL_DAYS:-7}
+      BCRYPT_ROUNDS: ${BCRYPT_ROUNDS:-12}
       DATABASE_URL: postgresql://${POSTGRES_USER:-ecobairro}:${POSTGRES_PASSWORD:-ecobairro}@postgres:5432/${POSTGRES_DB:-ecobairro}
       REDIS_URL: redis://redis:6379/0
     depends_on:
@@ -108,6 +112,8 @@ services:
 
   postgres:
     image: postgis/postgis:16-3.4
+    ports:
+      - ${POSTGRES_PORT:-5432}:5432
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-ecobairro}
       POSTGRES_USER: ${POSTGRES_USER:-ecobairro}
