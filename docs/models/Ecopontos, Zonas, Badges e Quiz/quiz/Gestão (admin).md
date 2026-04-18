@@ -1,0 +1,10 @@
+| #   | Método   | Rota                                  | Descrição                                             | Auth  | Fluxo                                                              |
+| --- | -------- | ------------------------------------- | ----------------------------------------------------- | ----- | ------------------------------------------------------------------ |
+| Q10 | `GET`    | `/admin/quiz`                         | Listar todos os quizzes (activos, futuros, passados)  | ADMIN | NestJS → PG réplica                                                |
+| Q11 | `POST`   | `/admin/quiz`                         | Criar quiz com perguntas e opções                     | ADMIN | NestJS → PG write (transacção: quiz + perguntas + opcoes) → NOTIFY |
+| Q12 | `PUT`    | `/admin/quiz/:id`                     | Actualizar quiz (só se nenhum cidadão o jogou ainda)  | ADMIN | NestJS → verifica quiz_sessoes count=0 → PG write                  |
+| Q13 | `DELETE` | `/admin/quiz/:id`                     | Cancelar quiz (soft: ativo=false, só se não iniciado) | ADMIN | NestJS → PG write ativo=false → NOTIFY                             |
+| Q14 | `POST`   | `/admin/quiz/:id/pergunta`            | Adicionar pergunta a quiz existente                   | ADMIN | NestJS → valida ordem e limite → PG write                          |
+| Q15 | `PUT`    | `/admin/quiz/:id/pergunta/:pId`       | Editar pergunta (só se quiz não iniciado)             | ADMIN | NestJS → verifica disponivel_de > now() → PG write                 |
+| Q16 | `POST`   | `/admin/quiz/:id/pergunta/:pId/opcao` | Adicionar opção a uma pergunta                        | ADMIN | NestJS → valida max 5 opções → PG write                            |
+**Nota sobre Q12 (actualizar quiz):** A restrição `quiz_sessoes count = 0` é fundamental. Uma vez que um cidadão jogou o quiz, o schema de perguntas e opções torna-se imutável — alterar perguntas após sessões já registadas invalidaria os resultados históricos. O admin deve criar um novo quiz em vez de editar
