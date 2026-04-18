@@ -70,8 +70,12 @@ else
   echo "Using cached workspace dependencies."
 fi
 
+if [ "${PACKAGE_NAME}" = "@ecobairro/api" ]; then
+  echo "Generating Prisma client..."
+  pnpm --dir "${WORKSPACE_ROOT}/apps/api" prisma:generate
+fi
+
 cleanup
 trap - EXIT
 
 exec pnpm --filter "${PACKAGE_NAME}" "$@"
-
