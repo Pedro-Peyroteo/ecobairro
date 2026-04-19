@@ -1,93 +1,93 @@
 # EcoBairro
 
-EcoBairro is a platform focused on ecopoint discovery, reporting, telemetry visibility, and operational support for waste-related workflows.
+EcoBairro e uma plataforma focada na descoberta de ecopontos, reports, visibilidade de telemetria e suporte operacional para fluxos de trabalho ligados a residuos.
 
-## Foundation Status
+## Estado Da Fundacao
 
-The repository currently includes:
+O repositorio inclui atualmente:
 
-- one frontend app in `apps/web`
-- one main backend app in `apps/api`
-- one analytics service in `apps/analytics`
-- shared TypeScript packages in `packages/`
-- Docker Compose orchestration in `infra/compose`
-- Nginx path-based routing in `infra/nginx`
-- PostgreSQL + PostGIS and Redis in the base stack
-- a working backend Phase 1 slice for citizen auth and self-profile management
+- uma app frontend em `apps/web`
+- uma app backend principal em `apps/api`
+- um servico de analytics em `apps/analytics`
+- pacotes TypeScript partilhados em `packages/`
+- orquestracao Docker Compose em `infra/compose`
+- encaminhamento Nginx por prefixos em `infra/nginx`
+- PostgreSQL + PostGIS e Redis na stack base
+- uma fatia funcional da Fase 1 no backend para autenticacao de cidadao e gestao do proprio perfil
 
-## Prerequisites
+## Pre-Requisitos
 
-- Docker Desktop or a local Docker daemon
-- Node.js with Corepack-enabled `pnpm`
+- Docker Desktop ou um daemon Docker local
+- Node.js com `pnpm` ativo via Corepack
 
-## Local Commands
+## Comandos Locais
 
-- `pnpm install --no-frozen-lockfile`: install or refresh all workspace dependencies from the repo root.
-- `pnpm lint`: run lint checks for the shared packages and the JS/TS apps.
-- `pnpm typecheck`: run TypeScript type checks for the shared packages and the JS/TS apps.
-- `pnpm compose:config`: render the resolved Docker Compose configuration to confirm env and service wiring.
-- `pnpm compose:up`: build images if needed and start the full local stack in detached mode.
-- `pnpm compose:down`: stop and remove the local stack containers and networks.
-- `pnpm compose:logs`: stream the combined logs for the whole stack.
-- `pnpm compose:logs:web`: follow logs only for the frontend container.
-- `pnpm compose:logs:api`: follow logs only for the NestJS API container.
-- `pnpm compose:logs:analytics`: follow logs only for the FastAPI analytics container.
-- `pnpm compose:logs:db`: follow logs for infrastructure services such as PostgreSQL, Redis, and Nginx.
-- `pnpm compose:ps`: show current container status for the stack.
-- `pnpm compose:restart`: recreate the local stack with a clean down/up cycle in detached mode.
-- `pnpm --filter @ecobairro/web test`: run the frontend scaffold test baseline.
-- `pnpm --dir apps/api test`: run the current API unit coverage.
+- `pnpm install --no-frozen-lockfile`: instala ou atualiza todas as dependencias do workspace a partir da raiz do repositorio.
+- `pnpm lint`: executa validacoes de lint para os pacotes partilhados e para as apps JS/TS.
+- `pnpm typecheck`: executa verificacoes TypeScript para os pacotes partilhados e para as apps JS/TS.
+- `pnpm compose:config`: mostra a configuracao final do Docker Compose para confirmar variaveis e ligacoes entre servicos.
+- `pnpm compose:up`: constroi imagens se necessario e arranca toda a stack local em modo detached.
+- `pnpm compose:down`: para e remove os contentores e redes da stack local.
+- `pnpm compose:logs`: segue os logs combinados de toda a stack.
+- `pnpm compose:logs:web`: segue apenas os logs do contentor frontend.
+- `pnpm compose:logs:api`: segue apenas os logs do contentor NestJS API.
+- `pnpm compose:logs:analytics`: segue apenas os logs do contentor FastAPI analytics.
+- `pnpm compose:logs:db`: segue os logs dos servicos de infra como PostgreSQL, Redis e Nginx.
+- `pnpm compose:ps`: mostra o estado atual dos contentores da stack.
+- `pnpm compose:restart`: recria a stack local com um ciclo completo de down/up em modo detached.
+- `pnpm --filter @ecobairro/web test`: corre a baseline de testes do scaffold frontend.
+- `pnpm --dir apps/api test`: corre a cobertura unit test atual da API.
 
-## Local Setup
+## Setup Local
 
-1. Make sure Docker Desktop or your local Docker daemon is running.
-2. Copy `.env.example` to `.env` if you need to override local defaults.
-3. Run `pnpm compose:up`.
-4. Apply backend migrations:
+1. Garante que o Docker Desktop ou o teu daemon Docker local esta a correr.
+2. Copia `.env.example` para `.env` se precisares de alterar valores locais por omissao.
+3. Executa `pnpm compose:up`.
+4. Aplica as migrations do backend:
 
 ```powershell
 pnpm --dir apps/api exec prisma migrate deploy
 ```
 
-5. Run `pnpm compose:ps` if you want a quick status check.
-6. Open `http://localhost:8080/`.
+5. Executa `pnpm compose:ps` se quiseres confirmar rapidamente o estado da stack.
+6. Abre `http://localhost:8080/`.
 
-## Terminal Workflow
+## Fluxo De Trabalho No Terminal
 
-Recommended local flow:
+Fluxo local recomendado:
 
-- keep `pnpm compose:up` detached so your main shell stays usable
-- use `pnpm compose:logs` only when you want combined logs
-- prefer targeted logs such as `pnpm compose:logs:api` or `pnpm compose:logs:web` while implementing one area
-- use `pnpm compose:ps` for a quick container status check
+- mantem `pnpm compose:up` em modo detached para a shell principal continuar livre
+- usa `pnpm compose:logs` apenas quando quiseres ver o stream combinado
+- prefere logs direcionados como `pnpm compose:logs:api` ou `pnpm compose:logs:web` quando estiveres a trabalhar numa area especifica
+- usa `pnpm compose:ps` para uma verificacao rapida do estado dos contentores
 
-## Current App Status
+## Estado Atual Das Apps
 
-- `apps/web`: TanStack Start frontend scaffolded with placeholder route groups
-- `apps/api`: NestJS runtime with health/readiness plus Phase 1 auth and citizen self-profile endpoints
-- `apps/analytics`: FastAPI health and readiness scaffolded
+- `apps/web`: frontend TanStack Start preparado com grupos de rotas placeholder
+- `apps/api`: runtime NestJS com health/readiness e endpoints da Fase 1 para autenticacao e perfil proprio do cidadao
+- `apps/analytics`: FastAPI preparado com health e readiness
 
-## Frontend Scaffold Notes
+## Notas Sobre O Scaffold Frontend
 
-- `apps/web/src/routes` is the only route-authoring surface.
-- `apps/web/src/components/layout` holds app and area-level shells.
-- `apps/web/src/components/ui` holds neutral shared UI primitives and boundaries.
-- `apps/web/src/routeTree.gen.ts` is generated by TanStack Router and should not be edited manually.
-- Placeholder routes under `/`, `/app`, and `/admin` are scaffolding only and are intended for feature-team replacement.
+- `apps/web/src/routes` e a unica superficie de autoria de rotas.
+- `apps/web/src/components/layout` guarda as shells da app e das areas.
+- `apps/web/src/components/ui` guarda primitivos UI neutros e boundaries partilhadas.
+- `apps/web/src/routeTree.gen.ts` e gerado pelo TanStack Router e nao deve ser editado manualmente.
+- As rotas placeholder em `/`, `/app` e `/admin` sao apenas scaffolding e destinam-se a ser substituidas pelas equipas de funcionalidade.
 
-## Current Infra Status
+## Estado Atual Da Infra
 
-- base Docker Compose stack scaffolded for `web`, `api`, `analytics`, `postgres`, and `redis`
-- PostGIS init script added for the local database
-- Nginx routes all local traffic through a single entrypoint on `http://localhost:8080`
+- stack base Docker Compose preparada para `web`, `api`, `analytics`, `postgres` e `redis`
+- script de inicializacao PostGIS adicionado para a base de dados local
+- Nginx encaminha todo o trafego local atraves de um unico ponto de entrada em `http://localhost:8080`
 
-## Health Surfaces
+## Superficies De Health
 
-- `web`: browser placeholder page
-- `api`: `/health` and `/ready`
-- `analytics`: `/health` and `/ready`
+- `web`: pagina placeholder no browser
+- `api`: `/health` e `/ready`
+- `analytics`: `/health` e `/ready`
 
-## Local Endpoints
+## Endpoints Locais
 
 - `http://localhost:8080/`
 - `http://localhost:8080/api/health`
@@ -100,15 +100,15 @@ Recommended local flow:
 - `http://localhost:8080/analytics/health`
 - `http://localhost:8080/analytics/ready`
 
-## Docs
+## Documentacao
 
-- `docs/05-local-runtime-bootstrap.md`: teammate-facing setup and verification guide
-- `docs/06-frontend-scaffold.md`: frontend stack decisions, directory structure, routing model, and extension rules
-- `docs/07-web-implementation-playbook.md`: step-by-step guide for implementing work inside the current `apps/web` scaffold
-- `docs/08-api-implementation-playbook.md`: current backend implementation status, file ownership, and how to add new API features
-- `docs/models/`: domain and data-model planning docs
+- `docs/05-local-runtime-bootstrap.md`: guia de setup e verificacao do runtime local para a equipa
+- `docs/06-frontend-scaffold.md`: decisoes do stack frontend, estrutura de diretorios, modelo de routing e regras de extensao
+- `docs/07-web-implementation-playbook.md`: guia passo a passo para implementar trabalho dentro do scaffold atual de `apps/web`
+- `docs/08-api-implementation-playbook.md`: estado atual da implementacao backend, ownership de ficheiros e como adicionar novas funcionalidades da API
+- `docs/models/`: documentos de planeamento de dominio e modelos de dados
 
-## Repository Structure
+## Estrutura Do Repositorio
 
 ```text
 apps/
