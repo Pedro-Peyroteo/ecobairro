@@ -1,4 +1,9 @@
 import config from '../../packages/eslint-config/node.mjs';
 
-export default config;
+export default [
+  ...config,
+  {
+    ignores: ['dist-test/**'],
+  },
+];
 
