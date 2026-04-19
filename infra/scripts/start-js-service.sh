@@ -74,4 +74,3 @@ cleanup
 trap - EXIT
 
 exec pnpm --filter "${PACKAGE_NAME}" "$@"
-
