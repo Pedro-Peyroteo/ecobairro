@@ -38,7 +38,7 @@ Why:
 - it reduces the amount of runtime complexity teammates need to understand on day one
 - it still keeps a path open for future SSR if requirements change
 
-This choice lives in [apps/web/vite.config.ts](/c:/Users/Pedro/Documents/UA/LEIA/2025-2026/ecobairro/apps/web/vite.config.ts).
+This choice lives in [apps/web/vite.config.ts](../apps/web/vite.config.ts).
 
 ### Routing
 
@@ -149,11 +149,11 @@ Why it exists:
 
 Current route shape:
 
-- `/` from [apps/web/src/routes/index.tsx](/c:/Users/Pedro/Documents/UA/LEIA/2025-2026/ecobairro/apps/web/src/routes/index.tsx)
-- `/app` from [apps/web/src/routes/app/index.tsx](/c:/Users/Pedro/Documents/UA/LEIA/2025-2026/ecobairro/apps/web/src/routes/app/index.tsx)
-- `/app/dashboard` from [apps/web/src/routes/app/dashboard.tsx](/c:/Users/Pedro/Documents/UA/LEIA/2025-2026/ecobairro/apps/web/src/routes/app/dashboard.tsx)
-- `/admin` from [apps/web/src/routes/admin/index.tsx](/c:/Users/Pedro/Documents/UA/LEIA/2025-2026/ecobairro/apps/web/src/routes/admin/index.tsx)
-- `/admin/dashboard` from [apps/web/src/routes/admin/dashboard.tsx](/c:/Users/Pedro/Documents/UA/LEIA/2025-2026/ecobairro/apps/web/src/routes/admin/dashboard.tsx)
+- `/` from [apps/web/src/routes/index.tsx](../apps/web/src/routes/index.tsx)
+- `/app` from [apps/web/src/routes/app/index.tsx](../apps/web/src/routes/app/index.tsx)
+- `/app/dashboard` from [apps/web/src/routes/app/dashboard.tsx](../apps/web/src/routes/app/dashboard.tsx)
+- `/admin` from [apps/web/src/routes/admin/index.tsx](../apps/web/src/routes/admin/index.tsx)
+- `/admin/dashboard` from [apps/web/src/routes/admin/dashboard.tsx](../apps/web/src/routes/admin/dashboard.tsx)
 
 ### `src/routes/__root.tsx`
 
@@ -343,11 +343,11 @@ Why it exists:
 
 The startup flow is:
 
-1. Vite starts the app using TanStack Start from [apps/web/vite.config.ts](/c:/Users/Pedro/Documents/UA/LEIA/2025-2026/ecobairro/apps/web/vite.config.ts).
+1. Vite starts the app using TanStack Start from [apps/web/vite.config.ts](../apps/web/vite.config.ts).
 2. TanStack Start scans `src/routes`.
 3. TanStack generates `src/routeTree.gen.ts`.
-4. [apps/web/src/router.tsx](/c:/Users/Pedro/Documents/UA/LEIA/2025-2026/ecobairro/apps/web/src/router.tsx) creates the router using that generated route tree.
-5. [apps/web/src/routes/__root.tsx](/c:/Users/Pedro/Documents/UA/LEIA/2025-2026/ecobairro/apps/web/src/routes/__root.tsx) provides the document shell, Query provider, global layout, and shared boundaries.
+4. [apps/web/src/router.tsx](../apps/web/src/router.tsx) creates the router using that generated route tree.
+5. [apps/web/src/routes/__root.tsx](../apps/web/src/routes/__root.tsx) provides the document shell, Query provider, global layout, and shared boundaries.
 6. Nested route files render inside `<Outlet />`.
 
 ## Why The Route Groups Look The Way They Do
@@ -363,7 +363,7 @@ Why:
 - teammates can immediately see where new pages belong
 - shared area-specific layout can live once in `route.tsx`
 
-This is why [apps/web/src/routes/app/route.tsx](/c:/Users/Pedro/Documents/UA/LEIA/2025-2026/ecobairro/apps/web/src/routes/app/route.tsx) and [apps/web/src/routes/admin/route.tsx](/c:/Users/Pedro/Documents/UA/LEIA/2025-2026/ecobairro/apps/web/src/routes/admin/route.tsx) exist even though they currently render placeholders.
+This is why [apps/web/src/routes/app/route.tsx](../apps/web/src/routes/app/route.tsx) and [apps/web/src/routes/admin/route.tsx](../apps/web/src/routes/admin/route.tsx) exist even though they currently render placeholders.
 
 They are route-group layout boundaries, not feature pages.
 
@@ -384,7 +384,7 @@ The rule is simple:
 
 ## Why These Dependencies Exist
 
-Main runtime dependencies in [apps/web/package.json](/c:/Users/Pedro/Documents/UA/LEIA/2025-2026/ecobairro/apps/web/package.json):
+Main runtime dependencies in [apps/web/package.json](../apps/web/package.json):
 
 - `@tanstack/react-start`: frontend app runtime
 - `@tanstack/react-router`: routing

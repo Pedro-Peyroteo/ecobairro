@@ -98,6 +98,7 @@ Recommended local flow:
 - `docs/04-high-level-architecture.md`: current stack and runtime topology
 - `docs/05-local-runtime-bootstrap.md`: teammate-facing setup and verification guide
 - `docs/06-frontend-scaffold.md`: frontend stack decisions, directory structure, routing model, and extension rules
+- `docs/07-web-implementation-playbook.md`: step-by-step guide for implementing work inside the current `apps/web` scaffold
 
 ## Repository Structure
 
