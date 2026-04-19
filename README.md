@@ -4,7 +4,7 @@ EcoBairro is a platform focused on ecopoint discovery, reporting, telemetry visi
 
 ## Foundation Status
 
-The repository now includes the first local runtime foundation with:
+The repository currently includes:
 
 - one frontend app in `apps/web`
 - one main backend app in `apps/api`
@@ -13,8 +13,7 @@ The repository now includes the first local runtime foundation with:
 - Docker Compose orchestration in `infra/compose`
 - Nginx path-based routing in `infra/nginx`
 - PostgreSQL + PostGIS and Redis in the base stack
-
-This phase is intentionally limited to runtime scaffolding, health checks, and local orchestration.
+- a working backend Phase 1 slice for citizen auth and self-profile management
 
 ## Prerequisites
 
@@ -37,14 +36,21 @@ This phase is intentionally limited to runtime scaffolding, health checks, and l
 - `pnpm compose:ps`: show current container status for the stack.
 - `pnpm compose:restart`: recreate the local stack with a clean down/up cycle in detached mode.
 - `pnpm --filter @ecobairro/web test`: run the frontend scaffold test baseline.
+- `pnpm --dir apps/api test`: run the current API unit coverage.
 
 ## Local Setup
 
 1. Make sure Docker Desktop or your local Docker daemon is running.
 2. Copy `.env.example` to `.env` if you need to override local defaults.
 3. Run `pnpm compose:up`.
-4. Run `pnpm compose:ps` if you want a quick status check.
-5. Open `http://localhost:8080/`.
+4. Apply backend migrations:
+
+```powershell
+pnpm --dir apps/api exec prisma migrate deploy
+```
+
+5. Run `pnpm compose:ps` if you want a quick status check.
+6. Open `http://localhost:8080/`.
 
 ## Terminal Workflow
 
@@ -58,7 +64,7 @@ Recommended local flow:
 ## Current App Status
 
 - `apps/web`: TanStack Start frontend scaffolded with placeholder route groups
-- `apps/api`: NestJS health and readiness scaffolded
+- `apps/api`: NestJS runtime with health/readiness plus Phase 1 auth and citizen self-profile endpoints
 - `apps/analytics`: FastAPI health and readiness scaffolded
 
 ## Frontend Scaffold Notes
@@ -86,19 +92,21 @@ Recommended local flow:
 - `http://localhost:8080/`
 - `http://localhost:8080/api/health`
 - `http://localhost:8080/api/ready`
+- `http://localhost:8080/api/v1/auth/register`
+- `http://localhost:8080/api/v1/auth/login`
+- `http://localhost:8080/api/v1/auth/refresh`
+- `http://localhost:8080/api/v1/auth/logout`
+- `http://localhost:8080/api/v1/cidadaos/me`
 - `http://localhost:8080/analytics/health`
 - `http://localhost:8080/analytics/ready`
 
 ## Docs
 
-- `docs/00-questions-to-clarify.md`: resolved vs remaining architecture questions
-- `docs/01-scope-and-goals.md`: product scope and foundation-phase goals
-- `docs/02-actors-and-use-cases.md`: actors, product use cases, and foundation runtime use cases
-- `docs/03-domain-map.md`: domain ownership boundaries and current runtime mapping
-- `docs/04-high-level-architecture.md`: current stack and runtime topology
 - `docs/05-local-runtime-bootstrap.md`: teammate-facing setup and verification guide
 - `docs/06-frontend-scaffold.md`: frontend stack decisions, directory structure, routing model, and extension rules
 - `docs/07-web-implementation-playbook.md`: step-by-step guide for implementing work inside the current `apps/web` scaffold
+- `docs/08-api-implementation-playbook.md`: current backend implementation status, file ownership, and how to add new API features
+- `docs/models/`: domain and data-model planning docs
 
 ## Repository Structure
 
