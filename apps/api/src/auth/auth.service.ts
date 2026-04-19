@@ -16,6 +16,7 @@ import { randomBytes, createHash } from 'crypto';
 import bcrypt from 'bcrypt';
 import { PrismaService } from '../database/prisma.service';
 import { RedisService } from '../redis/redis.service';
+import { AuditService } from '../audit/audit.service';
 import type { JwtPayload } from './auth.types';
 import type { LoginDto } from './dto/login.dto';
 import type { RefreshDto } from './dto/refresh.dto';
@@ -30,6 +31,7 @@ export class AuthService {
   private readonly prisma: PrismaService;
   private readonly redisService: RedisService;
   private readonly jwtService: JwtService;
+  private readonly audit: AuditService;
   private readonly refreshTokenTtlSeconds =
     readNumberEnv('REFRESH_TOKEN_TTL_DAYS', 7) * 24 * 60 * 60;
   private readonly bcryptRounds = readNumberEnv('BCRYPT_ROUNDS', 12);
@@ -38,10 +40,12 @@ export class AuthService {
     @Inject(PrismaService) prisma: PrismaService,
     @Inject(RedisService) redisService: RedisService,
     @Inject(JwtService) jwtService: JwtService,
+    @Inject(AuditService) audit: AuditService,
   ) {
     this.prisma = prisma;
     this.redisService = redisService;
     this.jwtService = jwtService;
+    this.audit = audit;
   }
 
   async register(input: RegisterDto): Promise<RegisterResponse> {
@@ -73,6 +77,13 @@ export class AuthService {
       }),
     );
 
+    this.audit.log({
+      actorId: user.id,
+      acao: 'REGISTO',
+      entidade: 'users',
+      entidadeId: user.id,
+    });
+
     return {
       id: user.id,
       email: user.email,
@@ -81,7 +92,7 @@ export class AuthService {
     };
   }
 
-  async login(input: LoginDto): Promise<LoginResponse> {
+  async login(input: LoginDto, ip?: string): Promise<LoginResponse> {
     const normalizedEmail = input.email.trim().toLowerCase();
     const user = await this.prisma.user.findUnique({
       where: { email: normalizedEmail },
@@ -96,6 +107,14 @@ export class AuthService {
     if (!isPasswordValid) {
       throw new UnauthorizedException('Invalid credentials');
     }
+
+    this.audit.log({
+      actorId: user.id,
+      acao: 'LOGIN',
+      entidade: 'users',
+      entidadeId: user.id,
+      ip,
+    });
 
     return this.issueSession(user.id, user.role as ContractUserRole);
   }
@@ -135,8 +154,9 @@ export class AuthService {
     return this.issueSession(user.id, user.role as ContractUserRole);
   }
 
-  async logout(userId: string): Promise<void> {
+  async logout(userId: string, ip?: string): Promise<void> {
     await this.redisService.getClient().del(getUserSessionKey(userId));
+    this.audit.log({ actorId: userId, acao: 'LOGOUT', entidade: 'users', entidadeId: userId, ip });
   }
 
   private async issueSession(

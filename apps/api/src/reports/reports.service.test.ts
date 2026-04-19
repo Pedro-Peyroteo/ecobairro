@@ -130,6 +130,7 @@ class FakePrismaService {
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 const fakeAudit = { log: () => undefined } as unknown as import('../audit/audit.service').AuditService;
+const fakeBadgeWorker = { avaliar: () => Promise.resolve() } as unknown as import('../gamificacao/badge-worker.service').BadgeWorkerService;
 
 function buildService(queryOverride?: FakePrismaService['$queryRaw']) {
   const prisma = new FakePrismaService();
@@ -139,6 +140,7 @@ function buildService(queryOverride?: FakePrismaService['$queryRaw']) {
     prisma as unknown as import('../database/prisma.service').PrismaService,
     redis as unknown as import('../redis/redis.service').RedisService,
     fakeAudit,
+    fakeBadgeWorker,
   );
 }
 
@@ -183,6 +185,7 @@ const tests: TestCase[] = [
         prisma as unknown as import('../database/prisma.service').PrismaService,
         redis as unknown as import('../redis/redis.service').RedisService,
         fakeAudit,
+        fakeBadgeWorker,
       );
       await assert.rejects(
         () => svc.create({ categoria: 'OUTRO' as import('./dto/create-report.dto').ReportCategoriaDto, latitude: 40.64, longitude: -8.65 }, CIDADAO_ID),

@@ -1,4 +1,5 @@
-import { Body, Controller, HttpCode, HttpStatus, Inject, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, HttpCode, HttpStatus, Inject, Post, Req, UseGuards } from '@nestjs/common';
+import type { Request } from 'express';
 import type {
   LoginResponse,
   RegisterResponse,
@@ -26,8 +27,8 @@ export class AuthController {
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  login(@Body() body: LoginDto): Promise<LoginResponse> {
-    return this.authService.login(body);
+  login(@Body() body: LoginDto, @Req() req: Request): Promise<LoginResponse> {
+    return this.authService.login(body, req.ip ?? '');
   }
 
   @Post('refresh')
@@ -39,7 +40,10 @@ export class AuthController {
   @Post('logout')
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
-  async logout(@CurrentUser() user: AuthenticatedUser): Promise<void> {
-    await this.authService.logout(user.userId);
+  async logout(
+    @CurrentUser() user: AuthenticatedUser,
+    @Req() req: Request,
+  ): Promise<void> {
+    await this.authService.logout(user.userId, req.ip ?? '');
   }
 }

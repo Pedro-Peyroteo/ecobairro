@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Patch, Param, Query, UseGuards } from '@nestjs/common';
 import { NotificacoesService } from './notificacoes.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
@@ -10,11 +10,19 @@ export class NotificacoesController {
   constructor(private readonly notificacoesService: NotificacoesService) {}
 
   @Get()
-  listMine(@CurrentUser() user: AuthenticatedUser) {
-    return this.notificacoesService.listMine(user.userId);
+  listMine(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('cursor') cursor?: string,
+    @Query('take') take?: string,
+    @Query('nao_lidas') naoLidas?: string,
+  ) {
+    return this.notificacoesService.listMine(user.userId, {
+      cursor,
+      take: take ? parseInt(take, 10) : undefined,
+      somenteNaoLidas: naoLidas === 'true',
+    });
   }
 
-  // RF-NF2: unread count (cached 5 min)
   @Get('count')
   unreadCount(@CurrentUser() user: AuthenticatedUser) {
     return this.notificacoesService.getUnreadCount(user.userId);

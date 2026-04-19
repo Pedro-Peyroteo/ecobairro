@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { RedisService } from '../redis/redis.service';
+import { BadgeWorkerService } from './badge-worker.service';
 import type { CreateQuizDto, ResponderOpcaoDto } from './dto/quiz.dto';
 import type {
   BadgeItem,
@@ -23,6 +24,7 @@ export class GamificacaoService {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(RedisService) private readonly redis: RedisService,
+    @Inject(BadgeWorkerService) private readonly badgeWorker: BadgeWorkerService,
   ) {}
 
   // ── Badges ──────────────────────────────────────────────────────────────────
@@ -289,6 +291,8 @@ export class GamificacaoService {
 
     if (todasRespondidas) {
       await client.del(`quiz:sessao:${input.sessaoId}`);
+      // Avaliar badges em background
+      void this.badgeWorker.avaliar(cidadaoId);
     }
 
     return { correto: opcao.correta, pontuacao_atual: novasPontuacao };

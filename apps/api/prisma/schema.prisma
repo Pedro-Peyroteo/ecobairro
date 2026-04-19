@@ -76,14 +76,17 @@ model User {
 
   cidadaoPerfil   CidadaoPerfil?
   operadorPerfil  OperadorPerfil?
-  reportsFeitos   Report[]         @relation("ReportCidadao")
-  reportsAtribs   Report[]         @relation("ReportAtribuido")
-  pedidosRecolha  PedidoRecolha[]
-  partilhas       PartilhaMaterial[]
-  notificacoes    Notificacao[]
-  zonasHistorico  ZonaHistorico[]  @relation("ZonaAlteradoPor")
-  auditLog        AuditLog[]
-  rotasExecucao   RotaExecucao[]
+  reportsFeitos    Report[]          @relation("ReportCidadao")
+  reportsAtribs    Report[]          @relation("ReportAtribuido")
+  pedidosRecolha   PedidoRecolha[]
+  partilhas        PartilhaMaterial[]
+  notificacoes     Notificacao[]
+  zonasHistorico   ZonaHistorico[]   @relation("ZonaAlteradoPor")
+  auditLog         AuditLog[]
+  rotasExecucao    RotaExecucao[]
+  consentimentos   RgpdConsentimento[]
+  favoritos        EcopontoFavorito[]
+  campanhasCriadas Campanha[]        @relation("CampanhaCriador")
 
   @@index([role])
   @@index([eliminadoEm], map: "users_eliminado_em_not_null_idx")
@@ -147,6 +150,7 @@ model Zona {
   ecopontos     Ecoponto[]
   reports       Report[]
   rotasExecucao RotaExecucao[]
+  campanhas     Campanha[]
 
   @@index([ativa])
   @@index([tipo])
@@ -192,6 +196,7 @@ model Ecoponto {
   zona        Zona                @relation(fields: [zonaId], references: [id])
   estadoAtual EcopontoEstadoAtual?
   reports     Report[]
+  favoritos   EcopontoFavorito[]
 
   @@index([zonaId, ativo])
   @@map("ecopontos")
@@ -489,6 +494,64 @@ model RotaExecucao {
   @@index([zonaId, dataExecucao(sort: Desc)])
   @@index([operadorId, dataExecucao(sort: Desc)])
   @@map("rotas_execucao")
+}
+
+// ─── RGPD Consentimentos ──────────────────────────────────────────────────────
+
+model RgpdConsentimento {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  cidadaoId  String    @map("cidadao_id") @db.Uuid
+  finalidade String    @db.VarChar(80)
+  versao     String    @db.VarChar(20)
+  aceite     Boolean
+  criadoEm  DateTime  @default(now()) @map("criado_em") @db.Timestamptz(6)
+  revogadoEm DateTime? @map("revogado_em") @db.Timestamptz(6)
+
+  user User @relation(fields: [cidadaoId], references: [id], onDelete: Cascade)
+
+  @@index([cidadaoId, finalidade])
+  @@index([criadoEm(sort: Desc)])
+  @@map("rgpd_consentimentos")
+}
+
+// ─── Ecopontos Favoritos ──────────────────────────────────────────────────────
+
+model EcopontoFavorito {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  cidadaoId   String   @map("cidadao_id") @db.Uuid
+  ecopontoId  String   @map("ecoponto_id") @db.Uuid
+  criadoEm    DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  user     User     @relation(fields: [cidadaoId], references: [id], onDelete: Cascade)
+  ecoponto Ecoponto @relation(fields: [ecopontoId], references: [id], onDelete: Cascade)
+
+  @@unique([cidadaoId, ecopontoId])
+  @@index([cidadaoId])
+  @@map("ecoponto_favoritos")
+}
+
+// ─── Campanhas de Benefício ───────────────────────────────────────────────────
+
+model Campanha {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  titulo           String    @db.VarChar(200)
+  descricao        String?
+  zonaId           String?   @map("zona_id") @db.Uuid
+  criterios        Json      // { min_quiz_pontuacao?, min_recolhas?, ... }
+  recompensa       String    @db.VarChar(200)
+  ativa            Boolean   @default(false)
+  disponivelDe     DateTime  @map("disponivel_de") @db.Timestamptz(6)
+  disponivelAte    DateTime  @map("disponivel_ate") @db.Timestamptz(6)
+  criadoPor        String    @map("criado_por") @db.Uuid
+  criadoEm         DateTime  @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm     DateTime  @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  zona     Zona?    @relation(fields: [zonaId], references: [id])
+  criador  User     @relation("CampanhaCriador", fields: [criadoPor], references: [id])
+
+  @@index([ativa, disponivelDe, disponivelAte])
+  @@index([zonaId])
+  @@map("campanhas")
 }
 
 // ─── Audit Log ────────────────────────────────────────────────────────────────

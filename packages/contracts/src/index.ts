@@ -436,3 +436,54 @@ export interface KpiZonaResponse {
   enchimento_medio_pct: number | null;
   periodo_dias: number;
 }
+
+// ─── RGPD Consentimentos ──────────────────────────────────────────────────────
+
+export type RgpdFinalidade =
+  | 'controlo_quantidade_futura'
+  | 'marketing'
+  | 'analytics_comportamento'
+  | 'notificacoes_zona'
+  | 'gamificacao';
+
+export interface RgpdConsentimentoItem {
+  id: string;
+  finalidade: RgpdFinalidade;
+  versao: string;
+  aceite: boolean;
+  criado_em: string;
+  revogado_em: string | null;
+}
+
+// ─── Ecopontos Favoritos ──────────────────────────────────────────────────────
+
+export interface EcopontoFavoritoItem {
+  ecoponto_id: string;
+  criado_em: string;
+}
+
+// ─── Campanhas de Benefício ───────────────────────────────────────────────────
+
+export interface CampanhaItem {
+  id: string;
+  titulo: string;
+  descricao: string | null;
+  zona_id: string | null;
+  criterios: Record<string, unknown>;
+  recompensa: string;
+  ativa: boolean;
+  disponivel_de: string;
+  disponivel_ate: string;
+  criado_em: string;
+}
+
+export interface ElegibilidadeCheck {
+  criterio: string;
+  ok: boolean;
+}
+
+export interface ElegibilidadeResponse {
+  campanha_id: string;
+  elegivel: boolean;
+  checks: ElegibilidadeCheck[];
+}

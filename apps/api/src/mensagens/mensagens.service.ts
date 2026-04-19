@@ -62,23 +62,37 @@ export class MensagensService {
     return this.toItem(msg);
   }
 
-  /** Envia notificação in-app a todos os cidadãos das zonas destino */
+  /** Envia notificação in-app a cidadãos das zonas destino (ou todos se lista vazia) */
   private async enviarNotificacoes(
     mensagemId: string,
     zonaIds: string[],
   ): Promise<void> {
-    if (!zonaIds.length) return;
+    // Determine which cidadãos to notify:
+    // If zonaIds specified → only those whose reports/address intersects those zones.
+    // Since CidadaoPerfil has no zona field, we approximate by notifying cidadãos
+    // with reports in those zones. If no zonaIds → notify all.
+    let userIds: string[];
 
-    const perfis = await this.prisma.cidadaoPerfil.findMany({
-      select: { userId: true },
-    });
+    if (zonaIds.length > 0) {
+      const rows = await this.prisma.report.findMany({
+        where: { zonaId: { in: zonaIds }, eliminadoEm: null },
+        select: { cidadaoId: true },
+        distinct: ['cidadaoId'],
+      });
+      userIds = [...new Set(rows.map((r) => r.cidadaoId))];
+    } else {
+      const perfis = await this.prisma.cidadaoPerfil.findMany({ select: { userId: true } });
+      userIds = perfis.map((p) => p.userId);
+    }
+
+    const perfis = userIds.map((userId) => ({ userId }));
 
     for (const perfil of perfis) {
       await this.notif.send({
         cidadao_id: perfil.userId,
         tipo: 'MENSAGEM_INSTITUCIONAL',
         titulo: 'Nova mensagem institucional',
-        corpo: `Consulte a mensagem no ID ${mensagemId}`,
+        corpo: `Tem uma nova mensagem institucional disponível`,
         canal: 'APP',
         payload: { mensagemId },
       });

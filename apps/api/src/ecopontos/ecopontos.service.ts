@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { RedisService } from '../redis/redis.service';
+import { AuditService } from '../audit/audit.service';
 import type { CreateEcopontoDto } from './dto/create-ecoponto.dto';
 import type { EcopontoDetail, EcopontoListItem } from '@ecobairro/contracts';
 
@@ -15,6 +16,7 @@ export class EcopontosService {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(RedisService) private readonly redis: RedisService,
+    @Inject(AuditService) private readonly audit: AuditService,
   ) {}
 
   async findOne(id: string): Promise<EcopontoDetail> {
@@ -166,10 +168,11 @@ export class EcopontosService {
       ON CONFLICT (ecoponto_id) DO NOTHING
     `;
 
+    this.audit.log({ acao: 'ECOPONTO_CRIADO', entidade: 'ecopontos', entidadeId: id });
     return this.findOne(id);
   }
 
-  async update(id: string, input: Partial<CreateEcopontoDto>): Promise<EcopontoDetail> {
+  async update(id: string, input: Partial<CreateEcopontoDto>, actorId?: string): Promise<EcopontoDetail> {
     const existing = await this.prisma.ecoponto.findUnique({ where: { id }, select: { id: true } });
     if (!existing) throw new NotFoundException(`Ecoponto ${id} não encontrado`);
 
@@ -200,10 +203,11 @@ export class EcopontosService {
     });
 
     await this.invalidateEcopontoCache(id);
+    this.audit.log({ actorId, acao: 'ECOPONTO_ATUALIZADO', entidade: 'ecopontos', entidadeId: id });
     return this.findOne(id);
   }
 
-  async softDelete(id: string): Promise<void> {
+  async softDelete(id: string, actorId?: string): Promise<void> {
     const existing = await this.prisma.ecoponto.findUnique({ where: { id }, select: { id: true } });
     if (!existing) throw new NotFoundException(`Ecoponto ${id} não encontrado`);
 
@@ -213,6 +217,7 @@ export class EcopontosService {
     });
 
     await this.invalidateEcopontoCache(id);
+    this.audit.log({ actorId, acao: 'ECOPONTO_ELIMINADO', entidade: 'ecopontos', entidadeId: id });
   }
 
   async invalidateEcopontoCache(id: string, zonaId?: string): Promise<void> {

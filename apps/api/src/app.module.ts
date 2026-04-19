@@ -8,8 +8,10 @@ import { QueuesModule } from './queues/queues.module';
 import { AuthModule } from './auth/auth.module';
 import { CidadaosModule } from './cidadaos/cidadaos.module';
 import { AdminModule } from './admin/admin.module';
+import { RgpdModule } from './rgpd/rgpd.module';
 import { ZonasModule } from './zonas/zonas.module';
 import { EcopontosModule } from './ecopontos/ecopontos.module';
+import { FavoritosModule } from './favoritos/favoritos.module';
 import { IotModule } from './iot/iot.module';
 import { ReportsModule } from './reports/reports.module';
 import { NotificacoesModule } from './notificacoes/notificacoes.module';
@@ -18,6 +20,7 @@ import { PedidosModule } from './pedidos/pedidos.module';
 import { PartilhasModule } from './partilhas/partilhas.module';
 import { GamificacaoModule } from './gamificacao/gamificacao.module';
 import { RotasModule } from './rotas/rotas.module';
+import { CampanhasModule } from './campanhas/campanhas.module';
 
 @Module({
   imports: [
@@ -31,9 +34,11 @@ import { RotasModule } from './rotas/rotas.module';
     // Identity & profiles
     CidadaosModule,
     AdminModule,
+    RgpdModule,
     // Geo domain
     ZonasModule,
     EcopontosModule,
+    FavoritosModule,
     IotModule,
     // Citizen-facing
     ReportsModule,
@@ -42,8 +47,9 @@ import { RotasModule } from './rotas/rotas.module';
     // Communication
     NotificacoesModule,
     MensagensModule,
-    // Gamification
+    // Gamification & campaigns
     GamificacaoModule,
+    CampanhasModule,
     // Operations
     RotasModule,
   ],

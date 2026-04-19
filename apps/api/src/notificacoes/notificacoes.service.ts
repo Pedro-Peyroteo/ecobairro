@@ -15,11 +15,17 @@ export class NotificacoesService {
 
   async listMine(
     cidadaoId: string,
+    opts: { cursor?: string; take?: number; somenteNaoLidas?: boolean } = {},
   ): Promise<Array<{ id: string; tipo: string; titulo: string; corpo: string; lida: boolean; criado_em: string }>> {
+    const take = Math.min(opts.take ?? 20, 50);
     const items = await this.prisma.notificacao.findMany({
-      where: { cidadaoId },
+      where: {
+        cidadaoId,
+        ...(opts.somenteNaoLidas ? { lida: false } : {}),
+      },
       orderBy: { criadoEm: 'desc' },
-      take: 50,
+      take,
+      ...(opts.cursor ? { cursor: { id: opts.cursor }, skip: 1 } : {}),
       select: { id: true, tipo: true, titulo: true, corpo: true, lida: true, criadoEm: true },
     });
 

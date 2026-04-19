@@ -8,6 +8,7 @@ import {
 import { PrismaService } from '../database/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import { AuditService } from '../audit/audit.service';
+import { BadgeWorkerService } from '../gamificacao/badge-worker.service';
 import type { CreateReportDto, UpdateReportEstadoDto } from './dto/create-report.dto';
 import type { ReportDetail, ReportListItem } from '@ecobairro/contracts';
 import type { UserRole } from '@ecobairro/contracts';
@@ -20,6 +21,7 @@ export class ReportsService {
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(RedisService) private readonly redis: RedisService,
     @Inject(AuditService) private readonly audit: AuditService,
+    @Inject(BadgeWorkerService) private readonly badgeWorker: BadgeWorkerService,
   ) {}
 
   async create(
@@ -114,6 +116,9 @@ export class ReportsService {
       entidade: 'reports',
       entidadeId: reportId,
     });
+
+    // Avaliar badges em background (fire-and-forget)
+    void this.badgeWorker.avaliar(cidadaoId);
 
     return { report: await this.findOne(reportId) };
   }

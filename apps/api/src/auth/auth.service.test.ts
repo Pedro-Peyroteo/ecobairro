@@ -118,6 +118,8 @@ class FakeJwtService {
   }
 }
 
+const fakeAudit = { log: () => undefined } as unknown as import('../audit/audit.service').AuditService;
+
 export const authServiceTests: TestCase[] = [
   {
     name: 'registers a citizen account and normalizes the email',
@@ -130,6 +132,7 @@ export const authServiceTests: TestCase[] = [
         prisma as never,
         new FakeRedisService(new FakeRedisClient()) as never,
         new FakeJwtService() as never,
+        fakeAudit,
       );
 
       const result = await service.register({
@@ -174,6 +177,7 @@ export const authServiceTests: TestCase[] = [
         prisma as never,
         new FakeRedisService(new FakeRedisClient()) as never,
         new FakeJwtService() as never,
+        fakeAudit,
       );
 
       await assert.rejects(
@@ -215,6 +219,7 @@ export const authServiceTests: TestCase[] = [
         prisma as never,
         new FakeRedisService(redisClient) as never,
         new FakeJwtService() as never,
+        fakeAudit,
       );
 
       const loginResult = await service.login({
@@ -274,6 +279,7 @@ export const authServiceTests: TestCase[] = [
         prisma as never,
         new FakeRedisService(redisClient) as never,
         new FakeJwtService() as never,
+        fakeAudit,
       );
 
       const loginResult = await service.login({
@@ -323,6 +329,7 @@ export const authServiceTests: TestCase[] = [
         prisma as never,
         new FakeRedisService(new FakeRedisClient()) as never,
         new FakeJwtService() as never,
+        fakeAudit,
       );
 
       await assert.rejects(

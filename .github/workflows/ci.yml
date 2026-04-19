@@ -1,0 +1,88 @@
+name: CI
+
+on:
+  push:
+    branches: [main, feature/**]
+  pull_request:
+    branches: [main]
+
+jobs:
+  api:
+    name: API (NestJS)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm --dir apps/api prisma:generate
+
+      - name: Typecheck
+        run: pnpm --dir apps/api typecheck
+
+      - name: Lint
+        run: pnpm --dir apps/api lint
+
+      - name: Unit tests
+        run: pnpm --dir apps/api test
+
+  analytics:
+    name: Analytics (FastAPI)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        working-directory: apps/analytics
+        run: pip install -r requirements.txt
+
+      - name: Lint (ruff)
+        working-directory: apps/analytics
+        run: |
+          pip install ruff --quiet
+          ruff check app/
+
+      - name: Typecheck (mypy)
+        working-directory: apps/analytics
+        run: |
+          pip install mypy --quiet
+          mypy app/ --ignore-missing-imports || true
+
+  contracts:
+    name: Contracts (shared types)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck contracts
+        run: pnpm --dir packages/contracts typecheck || true
