@@ -14,3 +14,4 @@ __pycache__/
 apps/web/.nitro/
 apps/web/.output/
 apps/web/.tanstack/
+dist-test/
