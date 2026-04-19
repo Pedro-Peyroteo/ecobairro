@@ -1,8 +1,19 @@
-import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
+import { tanstackStart } from "@tanstack/react-start/plugin/vite";
+import { defineConfig } from "vitest/config";
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    tanstackStart({
+      customViteReactPlugin: true,
+      spa: {
+        enabled: true,
+      },
+    }),
+    react(),
+    tailwindcss(),
+  ],
   server: {
     host: true,
     allowedHosts: ["web_upstream"],
@@ -13,5 +24,9 @@ export default defineConfig({
     host: true,
     port: 4173,
     strictPort: true,
+  },
+  test: {
+    environment: "jsdom",
+    setupFiles: ["./src/test/setup.ts"],
   },
 });

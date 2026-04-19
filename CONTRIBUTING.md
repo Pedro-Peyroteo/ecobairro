@@ -116,6 +116,7 @@ Important:
 When working on one app or package, still start from the root and use filters:
 
 - `pnpm --filter @ecobairro/web dev`
+- `pnpm --filter @ecobairro/web test`
 - `pnpm --filter @ecobairro/api dev`
 - `pnpm --filter @ecobairro/contracts typecheck`
 
@@ -180,6 +181,14 @@ Update documentation when changing:
 - repository structure
 
 If a change affects architecture significantly, add or update an ADR.
+
+### Frontend Scaffold Conventions
+
+- treat `apps/web/src/routes` as the only route-authoring surface
+- keep app and area-level framing in `apps/web/src/components/layout`
+- keep neutral shared UI in `apps/web/src/components/ui`
+- do not edit `apps/web/src/routeTree.gen.ts` manually
+- use placeholder routes and shells for scaffolding only; feature teams own product UI once implementation starts
 
 ---
 
