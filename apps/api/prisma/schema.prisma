@@ -1,15 +1,16 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+  // Connection URL is provided via prisma.config.ts (Prisma 7 driver adapter pattern)
 }
+
+// ─── Enumerations ─────────────────────────────────────────────────────────────
 
 enum UserRole {
   CIDADAO
@@ -19,20 +20,73 @@ enum UserRole {
   ADMIN
 }
 
-model User {
-  id            String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  email         String         @unique
-  passwordHash  String         @map("password_hash")
-  phone         String?
-  emailVerified Boolean        @default(false) @map("email_verified")
-  role          UserRole
-  criadoEm      DateTime       @default(now()) @map("criado_em") @db.Timestamptz(6)
-  atualizadoEm  DateTime       @updatedAt @map("atualizado_em") @db.Timestamptz(6)
-  eliminadoEm   DateTime?      @map("eliminado_em") @db.Timestamptz(6)
+enum ZonaTipo {
+  OPERACIONAL
+  RESIDENCIAL
+  PRIORITARIA_IOT
+  ADMINISTRATIVA
+}
 
-  cidadaoPerfil CidadaoPerfil?
+enum EcopontoEstadoEnum {
+  CHEIO
+  DISPONIVEL
+  SEM_SENSOR
+  AVARIADO
+  MANUTENCAO
+}
+
+enum ReportCategoria {
+  ECOPONTO_CHEIO
+  ECOPONTO_PARTIDO
+  DEPOSICAO_ILEGAL
+  ODORES
+  GAIVOTAS_ORGANICOS
+  VANDALISMO
+  OUTRO
+}
+
+enum ReportEstado {
+  RECEBIDO
+  EM_ANALISE
+  EM_RESOLUCAO
+  RESOLVIDO
+  REJEITADO
+}
+
+enum PedidoRecolhaEstado {
+  PENDENTE
+  AGENDADO
+  EM_CURSO
+  CONCLUIDO
+  CANCELADO
+}
+
+// ─── Identity & Profiles ──────────────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email         String    @unique
+  passwordHash  String    @map("password_hash")
+  phone         String?
+  emailVerified Boolean   @default(false) @map("email_verified")
+  role          UserRole
+  criadoEm      DateTime  @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm  DateTime  @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+  eliminadoEm   DateTime? @map("eliminado_em") @db.Timestamptz(6)
+
+  cidadaoPerfil   CidadaoPerfil?
+  operadorPerfil  OperadorPerfil?
+  reportsFeitos   Report[]         @relation("ReportCidadao")
+  reportsAtribs   Report[]         @relation("ReportAtribuido")
+  pedidosRecolha  PedidoRecolha[]
+  partilhas       PartilhaMaterial[]
+  notificacoes    Notificacao[]
+  zonasHistorico  ZonaHistorico[]  @relation("ZonaAlteradoPor")
+  auditLog        AuditLog[]
+  rotasExecucao   RotaExecucao[]
 
   @@index([role])
+  @@index([eliminadoEm], map: "users_eliminado_em_not_null_idx")
   @@map("users")
 }
 
@@ -44,10 +98,415 @@ model CidadaoPerfil {
   notificacaoPrefs  Json?    @map("notificacao_prefs")
   dashboardWidgets  Json?    @map("dashboard_widgets")
   rgpdAccepted      Boolean  @map("rgpd_accepted")
+  rgpdVersion       String?  @map("rgpd_version") @db.VarChar(20)
+  rgpdAcceptedAt    DateTime? @map("rgpd_accepted_at") @db.Timestamptz(6)
   criadoEm          DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
   atualizadoEm      DateTime @updatedAt @map("atualizado_em") @db.Timestamptz(6)
 
-  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("cidadao_perfis")
+}
+
+model OperadorPerfil {
+  id                    String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId                String   @unique @map("user_id") @db.Uuid
+  nomeCompleto          String   @map("nome_completo")
+  entidadeEmpregadora   String   @map("entidade_empregadora") @db.VarChar(100)
+  cargo                 String?  @db.VarChar(100)
+  // UUID[] stored as Text[] — PostGIS GIN index added via raw SQL migration
+  zonasResponsabilidade String[] @map("zonas_responsabilidade")
+  criadoEm              DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm          DateTime @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([entidadeEmpregadora])
+  @@map("operador_perfis")
+}
+
+// ─── Zones ────────────────────────────────────────────────────────────────────
+
+model Zona {
+  id                    String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nome                  String   @unique @db.VarChar(100)
+  descricao             String?
+  // GEOGRAPHY(MULTIPOLYGON,4326) — managed via raw SQL; excluded from Prisma client writes
+  // Use prisma.$queryRaw for geo queries
+  geometria             Unsupported("geography(MultiPolygon,4326)")
+  tipo                  ZonaTipo
+  ativa                 Boolean  @default(true)
+  limiteAntispamReports Int      @default(2) @map("limite_antispam_reports") @db.SmallInt
+  janelaAntispamHoras   Int      @default(24) @map("janela_antispam_horas") @db.SmallInt
+  entidadeResponsavel   String?  @map("entidade_responsavel") @db.VarChar(100)
+  alertasConfig         Json     @default("{}") @map("alertas_config")
+  criadoEm              DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm          DateTime @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  historico     ZonaHistorico[]
+  ecopontos     Ecoponto[]
+  reports       Report[]
+  rotasExecucao RotaExecucao[]
+
+  @@index([ativa])
+  @@index([tipo])
+  @@map("zonas")
+}
+
+model ZonaHistorico {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  zonaId      String   @map("zona_id") @db.Uuid
+  snapshot    Json
+  alteradoPor String?  @map("alterado_por") @db.Uuid
+  alteradoEm  DateTime @default(now()) @map("alterado_em") @db.Timestamptz(6)
+  motivo      String?
+
+  zona         Zona  @relation(fields: [zonaId], references: [id])
+  alteradoUser User? @relation("ZonaAlteradoPor", fields: [alteradoPor], references: [id])
+
+  @@index([zonaId, alteradoEm(sort: Desc)])
+  @@map("zonas_historico")
+}
+
+// ─── Ecopoints ────────────────────────────────────────────────────────────────
+
+model Ecoponto {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  codigoExterno  String?  @unique @map("codigo_externo") @db.VarChar(50)
+  nome           String   @db.VarChar(200)
+  descricao      String?
+  // GEOGRAPHY(POINT,4326) — use prisma.$queryRaw for spatial queries
+  localizacao    Unsupported("geography(Point,4326)")
+  moradaTextual  String?  @map("morada_textual") @db.VarChar(300)
+  zonaId         String   @map("zona_id") @db.Uuid
+  // tipologias: 'VIDRO'|'PAPEL'|'PLASTICO'|'ORGANICO'|'GERAL'|'OUTROS'
+  tipologias     String[]
+  temSensor      Boolean  @default(false) @map("tem_sensor")
+  acessibilidade Json     @default("{}") @map("acessibilidade")
+  horario        Json?
+  ativo          Boolean  @default(true)
+  criadoEm      DateTime  @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm  DateTime  @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+  eliminadoEm   DateTime? @map("eliminado_em") @db.Timestamptz(6)
+
+  zona        Zona                @relation(fields: [zonaId], references: [id])
+  estadoAtual EcopontoEstadoAtual?
+  reports     Report[]
+
+  @@index([zonaId, ativo])
+  @@map("ecopontos")
+}
+
+model EcopontoEstadoAtual {
+  ecopontoId      String    @id @map("ecoponto_id") @db.Uuid
+  nivelEnchimento Int?      @map("nivel_enchimento") @db.SmallInt
+  estado          String    @default("SEM_SENSOR") @map("estado") @db.VarChar(20)
+  ultimaLeituraEm DateTime? @map("ultima_leitura_em") @db.Timestamptz(6)
+  deviceId        String?   @map("device_id") @db.VarChar(100)
+  atualizadoEm   DateTime   @default(now()) @map("atualizado_em") @db.Timestamptz(6)
+
+  ecoponto Ecoponto @relation(fields: [ecopontoId], references: [id], onDelete: Cascade)
+
+  @@map("ecoponto_estado_atual")
+}
+
+// Note: sensor_leituras is a PARTITIONED table managed exclusively via raw SQL.
+// See migration 20260419000000_domain_fase2 for the full DDL.
+// Access via: prisma.$queryRaw`SELECT ... FROM sensor_leituras WHERE ...`
+
+// ─── Reports ──────────────────────────────────────────────────────────────────
+
+model Report {
+  id                  String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  numero              BigInt        @unique @default(autoincrement())
+  cidadaoId           String        @map("cidadao_id") @db.Uuid
+  ecopontoId          String?       @map("ecoponto_id") @db.Uuid
+  zonaId              String        @map("zona_id") @db.Uuid
+  categoria           ReportCategoria
+  descricao           String?
+  // GEOGRAPHY(POINT,4326) — written via $executeRaw at creation time
+  localizacao         Unsupported("geography(Point,4326)")
+  localizacaoManual   Boolean       @default(false) @map("localizacao_manual")
+  fotoUrl             String?       @map("foto_url") @db.VarChar(500)
+  fotoThumbnailUrl    String?       @map("foto_thumbnail_url") @db.VarChar(500)
+  estado              ReportEstado  @default(RECEBIDO)
+  motivoRejeicao      String?       @map("motivo_rejeicao")
+  entidadeResponsavel String?       @map("entidade_responsavel") @db.VarChar(50)
+  atribuidoA          String?       @map("atribuido_a") @db.Uuid
+  atribuidoEm         DateTime?     @map("atribuido_em") @db.Timestamptz(6)
+  reportPaiId         String?       @map("report_pai_id") @db.Uuid
+  primeiraRespostaEm  DateTime?     @map("primeira_resposta_em") @db.Timestamptz(6)
+  resolvidoEm         DateTime?     @map("resolvido_em") @db.Timestamptz(6)
+  numSubscricoes      Int           @default(0) @map("num_subscricoes")
+  criadoEm            DateTime      @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm        DateTime      @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+  eliminadoEm         DateTime?     @map("eliminado_em") @db.Timestamptz(6)
+
+  cidadao      User               @relation("ReportCidadao", fields: [cidadaoId], references: [id])
+  atribuido    User?              @relation("ReportAtribuido", fields: [atribuidoA], references: [id])
+  ecoponto     Ecoponto?          @relation(fields: [ecopontoId], references: [id])
+  zona         Zona               @relation(fields: [zonaId], references: [id])
+  reportPai    Report?            @relation("Duplicados", fields: [reportPaiId], references: [id])
+  duplicados   Report[]           @relation("Duplicados")
+  timeline     ReportTimeline[]
+  subscricoes  ReportSubscricao[]
+
+  @@index([cidadaoId, criadoEm(sort: Desc)])
+  @@index([zonaId, estado, criadoEm(sort: Desc)])
+  @@index([estado, criadoEm(sort: Desc)])
+  @@index([categoria, zonaId])
+  @@map("reports")
+}
+
+model ReportTimeline {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  reportId   String   @map("report_id") @db.Uuid
+  estadoAntes String? @map("estado_antes") @db.VarChar(20)
+  estadoDepois String @map("estado_depois") @db.VarChar(20)
+  nota       String?
+  atualizadoPor String? @map("atualizado_por") @db.Uuid
+  criadoEm   DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  report Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId, criadoEm(sort: Desc)])
+  @@map("reports_timeline")
+}
+
+model ReportSubscricao {
+  reportId  String   @map("report_id") @db.Uuid
+  cidadaoId String   @map("cidadao_id") @db.Uuid
+  criadoEm  DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  report Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@id([reportId, cidadaoId])
+  @@map("reports_subscricoes")
+}
+
+// ─── Waste Collection Requests (Monos) ────────────────────────────────────────
+
+model PedidoRecolha {
+  id            String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  cidadaoId     String              @map("cidadao_id") @db.Uuid
+  operadorId    String?             @map("operador_id") @db.Uuid
+  morada        String              @db.VarChar(400)
+  tipoMaterial  String              @map("tipo_material") @db.VarChar(100)
+  volumeEstimado String?            @map("volume_estimado") @db.VarChar(50)
+  fotoUrl       String?             @map("foto_url") @db.VarChar(500)
+  estado        PedidoRecolhaEstado @default(PENDENTE)
+  agendadoPara  DateTime?           @map("agendado_para") @db.Timestamptz(6)
+  notas         String?
+  criadoEm      DateTime            @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm  DateTime            @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  cidadao   User  @relation(fields: [cidadaoId], references: [id])
+
+  @@index([cidadaoId, criadoEm(sort: Desc)])
+  @@index([estado, criadoEm(sort: Desc)])
+  @@map("pedidos_recolha")
+}
+
+// ─── Material Sharing ─────────────────────────────────────────────────────────
+
+model PartilhaMaterial {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  cidadaoId    String   @map("cidadao_id") @db.Uuid
+  titulo       String   @db.VarChar(200)
+  descricao    String
+  categoria    String   @db.VarChar(50)
+  estado       String   @default("DISPONIVEL") @db.VarChar(20)
+  // Exact location is hidden from public (privacy RF-15) — only zone stored
+  zonaId       String?  @map("zona_id") @db.Uuid
+  fotoUrl      String?  @map("foto_url") @db.VarChar(500)
+  disclaimerAceite Boolean @default(false) @map("disclaimer_aceite")
+  criadoEm     DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm DateTime @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+  eliminadoEm  DateTime? @map("eliminado_em") @db.Timestamptz(6)
+
+  cidadao   User               @relation(fields: [cidadaoId], references: [id])
+  mensagens PartilhaMensagem[]
+
+  @@index([estado, criadoEm(sort: Desc)])
+  @@map("partilhas_materiais")
+}
+
+model PartilhaMensagem {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  partilhaId String   @map("partilha_id") @db.Uuid
+  remetenteId String  @map("remetente_id") @db.Uuid
+  texto      String
+  criadoEm   DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  partilha PartilhaMaterial @relation(fields: [partilhaId], references: [id], onDelete: Cascade)
+
+  @@index([partilhaId, criadoEm(sort: Asc)])
+  @@map("partilhas_mensagens")
+}
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+
+model Notificacao {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  cidadaoId  String   @map("cidadao_id") @db.Uuid
+  tipo       String   @db.VarChar(50)
+  titulo     String   @db.VarChar(200)
+  corpo      String
+  canal      String   @default("APP") @db.VarChar(20)
+  lida       Boolean  @default(false)
+  lidaEm     DateTime? @map("lida_em") @db.Timestamptz(6)
+  payload    Json?
+  criadoEm   DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  cidadao User @relation(fields: [cidadaoId], references: [id], onDelete: Cascade)
+
+  @@index([cidadaoId, lida, criadoEm(sort: Desc)])
+  @@map("notificacoes")
+}
+
+model MensagemInstitucional {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  titulo       String    @db.VarChar(300)
+  corpo        String
+  criadoPor    String    @map("criado_por") @db.Uuid
+  publicada    Boolean   @default(false)
+  publicadaEm  DateTime? @map("publicada_em") @db.Timestamptz(6)
+  // Destination zone IDs stored as Text[] (UUIDs)
+  zonasDestino String[]  @map("zonas_destino")
+  criadoEm     DateTime  @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm DateTime  @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  @@index([publicada, criadoEm(sort: Desc)])
+  @@map("mensagens_institucionais")
+}
+
+// ─── Gamification ─────────────────────────────────────────────────────────────
+
+model Badge {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  codigo      String   @unique @db.VarChar(50)
+  nome        String   @db.VarChar(100)
+  descricao   String
+  iconUrl     String?  @map("icon_url") @db.VarChar(500)
+  condicao    Json
+  ativo       Boolean  @default(true)
+  criadoEm   DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  cidadaoBadges CidadaoBadge[]
+
+  @@map("badges")
+}
+
+model CidadaoBadge {
+  cidadaoId String   @map("cidadao_id") @db.Uuid
+  badgeId   String   @map("badge_id") @db.Uuid
+  ganhoEm   DateTime @default(now()) @map("ganho_em") @db.Timestamptz(6)
+
+  badge Badge @relation(fields: [badgeId], references: [id])
+
+  @@id([cidadaoId, badgeId])
+  @@map("cidadao_badges")
+}
+
+model Quiz {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  titulo      String   @db.VarChar(200)
+  tipo        String   @default("SEMANAL") @db.VarChar(30)
+  ativo       Boolean  @default(true)
+  disponivelDe DateTime @map("disponivel_de") @db.Timestamptz(6)
+  disponivelAte DateTime @map("disponivel_ate") @db.Timestamptz(6)
+  criadoPor   String   @map("criado_por") @db.Uuid
+  criadoEm    DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  perguntas QuizPergunta[]
+  sessoes   QuizSessao[]
+
+  @@index([ativo, disponivelAte(sort: Desc)])
+  @@map("quizzes")
+}
+
+model QuizPergunta {
+  id       String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  quizId   String   @map("quiz_id") @db.Uuid
+  texto    String
+  ordem    Int      @db.SmallInt
+  criadoEm DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  quiz   Quiz        @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  opcoes QuizOpcao[]
+
+  @@index([quizId, ordem])
+  @@map("quiz_perguntas")
+}
+
+model QuizOpcao {
+  id         String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  perguntaId String @map("pergunta_id") @db.Uuid
+  texto      String
+  correta    Boolean @default(false)
+  // Correct answer is never returned to client before answer (enforced at service layer)
+  ordem      Int    @db.SmallInt
+
+  pergunta QuizPergunta @relation(fields: [perguntaId], references: [id], onDelete: Cascade)
+
+  @@index([perguntaId, ordem])
+  @@map("quiz_opcoes")
+}
+
+model QuizSessao {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  quizId      String   @map("quiz_id") @db.Uuid
+  cidadaoId   String   @map("cidadao_id") @db.Uuid
+  pontuacao   Int      @default(0)
+  concluida   Boolean  @default(false)
+  respostas   Json     @default("[]")
+  criadoEm    DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+  concluidaEm DateTime? @map("concluida_em") @db.Timestamptz(6)
+
+  quiz Quiz @relation(fields: [quizId], references: [id])
+
+  @@unique([quizId, cidadaoId])
+  @@index([cidadaoId, criadoEm(sort: Desc)])
+  @@map("quiz_sessoes")
+}
+
+// ─── Operational ──────────────────────────────────────────────────────────────
+
+model RotaExecucao {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  zonaId      String    @map("zona_id") @db.Uuid
+  operadorId  String    @map("operador_id") @db.Uuid
+  dataExecucao DateTime @map("data_execucao") @db.Timestamptz(6)
+  estado      String    @default("PLANEADA") @db.VarChar(20)
+  ecopontos   String[]  // array of ecoponto IDs visited
+  notas       String?
+  criadoEm    DateTime  @default(now()) @map("criado_em") @db.Timestamptz(6)
+  concluidaEm DateTime? @map("concluida_em") @db.Timestamptz(6)
+
+  zona     Zona @relation(fields: [zonaId], references: [id])
+  operador User @relation(fields: [operadorId], references: [id])
+
+  @@index([zonaId, dataExecucao(sort: Desc)])
+  @@index([operadorId, dataExecucao(sort: Desc)])
+  @@map("rotas_execucao")
+}
+
+// ─── Audit Log ────────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  actorId    String?  @map("actor_id") @db.Uuid
+  acao       String   @db.VarChar(100)
+  entidade   String   @db.VarChar(50)
+  entidadeId String?  @map("entidade_id") @db.Uuid
+  detalhes   Json?
+  ip         String?  @db.VarChar(45)
+  criadoEm   DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  actor User? @relation(fields: [actorId], references: [id])
+
+  @@index([actorId, criadoEm(sort: Desc)])
+  @@index([entidade, entidadeId])
+  @@index([criadoEm(sort: Desc)])
+  @@map("audit_log")
 }

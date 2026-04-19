@@ -16,6 +16,17 @@
     "compose:ps": "docker compose -f infra/compose/docker-compose.yml ps",
     "compose:restart": "docker compose -f infra/compose/docker-compose.yml down && docker compose -f infra/compose/docker-compose.yml up --build -d"
   },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@nestjs/core",
+      "@parcel/watcher",
+      "@prisma/engines",
+      "@tailwindcss/oxide",
+      "bcrypt",
+      "esbuild",
+      "prisma"
+    ]
+  },
   "devDependencies": {
     "@eslint/js": "^9.22.0",
     "@types/node": "^22.13.10",
