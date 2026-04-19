@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { RedisService } from '../redis/redis.service';
+import { AuditService } from '../audit/audit.service';
 import type { CreateReportDto, UpdateReportEstadoDto } from './dto/create-report.dto';
 import type { ReportDetail, ReportListItem } from '@ecobairro/contracts';
 import type { UserRole } from '@ecobairro/contracts';
@@ -18,6 +19,7 @@ export class ReportsService {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(RedisService) private readonly redis: RedisService,
+    @Inject(AuditService) private readonly audit: AuditService,
   ) {}
 
   async create(
@@ -105,6 +107,13 @@ export class ReportsService {
 
     // 6. Record antispam usage
     await this.recordAntispam(cidadaoId, zonaId);
+
+    this.audit.log({
+      actorId: cidadaoId,
+      acao: 'REPORT_CRIADO',
+      entidade: 'reports',
+      entidadeId: reportId,
+    });
 
     return { report: await this.findOne(reportId) };
   }
@@ -238,6 +247,14 @@ export class ReportsService {
         nota: input.nota,
         atualizadoPor: actorId,
       },
+    });
+
+    this.audit.log({
+      actorId,
+      acao: 'REPORT_ESTADO_ALTERADO',
+      entidade: 'reports',
+      entidadeId: id,
+      detalhes: { de: report.estado, para: input.estado },
     });
 
     return this.findOne(id);

@@ -286,6 +286,124 @@ export interface UnreadCountResponse {
   count: number;
 }
 
+// ─── Admin / Operadores ───────────────────────────────────────────────────────
+
+export interface OperadorDetail {
+  id: string;
+  email: string;
+  role: string;
+  nome_completo: string;
+  entidade_empregadora: string;
+  cargo: string | null;
+  zonas_responsabilidade: string[];
+  criado_em: string;
+}
+
+// ─── Pedidos de Recolha ───────────────────────────────────────────────────────
+
+export interface PedidoRecolhaItem {
+  id: string;
+  cidadao_id: string;
+  morada: string;
+  tipo_material: string;
+  volume_estimado: string | null;
+  foto_url: string | null;
+  estado: string;
+  notas: string | null;
+  criado_em: string;
+  atualizado_em: string;
+}
+
+// ─── Partilhas de Material ────────────────────────────────────────────────────
+
+export interface PartilhaItem {
+  id: string;
+  cidadao_id: string;
+  titulo: string;
+  descricao: string;
+  categoria: string;
+  estado: string;
+  zona_id: string | null;
+  foto_url: string | null;
+  criado_em: string;
+  atualizado_em: string;
+}
+
+export interface PartilhaMensagemItem {
+  id: string;
+  partilha_id: string;
+  remetente_id: string;
+  texto: string;
+  criado_em: string;
+}
+
+// ─── Mensagens Institucionais ─────────────────────────────────────────────────
+
+export interface MensagemInstitucionalItem {
+  id: string;
+  titulo: string;
+  corpo: string;
+  criado_por: string;
+  publicada: boolean;
+  publicada_em: string | null;
+  zonas_destino: string[];
+  criado_em: string;
+}
+
+// ─── Gamificação ──────────────────────────────────────────────────────────────
+
+export interface BadgeItem {
+  id: string;
+  codigo: string;
+  nome: string;
+  descricao: string;
+  icon_url: string | null;
+  condicao: Record<string, unknown>;
+  ganho_em?: string;
+}
+
+export interface QuizItem {
+  id: string;
+  titulo: string;
+  tipo: string;
+  disponivel_de: string;
+  disponivel_ate: string;
+  perguntas: Array<{
+    id: string;
+    texto: string;
+    ordem: number;
+    opcoes: Array<{ id: string; texto: string; ordem: number }>;
+  }>;
+}
+
+export interface QuizSessaoResult {
+  sessao_id: string;
+  quiz_id: string;
+  pontuacao: number;
+  concluida: boolean;
+  concluida_em: string | null;
+}
+
+export interface RankingItem {
+  posicao: number;
+  cidadao_id: string;
+  pontuacao_total: number;
+}
+
+// ─── Rotas Operacionais ───────────────────────────────────────────────────────
+
+export interface RotaExecucaoItem {
+  id: string;
+  zona_id: string;
+  operador_id: string;
+  data_execucao: string;
+  estado: string;
+  ecopontos: string[];
+  notas: string | null;
+  criado_em: string;
+  concluida_em: string | null;
+}
+
 // ─── Analytics routes (served by FastAPI /analytics/*) ───────────────────────
 // These types describe what the React front-end expects from FastAPI.
 // NestJS does NOT serve these endpoints; Nginx routes /analytics/* to FastAPI.

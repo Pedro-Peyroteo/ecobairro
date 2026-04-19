@@ -75,6 +75,40 @@ export class CidadaosService {
 
     return this.getMe(userId, role);
   }
+
+  async reconsentirRgpd(
+    userId: string,
+    role: ContractUserRole,
+    versao: string,
+  ): Promise<{ rgpd_version: string; rgpd_accepted_at: string }> {
+    assertCitizen(role);
+
+    const perfil = await this.prisma.cidadaoPerfil.findUnique({
+      where: { userId },
+      select: { id: true },
+    });
+    if (!perfil) throw new NotFoundException('Perfil não encontrado');
+
+    const agora = new Date();
+    await this.prisma.cidadaoPerfil.update({
+      where: { userId },
+      data: {
+        rgpdAccepted: true,
+        rgpdVersion: versao,
+        rgpdAcceptedAt: agora,
+      },
+    });
+
+    return { rgpd_version: versao, rgpd_accepted_at: agora.toISOString() };
+  }
+
+  async deletarConta(userId: string, role: ContractUserRole): Promise<void> {
+    assertCitizen(role);
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { eliminadoEm: new Date() },
+    });
+  }
 }
 
 function assertCitizen(role: ContractUserRole): asserts role is 'CIDADAO' {

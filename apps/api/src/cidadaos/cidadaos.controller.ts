@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Inject, Put, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Inject, Post, Put, UseGuards } from '@nestjs/common';
 import type { CitizenSelfProfileResponse } from '@ecobairro/contracts';
 import { CurrentUser } from '../auth/current-user.decorator';
 import type { AuthenticatedUser } from '../auth/auth.types';
@@ -26,5 +26,20 @@ export class CidadaosController {
     @Body() body: UpdateCidadaoProfileDto,
   ): Promise<CitizenSelfProfileResponse> {
     return this.cidadaosService.updateMe(user.userId, user.role, body);
+  }
+
+  /** RF-25: re-consentimento RGPD quando a política é atualizada */
+  @Post('me/rgpd/consentir')
+  reconsentirRgpd(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() body: { versao: string },
+  ) {
+    return this.cidadaosService.reconsentirRgpd(user.userId, user.role, body.versao);
+  }
+
+  /** RF-25: eliminação de conta (soft delete) */
+  @Delete('me')
+  deletarConta(@CurrentUser() user: AuthenticatedUser) {
+    return this.cidadaosService.deletarConta(user.userId, user.role);
   }
 }

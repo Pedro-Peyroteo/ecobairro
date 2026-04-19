@@ -129,11 +129,17 @@ class FakePrismaService {
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
+const fakeAudit = { log: () => undefined } as unknown as import('../audit/audit.service').AuditService;
+
 function buildService(queryOverride?: FakePrismaService['$queryRaw']) {
   const prisma = new FakePrismaService();
   if (queryOverride) prisma.$queryRaw = queryOverride;
   const redis = new FakeRedisService();
-  return new ReportsService(prisma as unknown as import('../database/prisma.service').PrismaService, redis as unknown as import('../redis/redis.service').RedisService);
+  return new ReportsService(
+    prisma as unknown as import('../database/prisma.service').PrismaService,
+    redis as unknown as import('../redis/redis.service').RedisService,
+    fakeAudit,
+  );
 }
 
 const tests: TestCase[] = [
@@ -176,6 +182,7 @@ const tests: TestCase[] = [
       const svc = new ReportsService(
         prisma as unknown as import('../database/prisma.service').PrismaService,
         redis as unknown as import('../redis/redis.service').RedisService,
+        fakeAudit,
       );
       await assert.rejects(
         () => svc.create({ categoria: 'OUTRO' as import('./dto/create-report.dto').ReportCategoriaDto, latitude: 40.64, longitude: -8.65 }, CIDADAO_ID),

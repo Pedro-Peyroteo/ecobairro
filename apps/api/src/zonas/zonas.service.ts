@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { RedisService } from '../redis/redis.service';
+import { AuditService } from '../audit/audit.service';
 import type { CreateZonaDto } from './dto/create-zona.dto';
 import type {
   ZonaListItem,
@@ -21,6 +22,7 @@ export class ZonasService {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(RedisService) private readonly redis: RedisService,
+    @Inject(AuditService) private readonly audit: AuditService,
   ) {}
 
   async listActive(): Promise<ZonaListItem[]> {
@@ -126,6 +128,30 @@ export class ZonasService {
 
     const id = rows[0]!.id;
     await this.invalidateZonaCache(id);
+
+    this.audit.log({ acao: 'ZONA_CRIADA', entidade: 'zonas', entidadeId: id });
+    return this.findOne(id);
+  }
+
+  /** PATCH /zonas/:id/geometria — actualiza a geometria real via GeoJSON */
+  async updateGeometria(id: string, geojson: string, actorId: string): Promise<ZonaDetail> {
+    const existing = await this.prisma.zona.findUnique({ where: { id }, select: { id: true } });
+    if (!existing) throw new NotFoundException(`Zona ${id} não encontrada`);
+
+    await this.prisma.$executeRaw`
+      UPDATE zonas
+      SET geometria = ST_GeomFromGeoJSON(${geojson})::geography,
+          atualizado_em = now()
+      WHERE id = ${id}::uuid
+    `;
+
+    await this.invalidateZonaCache(id);
+    this.audit.log({
+      actorId,
+      acao: 'ZONA_GEOMETRIA_ATUALIZADA',
+      entidade: 'zonas',
+      entidadeId: id,
+    });
     return this.findOne(id);
   }
 
@@ -156,6 +182,7 @@ export class ZonasService {
     });
 
     await this.invalidateZonaCache(id);
+    this.audit.log({ acao: 'ZONA_ATUALIZADA', entidade: 'zonas', entidadeId: id });
     return this.findOne(id);
   }
 
