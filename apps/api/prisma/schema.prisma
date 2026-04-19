@@ -1,0 +1,53 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  CIDADAO
+  OPERADOR_VEOLIA
+  TECNICO_AUTARQUIA
+  TECNICO_CCDR
+  ADMIN
+}
+
+model User {
+  id            String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email         String         @unique
+  passwordHash  String         @map("password_hash")
+  phone         String?
+  emailVerified Boolean        @default(false) @map("email_verified")
+  role          UserRole
+  criadoEm      DateTime       @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm  DateTime       @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+  eliminadoEm   DateTime?      @map("eliminado_em") @db.Timestamptz(6)
+
+  cidadaoPerfil CidadaoPerfil?
+
+  @@index([role])
+  @@map("users")
+}
+
+model CidadaoPerfil {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId            String   @unique @map("user_id") @db.Uuid
+  nomeCompleto      String?  @map("nome_completo")
+  gamificationOptIn Boolean  @default(false) @map("gamification_opt_in")
+  notificacaoPrefs  Json?    @map("notificacao_prefs")
+  dashboardWidgets  Json?    @map("dashboard_widgets")
+  rgpdAccepted      Boolean  @map("rgpd_accepted")
+  criadoEm          DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm      DateTime @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("cidadao_perfis")
+}
