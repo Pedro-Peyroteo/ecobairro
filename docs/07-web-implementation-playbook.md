@@ -1,82 +1,82 @@
-# Web Implementation Playbook
+# Guia De Implementacao Web
 
-## Purpose
+## Objetivo
 
-This document explains how teammates should implement work inside `apps/web` as it exists today.
+Este documento explica como a equipa deve implementar trabalho dentro de `apps/web` no estado atual do projeto.
 
-Use this guide when you are:
+Usa este guia quando estiveres a:
 
-- adding a new page
-- extending an existing route group
-- introducing shared UI
-- wiring API calls
-- adding frontend tests
+- adicionar uma nova pagina
+- estender um grupo de rotas existente
+- introduzir UI partilhada
+- ligar chamadas a API
+- adicionar testes frontend
 
-This is the "how to build on the scaffold" companion to [docs/06-frontend-scaffold.md](06-frontend-scaffold.md), which explains the architecture and why the stack was chosen.
+Este e o complemento de "como construir sobre o scaffold" ao [docs/06-frontend-scaffold.md](06-frontend-scaffold.md), que explica a arquitetura e porque o stack foi escolhido.
 
-## Quick Mental Model
+## Modelo Mental Rapido
 
-Before changing anything in `apps/web`, keep this split in mind:
+Antes de mudares qualquer coisa em `apps/web`, mantem esta divisao em mente:
 
-- `src/routes`: route files and route layouts
-- `src/components/layout`: app-level and area-level page framing
-- `src/components/ui`: small shared presentational building blocks
-- `src/lib`: shared non-UI infrastructure
-- `src/styles`: global styles and tokens
-- `src/test`: shared test setup and app-level tests
+- `src/routes`: ficheiros de rota e route layouts
+- `src/components/layout`: enquadramento de pagina ao nivel da app e das areas
+- `src/components/ui`: pequenos blocos presentacionais reutilizaveis
+- `src/lib`: infraestrutura partilhada que nao e UI
+- `src/styles`: estilos globais e tokens
+- `src/test`: setup de testes partilhado e testes ao nivel da app
 
-If a file does not clearly belong in one of those buckets, pause and simplify the change before introducing a new pattern.
+Se um ficheiro nao encaixa claramente numa destas categorias, para e simplifica a alteracao antes de introduzir um novo padrao.
 
-## Implementation Workflow
+## Workflow De Implementacao
 
-For most frontend work, the safe order is:
+Para a maior parte do trabalho frontend, a ordem segura e:
 
-1. Decide which route owns the work.
-2. Add or update the route file under `src/routes`.
-3. Add shared layout or UI only if the route needs reusable structure.
-4. Add data access through `src/lib/http` and TanStack Query when the route needs remote data.
-5. Add or update tests.
-6. Run validation before opening a PR.
+1. Decidir que rota detem o trabalho.
+2. Adicionar ou atualizar o ficheiro de rota em `src/routes`.
+3. Adicionar layout partilhado ou UI apenas se a rota precisar de estrutura reutilizavel.
+4. Adicionar acesso a dados atraves de `src/lib/http` e TanStack Query quando a rota precisar de dados remotos.
+5. Adicionar ou atualizar testes.
+6. Correr a validacao antes de abrir um PR.
 
-That order keeps route ownership obvious and prevents shared abstractions from appearing too early.
+Esta ordem mantem a ownership da rota obvia e impede que abstrações partilhadas aparecam demasiado cedo.
 
-## Step 1: Pick The Correct Route Area
+## Passo 1: Escolher A Area De Rotas Certa
 
-Today the app has three main route areas:
+Hoje a app tem tres areas principais de rotas:
 
-- `/` for the neutral entry page
-- `/app/*` for citizen-facing pages
-- `/admin/*` for operator/admin pages
+- `/` para a pagina de entrada neutra
+- `/app/*` para paginas viradas para o cidadao
+- `/admin/*` para paginas de operador/admin
 
-Examples:
+Exemplos:
 
-- a citizen profile page should live under `src/routes/app`
-- an internal moderation or operations page should live under `src/routes/admin`
-- a global landing or handoff page should live under `src/routes`
+- uma pagina de perfil de cidadao deve viver em `src/routes/app`
+- uma pagina interna de moderacao ou operacoes deve viver em `src/routes/admin`
+- uma pagina global de landing ou handoff deve viver em `src/routes`
 
-Relevant files:
+Ficheiros relevantes:
 
 - [apps/web/src/routes/index.tsx](../apps/web/src/routes/index.tsx)
 - [apps/web/src/routes/app/route.tsx](../apps/web/src/routes/app/route.tsx)
 - [apps/web/src/routes/admin/route.tsx](../apps/web/src/routes/admin/route.tsx)
 
-## Step 2: Add Or Update A Route
+## Passo 2: Adicionar Ou Atualizar Uma Rota
 
-Routes are authored with TanStack Router file-based routing.
+As rotas sao escritas com TanStack Router file-based routing.
 
-That means the file path defines the URL.
+Isto significa que o caminho do ficheiro define o URL.
 
-Examples:
+Exemplos:
 
-- `src/routes/app/profile.tsx` becomes `/app/profile`
-- `src/routes/admin/users.tsx` becomes `/admin/users`
+- `src/routes/app/profile.tsx` passa a `/app/profile`
+- `src/routes/admin/users.tsx` passa a `/admin/users`
 
-Start from an existing route as a template:
+Parte de uma rota existente como template:
 
 - [apps/web/src/routes/app/index.tsx](../apps/web/src/routes/app/index.tsx)
 - [apps/web/src/routes/admin/dashboard.tsx](../apps/web/src/routes/admin/dashboard.tsx)
 
-The usual route pattern is:
+O padrao habitual da rota e:
 
 ```tsx
 import { createFileRoute } from "@tanstack/react-router";
@@ -86,100 +86,100 @@ export const Route = createFileRoute("/app/profile")({
 });
 
 function AppProfilePage() {
-  return <div>Replace with real page content.</div>;
+  return <div>Substituir por conteudo real da pagina.</div>;
 }
 ```
 
-Rules:
+Regras:
 
-- keep route files focused on route ownership
-- do not place global providers inside route files
-- prefer extracting reusable UI instead of growing one route into a giant file
+- mantem os ficheiros de rota focados na ownership da rota
+- nao coloques providers globais dentro de ficheiros de rota
+- prefere extrair UI reutilizavel em vez de deixar uma rota crescer ate ficar gigante
 
-## Step 3: Let TanStack Regenerate The Route Tree
+## Passo 3: Deixar O TanStack Regenerar A Route Tree
 
-After adding or renaming route files, TanStack regenerates [apps/web/src/routeTree.gen.ts](../apps/web/src/routeTree.gen.ts).
+Depois de adicionares ou renomeares ficheiros de rota, o TanStack regenera [apps/web/src/routeTree.gen.ts](../apps/web/src/routeTree.gen.ts).
 
-Important rules:
+Regras importantes:
 
-- do not edit `routeTree.gen.ts` manually
-- do commit it after route changes
-- treat it as generated source, not as disposable build output
+- nao edites `routeTree.gen.ts` manualmente
+- faz commit do ficheiro depois de alteracoes em rotas
+- trata-o como codigo fonte gerado, nao como output descartavel de build
 
-This file exists so the app keeps typed route definitions in sync with the `src/routes` tree.
+Este ficheiro existe para manter as definicoes tipadas de rotas sincronizadas com a arvore `src/routes`.
 
-## Step 4: Decide Whether The Change Is Route-Local Or Shared
+## Passo 4: Decidir Se A Alteracao E Local Da Rota Ou Partilhada
 
-Before creating new shared code, ask:
+Antes de criares novo codigo partilhado, pergunta:
 
-- is this used in only one route right now?
-- is the reuse real, or am I guessing future reuse?
+- isto esta a ser usado apenas numa rota neste momento?
+- a reutilizacao e real, ou estou a adivinha-la?
 
-Use these rules:
+Usa estas regras:
 
-- keep code inside the route when the behavior is local
-- move code to `components/ui` when it is a small reusable presentational piece
-- move code to `components/layout` when it affects shared page framing or navigation
-- move code to `lib` when it is shared non-UI infrastructure
+- mantem o codigo dentro da rota quando o comportamento e local
+- move codigo para `components/ui` quando for uma pequena peca presentacional reutilizavel
+- move codigo para `components/layout` quando afetar enquadramento partilhado da pagina ou navegacao
+- move codigo para `lib` quando for infraestrutura partilhada que nao e UI
 
-Avoid creating speculative feature folders unless repeated domain logic actually appears.
+Evita criar feature folders especulativos, a menos que comecem a aparecer de facto padroes repetidos de logica de dominio.
 
-## Step 5: Use The Existing Layout Layer Correctly
+## Passo 5: Usar Corretamente A Camada De Layout Existente
 
-The scaffold already has two layout levels:
+O scaffold ja tem dois niveis de layout:
 
-- root app shell in [apps/web/src/components/layout/root-frame.tsx](../apps/web/src/components/layout/root-frame.tsx)
-- area shells in [apps/web/src/components/layout/area-shell.tsx](../apps/web/src/components/layout/area-shell.tsx)
+- shell app-wide em [apps/web/src/components/layout/root-frame.tsx](../apps/web/src/components/layout/root-frame.tsx)
+- area shells em [apps/web/src/components/layout/area-shell.tsx](../apps/web/src/components/layout/area-shell.tsx)
 
-Use `components/layout` for:
+Usa `components/layout` para:
 
-- shared headers
-- section navigation
-- common content framing
-- route-group shells
+- headers partilhados
+- navegacao de secao
+- enquadramento comum de conteudo
+- shells para grupos de rotas
 
-Do not use `components/layout` for:
+Nao uses `components/layout` para:
 
-- one-off cards
-- small buttons
-- domain-specific widgets that only one page needs
+- cards de uso unico
+- pequenos botoes
+- widgets especificos de dominio que apenas uma pagina precisa
 
-If a component mostly answers "how is this page area structured?", it is probably layout code.
+Se um componente responde sobretudo a pergunta "como e que esta area da pagina esta estruturada?", provavelmente e codigo de layout.
 
-## Step 6: Use `components/ui` For Neutral Presentational Pieces
+## Passo 6: Usar `components/ui` Para Pecas Presentacionais Neutras
 
-`components/ui` is for reusable pieces that stay generic across routes.
+`components/ui` serve para pecas reutilizaveis que permanecem genericas entre rotas.
 
-Current examples:
+Exemplos atuais:
 
 - [apps/web/src/components/ui/surface-card.tsx](../apps/web/src/components/ui/surface-card.tsx)
 - [apps/web/src/components/ui/route-pending.tsx](../apps/web/src/components/ui/route-pending.tsx)
 - [apps/web/src/components/ui/not-found.tsx](../apps/web/src/components/ui/not-found.tsx)
 
-Use `components/ui` when a component is:
+Usa `components/ui` quando um componente e:
 
-- generic
-- presentational
-- not tied to one route group
-- not coupled to one domain feature
+- generico
+- presentacional
+- nao esta ligado a um grupo de rotas especifico
+- nao esta acoplado a uma funcionalidade de dominio concreta
 
-Do not put API calls, route ownership logic, or app-wide providers in `components/ui`.
+Nao coloques chamadas API, logica de ownership de rotas ou providers app-wide em `components/ui`.
 
-## Step 7: Add Data Access Through The Shared HTTP And Query Layer
+## Passo 7: Adicionar Acesso A Dados Atraves Da Camada Partilhada De HTTP E Query
 
-The current scaffold already gives you:
+O scaffold atual ja te da:
 
-- a generic request helper in [apps/web/src/lib/http/fetch-json.ts](../apps/web/src/lib/http/fetch-json.ts)
-- an app-wide Query client in [apps/web/src/lib/query/client.ts](../apps/web/src/lib/query/client.ts)
-- env configuration in [apps/web/src/lib/env.ts](../apps/web/src/lib/env.ts)
+- um request helper generico em [apps/web/src/lib/http/fetch-json.ts](../apps/web/src/lib/http/fetch-json.ts)
+- um Query client app-wide em [apps/web/src/lib/query/client.ts](../apps/web/src/lib/query/client.ts)
+- configuracao de env em [apps/web/src/lib/env.ts](../apps/web/src/lib/env.ts)
 
-Preferred pattern:
+Padrao preferencial:
 
-1. Add a small route-specific loader function or query function.
-2. Use `fetchJson` for the network call.
-3. Use TanStack Query in the route component if the data is client-fetched.
+1. Adicionar uma pequena funcao de loader ou query especifica da rota.
+2. Usar `fetchJson` para a chamada de rede.
+3. Usar TanStack Query no componente da rota se os dados forem carregados do lado do cliente.
 
-Example shape:
+Formato de exemplo:
 
 ```tsx
 import { useQuery } from "@tanstack/react-query";
@@ -197,105 +197,105 @@ function ExamplePage() {
   });
 
   if (reportsQuery.isPending) {
-    return <div>Loading...</div>;
+    return <div>A carregar...</div>;
   }
 
   if (reportsQuery.isError) {
-    return <div>Something went wrong.</div>;
+    return <div>Ocorreu um erro.</div>;
   }
 
   return <pre>{JSON.stringify(reportsQuery.data, null, 2)}</pre>;
 }
 ```
 
-Guidelines:
+Orientacoes:
 
-- keep `fetchJson` as the low-level default unless there is a strong reason to replace it
-- avoid scattering raw `fetch(...)` calls through route files
-- prefer one clear query per route need over inventing a full SDK too early
+- mantem `fetchJson` como default de baixo nivel, a menos que exista um motivo forte para o substituir
+- evita espalhar chamadas `fetch(...)` em bruto pelos ficheiros de rota
+- prefere uma query clara por necessidade da rota em vez de inventar um SDK completo cedo demais
 
-## Step 8: Read Env Vars Only Through `clientEnv`
+## Passo 8: Ler Env Vars Apenas Atraves De `clientEnv`
 
-Do not read `import.meta.env` directly across the app.
+Nao leias `import.meta.env` diretamente por toda a app.
 
-Instead, use [apps/web/src/lib/env.ts](../apps/web/src/lib/env.ts).
+Em vez disso, usa [apps/web/src/lib/env.ts](../apps/web/src/lib/env.ts).
 
-Why:
+Porquê:
 
-- env parsing stays centralized
-- validation stays consistent
-- future env changes only need one update path
+- o parsing das env vars fica centralizado
+- a validacao permanece consistente
+- futuras alteracoes de env precisam de um unico caminho de atualizacao
 
-If a new frontend env var is truly needed:
+Se uma nova env var frontend for realmente necessaria:
 
-1. add it to `src/lib/env.ts`
-2. document it in `.env.example`
-3. mention it in the relevant docs if teammates need to set it locally
+1. adiciona-a em `src/lib/env.ts`
+2. documenta-a em `.env.example`
+3. menciona-a na documentacao relevante se os colegas precisarem de a configurar localmente
 
-## Step 9: Style With Existing Tokens And Shared Classes First
+## Passo 9: Fazer Styling Com Os Tokens E Classes Partilhadas Existentes Primeiro
 
-The current styling layer lives in:
+A camada de styling atual vive em:
 
 - [apps/web/src/styles/tokens.css](../apps/web/src/styles/tokens.css)
 - [apps/web/src/styles/app.css](../apps/web/src/styles/app.css)
 
-Preferred styling order:
+Ordem de preferencia para styling:
 
-1. reuse an existing semantic class if one already exists
-2. use Tailwind utilities when the styling is local to the component
-3. add or extend tokens when the design decision is global
+1. reutilizar uma classe semantica existente, se ja existir
+2. usar utilitarios Tailwind quando o styling for local ao componente
+3. adicionar ou estender tokens quando a decisao de design for global
 
-Good use cases for tokens:
+Bons casos de uso para tokens:
 
-- shared colors
-- consistent text tones
-- surface backgrounds
+- cores partilhadas
+- tons de texto consistentes
+- backgrounds de superficie
 
-Good use cases for local utilities:
+Bons casos de uso para utilitarios locais:
 
-- one-off spacing
-- grid tweaks
-- local alignment
+- espacamento pontual
+- ajustes de grid
+- alinhamento local
 
-Avoid burying the same magic values in multiple route files.
+Evita enterrar os mesmos valores magicos em varios ficheiros de rota.
 
-## Step 10: Keep Providers And Global Wiring In The Root
+## Passo 10: Manter Providers E Wiring Global Na Root
 
-Global providers already live in [apps/web/src/routes/\_\_root.tsx](../apps/web/src/routes/__root.tsx).
+Os providers globais vivem em [apps/web/src/routes/__root.tsx](../apps/web/src/routes/__root.tsx).
 
-That file owns:
+Esse ficheiro e responsavel por:
 
 - document shell
-- app stylesheet link
+- ligacao da stylesheet da app
 - Query client provider
 - devtools
 - root layout
-- root-level error and not-found behavior
+- comportamento root-level para erro e not-found
 
-Only change `__root.tsx` when the behavior is truly global.
+So deves alterar `__root.tsx` quando o comportamento for realmente global.
 
-Do not move route-specific concerns into the root just because they are shared by two nearby pages.
+Nao movas preocupacoes especificas de rotas para a root apenas porque sao partilhadas por duas paginas vizinhas.
 
-## Step 11: Add Tests Close To The Current Patterns
+## Passo 11: Adicionar Testes Seguindo Os Padroes Atuais
 
-The scaffold already includes:
+O scaffold ja inclui:
 
 - [apps/web/src/test/home-page.test.tsx](../apps/web/src/test/home-page.test.tsx)
 - [apps/web/src/components/layout/root-frame.test.tsx](../apps/web/src/components/layout/root-frame.test.tsx)
 - [apps/web/src/lib/env.test.ts](../apps/web/src/lib/env.test.ts)
 
-Use these as the baseline.
+Usa-os como baseline.
 
-Testing rules:
+Regras de teste:
 
-- test behavior, not implementation trivia
-- add route tests when route output or loading states change
-- add utility tests when shared logic gains branching behavior
-- keep test names readable and feature-focused
+- testa comportamento, nao detalhes triviais de implementacao
+- adiciona testes de rota quando a saida ou os estados de loading mudarem
+- adiciona testes de utilitarios quando a logica partilhada ganhar branching relevante
+- mantem os nomes dos testes legiveis e focados na funcionalidade
 
-## Step 12: Run The Normal Frontend Validation Set
+## Passo 12: Correr O Conjunto Normal De Validacao Frontend
 
-From the repo root:
+A partir da raiz do repositorio:
 
 ```bash
 pnpm --filter @ecobairro/web lint
@@ -304,41 +304,41 @@ pnpm --filter @ecobairro/web test
 pnpm --filter @ecobairro/web build
 ```
 
-Run all four before opening a frontend PR unless the change is docs-only.
+Executa os quatro antes de abrir um PR frontend, a menos que a alteracao seja apenas de documentacao.
 
-## Suggested Route Implementation Checklist
+## Checklist Sugerida Para Implementacao De Rotas
 
-Use this checklist when implementing a new page:
+Usa esta checklist quando fores implementar uma nova pagina:
 
-1. Choose the correct route area: `/`, `/app`, or `/admin`.
-2. Create or update the route file in `src/routes`.
-3. Reuse an existing layout shell if possible.
-4. Extract only truly shared UI into `components/ui`.
-5. Use `fetchJson` and Query when the page needs API data.
-6. Keep env access inside `clientEnv`.
-7. Let `routeTree.gen.ts` regenerate and commit it.
-8. Add or update tests.
-9. Run `lint`, `typecheck`, `test`, and `build`.
+1. Escolhe a area de rotas certa: `/`, `/app` ou `/admin`.
+2. Cria ou atualiza o ficheiro de rota em `src/routes`.
+3. Reutiliza uma layout shell existente sempre que possivel.
+4. Extrai para `components/ui` apenas UI realmente partilhada.
+5. Usa `fetchJson` e Query quando a pagina precisar de dados vindos da API.
+6. Mantem o acesso a env dentro de `clientEnv`.
+7. Deixa `routeTree.gen.ts` regenerar e faz commit do ficheiro.
+8. Adiciona ou atualiza testes.
+9. Corre `lint`, `typecheck`, `test` e `build`.
 
-## What Not To Do
+## O Que Nao Fazer
 
-Avoid these mistakes:
+Evita estes erros:
 
-- editing `routeTree.gen.ts` manually
-- creating new global providers inside route files
-- putting domain-specific feature logic into generic `components/ui`
-- reading `import.meta.env` directly all over the app
-- adding broad shared abstractions before real reuse exists
-- committing `.tanstack`, `.output`, or `.nitro`
+- editar `routeTree.gen.ts` manualmente
+- criar novos providers globais dentro de ficheiros de rota
+- colocar logica de dominio especifica em `components/ui` genericos
+- ler `import.meta.env` diretamente por toda a app
+- adicionar abstrações partilhadas demasiado amplas antes de haver reutilizacao real
+- fazer commit de `.tanstack`, `.output` ou `.nitro`
 
-## Recommended First References
+## Referencias Recomendadas Para Comecar
 
-When implementing in `apps/web`, start by reading:
+Quando fores implementar em `apps/web`, começa por ler:
 
 - [docs/06-frontend-scaffold.md](06-frontend-scaffold.md)
-- [apps/web/src/routes/\_\_root.tsx](../apps/web/src/routes/__root.tsx)
+- [apps/web/src/routes/__root.tsx](../apps/web/src/routes/__root.tsx)
 - [apps/web/src/router.tsx](../apps/web/src/router.tsx)
 - [apps/web/src/lib/http/fetch-json.ts](../apps/web/src/lib/http/fetch-json.ts)
-- one route file close to the area you are changing
+- um ficheiro de rota proximo da area que vais alterar
 
-That is usually enough context to make a clean change without re-learning the whole stack from scratch.
+Isto costuma ser contexto suficiente para fazer uma alteracao limpa sem teres de reaprender o stack inteiro do zero.

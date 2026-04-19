@@ -1,33 +1,33 @@
-# START HERE
+# COMECAR AQUI
 
-This file is the fastest entry point into the current project docs.
+Este ficheiro e o ponto de entrada mais rapido para a documentacao atual do projeto.
 
-If you are opening the repository for the first time, read in this order:
+Se estas a abrir o repositorio pela primeira vez, le por esta ordem:
 
 1. `README.md`
 2. `docs/05-local-runtime-bootstrap.md`
-3. `docs/08-api-implementation-playbook.md` if you are working on backend or infra
-4. `docs/07-web-implementation-playbook.md` if you are working on frontend
+3. `docs/08-api-implementation-playbook.md` se vais trabalhar em backend ou infra
+4. `docs/07-web-implementation-playbook.md` se vais trabalhar em frontend
 
-## Quick Orientation
+## Orientacao Rapida
 
-The repository currently has:
+O repositorio tem atualmente:
 
 - `apps/web`: frontend
-- `apps/api`: main backend
-- `apps/analytics`: analytics service
-- `packages/`: shared TypeScript packages
-- `infra/`: Docker Compose, nginx, and local runtime scripts
-- `docs/`: teammate-facing and domain/design documentation
+- `apps/api`: backend principal
+- `apps/analytics`: servico de analytics
+- `packages/`: pacotes TypeScript partilhados
+- `infra/`: Docker Compose, nginx e scripts de runtime local
+- `docs/`: documentacao para a equipa e documentacao de dominio/design
 
-## If You Need To Run The Project
+## Se Precisares De Executar O Projeto
 
-Read:
+Le:
 
 - `README.md`
 - `docs/05-local-runtime-bootstrap.md`
 
-Key commands from the repository root:
+Comandos principais a partir da raiz do repositorio:
 
 ```powershell
 pnpm install --no-frozen-lockfile
@@ -36,91 +36,91 @@ pnpm --dir apps/api exec prisma migrate deploy
 pnpm compose:ps
 ```
 
-Main local URLs:
+URLs locais principais:
 
 - `http://localhost:8080/`
 - `http://localhost:8080/api/health`
 - `http://localhost:8080/api/ready`
 - `http://localhost:8080/api/v1/auth/login`
 
-## If You Need To Understand The Current Backend
+## Se Precisares De Perceber O Backend Atual
 
-Read:
+Le:
 
 - `docs/08-api-implementation-playbook.md`
 - `apps/api/src/`
 - `packages/contracts/src/index.ts`
 - `apps/api/prisma/schema.prisma`
 
-Current implemented backend scope:
+Ambito backend atualmente implementado:
 
-- citizen registration
+- registo de cidadao
 - login
-- refresh token rotation
+- rotacao de refresh token
 - logout
-- citizen self-profile read/update
-- PostgreSQL and Redis readiness checks
+- leitura e atualizacao do proprio perfil de cidadao
+- verificacoes de prontidao para PostgreSQL e Redis
 
-## If You Need To Add A Backend Feature
+## Se Precisares De Adicionar Uma Funcionalidade De Backend
 
-Start with:
+Comeca por:
 
 - `docs/08-api-implementation-playbook.md`
 
-Then usually touch, in this order:
+Depois, normalmente vais tocar nestes sitios, por esta ordem:
 
 1. `packages/contracts/src/index.ts`
-2. `apps/api/prisma/schema.prisma` and migrations if persistence changes
-3. the owning module under `apps/api/src/`
-4. tests in `apps/api/src/`
-5. docs
+2. `apps/api/prisma/schema.prisma` e migrations, se a persistencia mudar
+3. o modulo responsavel em `apps/api/src/`
+4. os testes em `apps/api/src/`
+5. a documentacao
 
-## If You Need To Understand The Frontend
+## Se Precisares De Perceber O Frontend
 
-Read:
+Le:
 
 - `docs/06-frontend-scaffold.md`
 - `docs/07-web-implementation-playbook.md`
 
-## If You Need Domain Or Product Context
+## Se Precisares De Contexto De Dominio Ou Produto
 
-Read:
+Le:
 
 - `docs/models/`
 
-Useful starting points:
+Pontos de entrada uteis:
 
 - `docs/models/Cidadão/Init.md`
 - `docs/models/Ecopontos, Zonas, Badges e Quiz/Init.md`
 
-Important note:
+Nota importante:
 
-- some `docs/models/` files are still design/planning documents
-- not everything there is implemented yet
-- for the real current backend state, trust `docs/08-api-implementation-playbook.md`
+- alguns ficheiros em `docs/models/` ainda sao documentos de planeamento/design
+- nem tudo o que esta la ja foi implementado
+- para o estado real atual do backend, confia em `docs/08-api-implementation-playbook.md`
 
-## If You Need To Troubleshoot The Database Container
+## Se Precisares De Fazer Troubleshooting Ao Contentor Da Base De Dados
 
-Read:
+Le:
 
 - `docs/05-local-runtime-bootstrap.md`
 
-Important current facts:
+Factos importantes neste momento:
 
-- local PostgreSQL runs in Docker as `postgres`
-- host connection uses `localhost:5432`
-- default DB/user/password is `ecobairro`
-- PostGIS is enabled on first DB initialization
-- Prisma CLI on the host uses `apps/api/prisma.config.ts`
+- o PostgreSQL local corre em Docker como `postgres`
+- a ligacao a partir do host usa `localhost:5432`
+- a BD/utilizador/password por omissao e `ecobairro`
+- o PostGIS e ativado na primeira inicializacao da BD
+- a Prisma CLI no host usa `apps/api/prisma.config.ts`
 
-## If You Need To Know What Is Implemented Vs Planned
+## Se Precisares De Saber O Que Esta Implementado Vs Planeado
 
-Use this rule:
+Usa esta regra:
 
-- implemented runtime/setup/backend behavior: `README.md`, `docs/05-local-runtime-bootstrap.md`, `docs/08-api-implementation-playbook.md`
-- broader domain plan and future scope: `docs/models/`
+- comportamento implementado de runtime/setup/backend: `README.md`, `docs/05-local-runtime-bootstrap.md`, `docs/08-api-implementation-playbook.md`
+- plano de dominio mais amplo e ambito futuro: `docs/models/`
 
-## Suggested Reading By Role
+## Leitura Sugerida Por Perfil
 
 Backend/Infra:
 
@@ -135,18 +135,18 @@ Frontend:
 2. `docs/06-frontend-scaffold.md`
 3. `docs/07-web-implementation-playbook.md`
 
-Product/Architecture:
+Produto/Arquitetura:
 
 1. `README.md`
 2. `docs/models/`
 3. `docs/08-api-implementation-playbook.md`
 
-## Current Best Entry Point
+## Melhor Ponto De Entrada Neste Momento
 
-If you are unsure where to start, begin with:
+Se nao souberes por onde comecar, segue esta ordem:
 
 1. `README.md`
 2. `docs/05-local-runtime-bootstrap.md`
 3. `docs/08-api-implementation-playbook.md`
 
-That path reflects the current codebase more accurately than the older planning docs.
+Este percurso reflete o codigo atual com mais fidelidade do que os documentos de planeamento mais antigos.

@@ -1,63 +1,63 @@
-# API Implementation Playbook
+# Guia De Implementacao Da API
 
-This document explains what is currently implemented in `apps/api`, how it is structured, and how to add new backend features without guessing.
+Este documento explica o que esta atualmente implementado em `apps/api`, como esta estruturado, e como adicionar novas funcionalidades backend sem andar a adivinhar.
 
-It is meant to help teammates answer three questions quickly:
+Foi pensado para ajudar a equipa a responder rapidamente a tres perguntas:
 
-- what already exists
-- where new backend work should go
-- what the expected implementation pattern is
+- o que ja existe
+- onde deve entrar trabalho novo no backend
+- qual e o padrao de implementacao esperado
 
-## Current Scope
+## Ambito Atual
 
-The backend currently implements the first usable Phase 1 slice:
+O backend implementa atualmente a primeira fatia utilizavel da Fase 1:
 
-- citizen registration
+- registo de cidadao
 - login
-- refresh token rotation
+- rotacao de refresh token
 - logout
-- citizen self-profile read
-- citizen self-profile update
-- readiness checks for PostgreSQL and Redis
+- leitura do proprio perfil de cidadao
+- atualizacao do proprio perfil de cidadao
+- readiness checks para PostgreSQL e Redis
 
-Not implemented yet:
+Ainda nao implementado:
 
-- email verification
+- verificacao de email
 - forgot/reset password
 - 2FA
-- operator/admin flows
-- sensitive data flows
-- BullMQ workers
+- fluxos de operador/admin
+- fluxos de dados sensiveis
+- workers BullMQ
 - audit logging
-- caching beyond auth sessions
+- cache para alem das auth sessions
 
-## Runtime and Routing
+## Runtime E Routing
 
-The backend app is:
+A app backend e:
 
 `apps/api`
 
-Internal Nest runtime port:
+Porto interno do runtime Nest:
 
 `3000`
 
-External route base through nginx:
+Base externa das rotas atraves do nginx:
 
 `/api/v1`
 
-Health routes are excluded from the global API version prefix:
+As rotas de health ficam fora do prefixo global de versao da API:
 
 - `/api/health`
 - `/api/ready`
 
-Business routes currently live under:
+As rotas de negocio vivem atualmente em:
 
 - `/api/v1/auth/...`
 - `/api/v1/cidadaos/...`
 
-## Module Layout
+## Estrutura De Modulos
 
-Current `apps/api/src` structure:
+Estrutura atual de `apps/api/src`:
 
 ```text
 src/
@@ -72,54 +72,54 @@ src/
   test/
 ```
 
-### What each area owns
+### O que cada area detem
 
 - `auth/`
-  - public auth endpoints
-  - login/register/refresh/logout business logic
+  - endpoints publicos de autenticacao
+  - logica de negocio para login/register/refresh/logout
   - JWT guard
-  - current-user extraction
-  - auth DTO validation
+  - extracao do utilizador atual
+  - validacao dos DTOs de autenticacao
 - `cidadaos/`
-  - citizen self-profile routes
-  - citizen-specific business rules for `/me`
+  - rotas do proprio perfil de cidadao
+  - regras de negocio especificas do cidadao para `/me`
 - `database/`
-  - global Prisma provider
+  - provider global do Prisma
 - `redis/`
-  - global Redis provider
+  - provider global do Redis
 - `health.*`
-  - liveness and readiness checks
+  - liveness e readiness checks
 
-## Data Layer
+## Camada De Dados
 
 ### Prisma
 
-Prisma is the current write/read access layer for implemented backend features.
+O Prisma e a camada atual de leitura/escrita para as funcionalidades backend implementadas.
 
-Important files:
+Ficheiros importantes:
 
 - `apps/api/prisma/schema.prisma`
 - `apps/api/prisma/migrations/`
 - `apps/api/prisma.config.ts`
 
-Current implemented models:
+Modelos atualmente implementados:
 
 - `User`
 - `CidadaoPerfil`
 - enum `UserRole`
 
-### Current tables
+### Tabelas atuais
 
 #### `users`
 
-Purpose:
+Objetivo:
 
-- identity
-- auth credentials
+- identidade
+- credenciais de autenticacao
 - role
-- soft-delete state
+- estado de soft-delete
 
-Implemented columns:
+Colunas implementadas:
 
 - `id`
 - `email`
@@ -133,11 +133,11 @@ Implemented columns:
 
 #### `cidadao_perfis`
 
-Purpose:
+Objetivo:
 
-- citizen-specific profile extension of `users`
+- extensao do perfil especifico de cidadao sobre `users`
 
-Implemented columns:
+Colunas implementadas:
 
 - `id`
 - `user_id`
@@ -149,28 +149,28 @@ Implemented columns:
 - `criado_em`
 - `atualizado_em`
 
-### Current migration
+### Migration atual
 
-Implemented migration:
+Migration implementada:
 
 `apps/api/prisma/migrations/20260418230000_init_auth_phase1/migration.sql`
 
-Important database behaviors already in place:
+Comportamentos de base de dados importantes ja presentes:
 
-- `users.email` unique index
-- `users.role` index
-- partial index on `users.eliminado_em`
-- one-to-one relation from `cidadao_perfis.user_id` to `users.id`
+- indice unico em `users.email`
+- indice em `users.role`
+- indice parcial em `users.eliminado_em`
+- relacao one-to-one de `cidadao_perfis.user_id` para `users.id`
 
-## Shared Contracts
+## Contratos Partilhados
 
-Cross-app request and response shapes live in:
+As estruturas de request e response entre apps vivem em:
 
 `packages/contracts/src/index.ts`
 
-This is the contract-first surface for backend/frontend alignment.
+Esta e a superficie contract-first para alinhamento entre backend e frontend.
 
-Currently implemented contracts include:
+Os contratos atualmente implementados incluem:
 
 - `RegisterRequest`
 - `RegisterResponse`
@@ -180,76 +180,76 @@ Currently implemented contracts include:
 - `CitizenSelfProfileResponse`
 - `UpdateCitizenSelfProfileRequest`
 
-Rule of thumb:
+Regra pratica:
 
-- if the API response or request body is part of the product contract, define or update it in `packages/contracts` first
+- se o request body ou response body da API faz parte do contrato do produto, define-o ou atualiza-o primeiro em `packages/contracts`
 
-## Auth Implementation
+## Implementacao Da Autenticacao
 
-### Register flow
+### Fluxo de registo
 
-Route:
+Rota:
 
 `POST /api/v1/auth/register`
 
-Behavior:
+Comportamento:
 
-1. normalizes email to lowercase
-2. checks for existing user by email
-3. hashes password with bcrypt
-4. creates `users` and `cidadao_perfis` in one Prisma transaction
-5. forces `role = CIDADAO`
+1. normaliza o email para lowercase
+2. verifica se ja existe utilizador com esse email
+3. faz hash da password com bcrypt
+4. cria `users` e `cidadao_perfis` numa unica transacao Prisma
+5. força `role = CIDADAO`
 
-Current constraints:
+Restricoes atuais:
 
-- self-registration is citizen-only
-- `rgpd_accepted` must be `true`
-- no email verification flow yet
+- o autorregisto e apenas para cidadaos
+- `rgpd_accepted` tem de ser `true`
+- ainda nao existe fluxo de verificacao de email
 
-### Login flow
+### Fluxo de login
 
-Route:
+Rota:
 
 `POST /api/v1/auth/login`
 
-Behavior:
+Comportamento:
 
-1. normalizes email
-2. loads user by email
-3. rejects missing or soft-deleted users
-4. verifies password with bcrypt
-5. issues JWT access token
-6. issues opaque refresh token
-7. stores the active refresh session in Redis
+1. normaliza o email
+2. carrega o utilizador pelo email
+3. rejeita utilizadores inexistentes ou soft-deleted
+4. verifica a password com bcrypt
+5. emite access token JWT
+6. emite refresh token opaco
+7. guarda a sessao ativa de refresh em Redis
 
-### Refresh flow
+### Fluxo de refresh
 
-Route:
+Rota:
 
 `POST /api/v1/auth/refresh`
 
-Behavior:
+Comportamento:
 
-1. extracts the user id from the opaque refresh token
-2. loads the active Redis session
-3. compares the stored token hash
-4. confirms the user still exists and is not soft-deleted
-5. rotates the refresh token by overwriting the Redis session
+1. extrai o user id a partir do refresh token opaco
+2. carrega a sessao ativa em Redis
+3. compara o hash do token guardado
+4. confirma que o utilizador ainda existe e nao esta soft-deleted
+5. roda o refresh token sobrescrevendo a sessao em Redis
 
-### Logout flow
+### Fluxo de logout
 
-Route:
+Rota:
 
 `POST /api/v1/auth/logout`
 
-Behavior:
+Comportamento:
 
-- requires JWT auth
-- deletes the active Redis session key for the user
+- requer autenticacao JWT
+- apaga a chave de sessao ativa do utilizador em Redis
 
 ### JWT payload
 
-Current payload:
+Payload atual:
 
 ```json
 {
@@ -258,39 +258,39 @@ Current payload:
 }
 ```
 
-### Redis session model
+### Modelo de sessao em Redis
 
-Current key:
+Chave atual:
 
 `user:session:{user_id}`
 
-Current v1 policy:
+Politica v1 atual:
 
-- one active refresh session per user
-- a new login replaces the old refresh session
+- uma refresh session ativa por utilizador
+- um novo login substitui a refresh session antiga
 
-## Citizen Profile Implementation
+## Implementacao Do Perfil De Cidadao
 
-### Read own profile
+### Ler o proprio perfil
 
-Route:
+Rota:
 
 `GET /api/v1/cidadaos/me`
 
-Behavior:
+Comportamento:
 
-- requires JWT auth
-- requires role `CIDADAO`
-- joins user identity + citizen profile
-- returns only the allowed non-sensitive fields
+- requer autenticacao JWT
+- requer role `CIDADAO`
+- junta identidade do utilizador com perfil de cidadao
+- devolve apenas os campos permitidos e nao sensiveis
 
-### Update own profile
+### Atualizar o proprio perfil
 
-Route:
+Rota:
 
 `PUT /api/v1/cidadaos/me`
 
-Allowed fields today:
+Campos atualmente permitidos:
 
 - `phone`
 - `nome_completo`
@@ -298,142 +298,142 @@ Allowed fields today:
 - `notificacao_prefs`
 - `dashboard_widgets`
 
-Current rule:
+Regra atual:
 
-- only citizens can use these endpoints
+- apenas cidadaos podem usar estes endpoints
 
-## Validation and Guards
+## Validacao E Guards
 
-### Global validation
+### Validacao global
 
-Configured in `main.ts`:
+Configurada em `main.ts`:
 
-- whitelist enabled
-- forbid non-whitelisted properties enabled
-- transform enabled
+- whitelist ativa
+- forbid non-whitelisted properties ativo
+- transform ativo
 
-Practical meaning:
+Significado pratico:
 
-- DTOs are the request contract
-- extra body fields are rejected
+- os DTOs sao o contrato do request
+- campos extra no body sao rejeitados
 
-### Current auth guard
+### Guard de autenticacao atual
 
-File:
+Ficheiro:
 
 `apps/api/src/auth/jwt-auth.guard.ts`
 
-Behavior:
+Comportamento:
 
-- reads `Authorization: Bearer <token>`
-- verifies the JWT
-- attaches `request.authUser = { userId, role }`
+- le `Authorization: Bearer <token>`
+- verifica o JWT
+- anexa `request.authUser = { userId, role }`
 
-### Current user decorator
+### Decorator do utilizador atual
 
-File:
+Ficheiro:
 
 `apps/api/src/auth/current-user.decorator.ts`
 
-Purpose:
+Objetivo:
 
-- lets controllers read the authenticated user cleanly
+- permitir que os controllers leiam o utilizador autenticado de forma limpa
 
-## Health and Readiness
+## Health E Readiness
 
-Current routes:
+Rotas atuais:
 
 - `GET /health`
 - `GET /ready`
 
-Implemented readiness checks:
+Readiness checks implementados:
 
-- PostgreSQL connectivity
-- Redis connectivity
+- conectividade PostgreSQL
+- conectividade Redis
 
-This is useful when debugging container startup order.
+Isto e util quando estas a depurar a ordem de arranque dos contentores.
 
-## Tests
+## Testes
 
-Current API test approach is intentionally lightweight.
+A abordagem atual aos testes da API e intencionalmente leve.
 
-Test files:
+Ficheiros de teste:
 
 - `apps/api/src/auth/auth.service.test.ts`
 - `apps/api/src/auth/jwt-auth.guard.test.ts`
 - `apps/api/src/cidadaos/cidadaos.service.test.ts`
 - `apps/api/src/test/run-tests.ts`
 
-Run them with:
+Corre-os com:
 
 ```powershell
 pnpm --dir apps/api test
 ```
 
-The current tests cover:
+Os testes atuais cobrem:
 
-- auth registration
-- duplicate registration rejection
-- login session creation
-- refresh token rotation
-- logout invalidation
-- JWT guard success and failure paths
-- citizen self-profile reads and updates
+- registo em auth
+- rejeicao de registo duplicado
+- criacao de sessao no login
+- rotacao do refresh token
+- invalidacao no logout
+- caminhos de sucesso e falha do JWT guard
+- leitura e atualizacao do proprio perfil de cidadao
 
-## How To Implement a New Backend Feature
+## Como Implementar Uma Nova Funcionalidade Backend
 
-Use this sequence for new backend work.
+Usa esta sequencia para trabalho novo no backend.
 
-### 1. Define the scope first
+### 1. Definir primeiro o ambito
 
-Before writing code, decide:
+Antes de escrever codigo, decide:
 
-- is this a new module or an extension of an existing module
-- does it need new database tables or columns
-- does it change request/response contracts
-- does it need auth or role restrictions
-- does it need Redis, async jobs, or only PostgreSQL
+- e um modulo novo ou uma extensao de um modulo existente
+- precisa de novas tabelas ou colunas na base de dados
+- altera contratos de request/response
+- precisa de autenticacao ou restricoes por role
+- precisa de Redis, async jobs, ou apenas de PostgreSQL
 
-### 2. Update shared contracts if the API shape changes
+### 2. Atualizar contratos partilhados se a forma da API mudar
 
-File:
+Ficheiro:
 
 `packages/contracts/src/index.ts`
 
-Add or update:
+Adiciona ou atualiza:
 
 - request interfaces
 - response interfaces
-- enums or shared literal types if needed
+- enums ou literal types partilhados, se necessario
 
-### 3. Add DTOs in the owning module
+### 3. Adicionar DTOs no modulo responsavel
 
-Examples:
+Exemplos:
 
 - `apps/api/src/auth/dto/register.dto.ts`
 - `apps/api/src/cidadaos/dto/update-cidadao-profile.dto.ts`
 
-Guideline:
+Orientacao:
 
-- contracts describe the external API shape
-- DTOs enforce runtime validation in Nest
+- os contratos descrevem a forma externa da API
+- os DTOs aplicam a validacao runtime no Nest
 
-### 4. Update Prisma when persistence changes
+### 4. Atualizar Prisma quando a persistencia mudar
 
-Files:
+Ficheiros:
 
 - `apps/api/prisma/schema.prisma`
 - `apps/api/prisma/migrations/...`
 
-Process:
+Processo:
 
-1. update the Prisma schema
-2. generate a migration
-3. inspect the generated SQL
-4. manually adjust the migration if PostgreSQL-specific behavior is needed
-5. apply the migration locally
+1. atualiza o schema Prisma
+2. gera uma migration
+3. inspeciona o SQL gerado
+4. ajusta manualmente a migration se precisares de comportamento especifico de PostgreSQL
+5. aplica a migration localmente
 
-Example commands:
+Comandos de exemplo:
 
 ```powershell
 pnpm --dir apps/api exec prisma migrate dev --name add_feature_name
@@ -441,15 +441,15 @@ pnpm --dir apps/api exec prisma migrate deploy
 pnpm --dir apps/api prisma:generate
 ```
 
-Use raw SQL migration edits for things Prisma does not model well, such as:
+Usa edicoes manuais na migration SQL para o que o Prisma nao modela bem, como:
 
-- extensions
-- partial indexes
-- advanced PostgreSQL features
+- extensoes
+- indices parciais
+- funcionalidades avancadas de PostgreSQL
 
-### 5. Add or extend the module
+### 5. Adicionar ou estender o modulo
 
-Typical file pattern:
+Padrao tipico de ficheiros:
 
 ```text
 src/<feature>/
@@ -459,106 +459,106 @@ src/<feature>/
   dto/
 ```
 
-Guideline:
+Orientacao:
 
-- controller owns HTTP concerns
-- service owns business logic
-- Prisma and Redis stay behind service boundaries
+- o controller detem as preocupacoes HTTP
+- o service detem a logica de negocio
+- Prisma e Redis ficam por tras dos limites do service
 
-### 6. Register the module
+### 6. Registar o modulo
 
-Import the module in:
+Importa o modulo em:
 
 `apps/api/src/app.module.ts`
 
-unless the feature is intentionally nested under another module structure.
+a menos que a funcionalidade esteja intencionalmente aninhada noutra estrutura de modulo.
 
-### 7. Apply auth and role rules explicitly
+### 7. Aplicar explicitamente auth e regras de role
 
-Use:
+Usa:
 
-- `@UseGuards(JwtAuthGuard)` for authenticated routes
-- `@CurrentUser()` to access the current user
-- explicit role checks in the service when the logic is role-sensitive
+- `@UseGuards(JwtAuthGuard)` para rotas autenticadas
+- `@CurrentUser()` para aceder ao utilizador atual
+- verificacoes explicitas de role no service quando a logica for sensivel a role
 
-Current pattern for citizen-only behavior:
+Padrao atual para comportamento citizen-only:
 
-- guard authenticates the user
-- service enforces the role
+- o guard autentica o utilizador
+- o service aplica a restricao de role
 
-### 8. Add tests
+### 8. Adicionar testes
 
-For service logic:
+Para logica de service:
 
-- add focused unit coverage near the module
+- adiciona cobertura unit focada perto do modulo
 
-For route-level features:
+Para funcionalidades ao nivel da rota:
 
-- add service-level tests first
-- add higher-level tests later if the project standard evolves
+- adiciona primeiro testes ao nivel do service
+- adiciona testes de nivel superior mais tarde se o standard do projeto evoluir
 
-### 9. Update docs
+### 9. Atualizar a documentacao
 
-At minimum update:
+No minimo atualiza:
 
-- the teammate-facing docs if setup/runtime changed
-- the backend playbook if architecture or patterns changed
-- the domain docs if new endpoints or data behavior became real
+- a documentacao para a equipa se o setup/runtime mudou
+- o playbook backend se a arquitetura ou os padroes mudaram
+- os docs de dominio se novos endpoints ou comportamento de dados se tornaram reais
 
-## Example: Adding a New Protected Backend Endpoint
+## Exemplo: Adicionar Um Novo Endpoint Backend Protegido
 
-Example target:
+Exemplo de objetivo:
 
 `GET /api/v1/cidadaos/me/preferences`
 
-Suggested implementation steps:
+Passos sugeridos:
 
-1. add shared response type in `packages/contracts`
-2. add a DTO only if request query/body validation is needed
-3. add a service method in `CidadaosService`
-4. add a controller route in `CidadaosController`
-5. reuse `JwtAuthGuard`
-6. enforce citizen-only access in the service
-7. add tests beside the module
-8. document the new route
+1. adicionar shared response type em `packages/contracts`
+2. adicionar um DTO apenas se for necessaria validacao de query/body
+3. adicionar um metodo de service em `CidadaosService`
+4. adicionar uma rota no controller em `CidadaosController`
+5. reutilizar `JwtAuthGuard`
+6. aplicar acesso apenas a cidadao no service
+7. adicionar testes junto ao modulo
+8. documentar a nova rota
 
-## Example: Adding a New Table
+## Exemplo: Adicionar Uma Nova Tabela
 
-Example target:
+Exemplo de objetivo:
 
 `cidadao_favoritos`
 
-Suggested implementation steps:
+Passos sugeridos:
 
-1. add the Prisma model
-2. create the migration
-3. inspect indexes and foreign keys manually in SQL
-4. regenerate Prisma client
-5. create a Nest module or extend `cidadaos/` if ownership is still citizen profile
-6. add contracts and DTOs
-7. implement controller + service
-8. add tests
-9. update docs
+1. adicionar o modelo Prisma
+2. criar a migration
+3. inspecionar manualmente indices e foreign keys em SQL
+4. regenerar Prisma client
+5. criar um modulo Nest ou estender `cidadaos/` se a ownership continuar a ser do perfil de cidadao
+6. adicionar contratos e DTOs
+7. implementar controller + service
+8. adicionar testes
+9. atualizar a documentacao
 
-## Practical Team Notes
+## Notas Praticas Para A Equipa
 
-- prefer repository-root commands for day-to-day work
-- prefer Docker-first local runtime
-- treat `packages/contracts` as the API truth for request/response shape
-- keep business logic inside services, not controllers
-- update docs as part of the feature, not later
+- prefere comandos a partir da raiz do repositorio no dia a dia
+- prefere runtime local Docker-first
+- trata `packages/contracts` como a verdade da API para request/response shape
+- mantem a logica de negocio nos services, nao nos controllers
+- atualiza a documentacao como parte da funcionalidade, nao depois
 
-## Current Gaps To Be Aware Of
+## Gaps Atuais A Ter Em Conta
 
-These are known areas that still belong to later phases:
+Estas areas continuam reservadas para fases futuras:
 
-- email verification flow
+- fluxo de verificacao de email
 - forgot/reset password
 - 2FA
-- operator/admin profile flows
-- PII encryption and sensitive data endpoints
+- fluxos de perfil de operador/admin
+- encriptacao de PII e endpoints de dados sensiveis
 - audit logging
-- async jobs and workers
-- broader cache strategy
+- async jobs e workers
+- estrategia de cache mais ampla
 
-This playbook should be updated whenever those areas move from planned to implemented.
+Este playbook deve ser atualizado sempre que alguma destas areas passar de planeada a implementada.
