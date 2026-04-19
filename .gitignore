@@ -11,3 +11,6 @@ __pycache__/
 *.pyc
 *.pyo
 .DS_Store
+apps/web/.nitro/
+apps/web/.output/
+apps/web/.tanstack/
