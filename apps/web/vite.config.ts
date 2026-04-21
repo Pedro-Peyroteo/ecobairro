@@ -1,32 +1,21 @@
-import react from "@vitejs/plugin-react";
-import tailwindcss from "@tailwindcss/vite";
-import { tanstackStart } from "@tanstack/react-start/plugin/vite";
-import { defineConfig } from "vitest/config";
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
+import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
+import path from 'path'
 
 export default defineConfig({
   plugins: [
-    tanstackStart({
-      customViteReactPlugin: true,
-      spa: {
-        enabled: true,
-      },
+    TanStackRouterVite({ 
+      routesDirectory: path.resolve(__dirname, './src/routes'), 
+      generatedRouteTree: path.resolve(__dirname, './src/routeTree.gen.ts') 
     }),
     react(),
     tailwindcss(),
   ],
-  server: {
-    host: true,
-    allowedHosts: ["web_upstream"],
-    port: 5173,
-    strictPort: true,
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
   },
-  preview: {
-    host: true,
-    port: 4173,
-    strictPort: true,
-  },
-  test: {
-    environment: "jsdom",
-    setupFiles: ["./src/test/setup.ts"],
-  },
-});
+})
