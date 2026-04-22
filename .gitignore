@@ -37,3 +37,15 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+.cursor
+.opencode
+opencode.json
+.trae
+.gemini
+.claude
+.antigravity
+.github
+.windsurf
+.roo
+.usf.json
+
