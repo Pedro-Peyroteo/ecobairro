@@ -130,7 +130,7 @@ importers:
         specifier: ^4.2.2
         version: 4.2.3(vite@8.0.9(@types/node@24.12.2)(esbuild@0.27.7)(jiti@2.6.1)(terser@5.46.1)(tsx@4.21.0))
       '@tanstack/react-query':
-        specifier: ^5.69.0
+        specifier: ^5.100.1
         version: 5.100.1(react@19.2.5)
       '@tanstack/react-router':
         specifier: ^1.168.23
