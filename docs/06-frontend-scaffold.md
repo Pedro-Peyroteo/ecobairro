@@ -6,467 +6,279 @@ This document explains the frontend scaffold currently living in `apps/web`.
 
 The goal of this scaffold is not to ship feature UI. Its job is to give the team:
 
-- a stable frontend runtime
-- a clear route structure
-- shared layout and UI primitives
-- a minimal app infrastructure layer
+- a stable frontend runtime (Vite + TanStack Router SPA)
+- a clear route structure with authentication-aware layouts
+- a shared vertical navigation layout and UI component library
+- a minimal app infrastructure layer (env, HTTP, query)
 - a predictable place for future feature code
-
-In short: this is the handoff foundation that lets feature teams start building without first debating frontend architecture.
 
 ## What We Chose
 
 ### Runtime
 
-The frontend now uses **TanStack Start** in `apps/web`.
+The frontend uses **Vite + TanStack Router** in SPA mode in `apps/web`.
 
 Why:
 
-- it gives us a modern React app runtime with first-class TanStack Router support
-- it keeps routing, document/head handling, and app bootstrapping in one place
-- it leaves the door open for SSR and server functions later if the team needs them
-- it works well with the current monorepo setup and Vite-based workflow
-
-### Rendering mode
-
-We chose **SPA mode first**.
-
-Why:
-
-- the current project phase is scaffolding, not SEO or server-rendered product pages
-- SPA mode is simpler to reason about while the API remains the main backend surface
-- it reduces the amount of runtime complexity teammates need to understand on day one
-- it still keeps a path open for future SSR if requirements change
-
-This choice lives in [apps/web/vite.config.ts](../apps/web/vite.config.ts).
+- straightforward SPA architecture, easy to reason about during the scaffolding phase
+- TanStack Router provides file-based routing with full TypeScript type safety
+- leaves the door open for SSR adoption later if the product needs it
+- works well with the current monorepo setup
 
 ### Routing
 
-We chose **TanStack Router file-based routing**.
+We chose **TanStack Router file-based flat routes** with the `_layoutmain` prefix convention.
 
 Why:
 
-- routes are easy to find because the folder structure mirrors URL structure
-- teammates can add pages by adding files in `src/routes`
-- route ownership is visible at a glance
-- TanStack generates the route tree for us, reducing manual wiring
+- flat file names mirror URL structure without nested folders
+- the `_layoutmain` prefix attaches all dashboard routes to one shared layout
+- teammates can add pages by adding a single file in `src/routes`
+- TanStack generates the route tree automatically
 
 This is why `src/routes` is treated as the only route-authoring surface.
 
 ### Data layer
 
-We added **TanStack Query**, but only as shared plumbing.
+We provide **TanStack Query** as shared plumbing via `QueryClientProvider` in `main.tsx`.
 
 Why:
 
-- future feature teams will almost certainly need caching, async state, and request lifecycle handling
-- it is better to set up one app-wide Query client now than let each feature create its own pattern
-- we wanted the infrastructure ready without prematurely defining feature-specific data hooks
+- feature teams will need caching, async state, and request lifecycle management
+- one app-wide Query client avoids each feature inventing its own pattern
+- infrastructure is ready without prematurely defining feature-specific hooks
 
 Important:
 
-- we did **not** add domain query hooks
-- we did **not** add a full API SDK
-- we did **not** add auth flows
+- we did **not** add domain query hooks — those belong to feature work
+- we did **not** add a full API SDK — use `fetchJson` from `src/lib/http`
+- we did **not** add server-side auth flows — session is stored client-side for now
 
 ### Styling
 
-We chose **Tailwind v4** plus a small **CSS variable token layer**.
+We chose **Tailwind v4** with a **CSS variable token layer** in `src/styles/globals.css`.
 
-Why:
+Tokens cover: colors (primary green, backgrounds, sidebar), borders, shadows, and border-radius scale.
+Light and dark modes are supported via the `.dark` class (managed by `next-themes`).
 
-- Tailwind gives teams speed when building feature UI
-- CSS variables keep global color and surface decisions centralized
-- this combination is light enough for scaffolding without committing the team to a heavyweight component system yet
+### Layout
 
-### App boundary
+The scaffold provides a **vertical sidebar layout** via `_layoutmain.tsx` which wraps all authenticated dashboard routes:
 
-We kept **one frontend app** in `apps/web` with two route groups:
+- collapsible sidebar (`Navigation`) on desktop
+- drawer (`Sheet`) on mobile
+- top `Navbar` with user menu
+- `Footer`
 
-- `/app` for citizen-facing work
-- `/admin` for operator/admin-facing work
-
-Why:
-
-- the repo already had a single `web` app and matching Docker/Nginx wiring
-- one app is enough for the current phase
-- route groups give us separation without creating extra apps, duplicated config, or duplicated shared UI
-
-## Why We Did Not Build Feature UI
-
-This scaffold intentionally stops at placeholders.
-
-Why:
-
-- feature ownership belongs to other teammates
-- scaffolding should provide structure, not make product decisions on behalf of feature teams
-- a placeholder route is easier to replace than a half-finished “example feature” that becomes accidental architecture
-
-That is why the routes currently render neutral placeholder pages and ownership notes instead of domain-specific workflows.
+Authentication is enforced via `requireAuth()` in `beforeLoad` on the `_layoutmain` route.
 
 ## Directory Structure
-
-Current structure:
 
 ```text
 apps/web/
   src/
+    @layouts/
+      VerticalLayout.tsx          ← Sidebar + content grid
+      components/vertical/        ← Layout sub-components
     components/
       layout/
-      ui/
+        vertical/
+          Navigation.tsx          ← Sidebar nav items (role-aware)
+          Navbar.tsx              ← Top bar with user menu
+          NavbarContent.tsx
+          Footer.tsx
+          FooterContent.tsx
+        shared/
+          Logo.tsx
+      ui/                         ← shadcn/ui primitives (Radix-based)
     lib/
+      env.ts                      ← Centralized VITE_* env access
+      auth.ts                     ← getUser(), requireAuth(), requireRole()
+      utils.ts                    ← cn() class merge utility
       http/
+        fetch-json.ts             ← Typed fetch wrapper + HttpError
       query/
-      utils/
+        client.ts                 ← createQueryClient() factory
+    mocks/                        ← Static placeholder data (remove in production)
     routes/
-      admin/
-      app/
-      __root.tsx
-      index.tsx
+      __root.tsx                  ← App root: ThemeProvider + GoogleOAuthProvider
+      _layoutmain.tsx             ← Authenticated layout shell (auth guard)
+      _layoutmain.home.tsx        ← /home
+      _layoutmain.dashboard.tsx   ← /dashboard
+      _layoutmain.mapa.tsx        ← /mapa
+      _layoutmain.ecopontos.tsx   ← /ecopontos
+      _layoutmain.reportes.tsx    ← /reportes
+      _layoutmain.recolhas.tsx    ← /recolhas
+      _layoutmain.partilhas.tsx   ← /partilhas
+      _layoutmain.campanhas.tsx   ← /campanhas
+      _layoutmain.noticias.tsx    ← /noticias
+      _layoutmain.quiz.tsx        ← /quiz
+      _layoutmain.rotas.tsx       ← /rotas
+      _layoutmain.zonas.tsx       ← /zonas
+      _layoutmain.utilizadores.tsx← /utilizadores
+      _layoutmain.audit.tsx       ← /audit
+      _layoutmain.analytics.tsx   ← /analytics
+      _layoutmain.fila.tsx        ← /fila
+      _layoutmain.mapa-sensores.tsx← /mapa-sensores
+      _layoutmain.configuracoes.tsx← /configuracoes
+      login.tsx                   ← /login
+      register.tsx                ← /register
+      forgot-password.tsx         ← /forgot-password
+      index.tsx                   ← / (redirect to /home)
     styles/
-    test/
-    routeTree.gen.ts
-    router.tsx
-    vite-env.d.ts
+      globals.css                 ← Tailwind import, CSS tokens, dark mode, scrollbar
+    types/
+      index.ts                    ← UserRole, User, NavItem types
+    routeTree.gen.ts              ← Generated — do NOT edit manually
+    main.tsx                      ← App entry: QueryClientProvider + RouterProvider
 ```
 
-### `src/routes`
+## Authentication Model
 
-This is the most important folder.
+Authentication is session-based on the client:
 
-What it does:
+- `sessionStorage.getItem('user')` holds the current `User` object after login
+- `requireAuth()` in `src/lib/auth.ts` redirects unauthenticated users to `/login`
+- `requireRole(allowed)` redirects users whose role is not in the allowed list to `/home`
+- The `_layoutmain` route runs `requireAuth` in `beforeLoad` — all protected routes inherit this guard automatically
 
-- defines the application routes
-- defines route layouts
-- defines route pages
-- is the source input for TanStack Router generation
+**Important:** this is a scaffold-level auth mechanism. Replace with a proper JWT refresh flow connected to the NestJS API when building the real auth feature.
 
-Why it exists:
+## Infrastructure Layer (`src/lib`)
 
-- keeps route ownership obvious
-- makes URLs map directly to files
-- reduces hidden router setup
+### `src/lib/env.ts`
 
-Current route shape:
+Centralized env var parsing. Never read `import.meta.env` directly in route or component files.
 
-- `/` from [apps/web/src/routes/index.tsx](../apps/web/src/routes/index.tsx)
-- `/app` from [apps/web/src/routes/app/index.tsx](../apps/web/src/routes/app/index.tsx)
-- `/app/dashboard` from [apps/web/src/routes/app/dashboard.tsx](../apps/web/src/routes/app/dashboard.tsx)
-- `/admin` from [apps/web/src/routes/admin/index.tsx](../apps/web/src/routes/admin/index.tsx)
-- `/admin/dashboard` from [apps/web/src/routes/admin/dashboard.tsx](../apps/web/src/routes/admin/dashboard.tsx)
+```ts
+import { clientEnv } from '@/lib/env'
 
-### `src/routes/__root.tsx`
+const url = `${clientEnv.apiBaseUrl}/v1/reports`
+```
 
-This is the app root route.
+Available vars:
 
-What it does:
+- `VITE_API_BASE_URL` — defaults to `/api`
+- `VITE_ANALYTICS_BASE_URL` — defaults to `/analytics`
+- `VITE_APP_NAME` — defaults to `ecoBairro`
+- `VITE_GOOGLE_CLIENT_ID` — optional, disables Google OAuth when absent
 
-- defines the HTML document wrapper
-- injects the main stylesheet
-- provides app-wide metadata
-- mounts the shared `RootFrame`
-- mounts the TanStack Query provider
-- mounts Router and Query devtools in development
-- provides shared error and not-found handling
+### `src/lib/http/fetch-json.ts`
 
-Why it exists:
+Typed `fetch` wrapper. Use for all API calls.
 
-- every route should inherit one consistent app shell
-- global providers belong in one place
-- the team should not repeat layout chrome or providers inside feature routes
+```ts
+import { fetchJson, HttpError } from '@/lib/http/fetch-json'
+import { clientEnv } from '@/lib/env'
 
-### `src/router.tsx`
+try {
+  const data = await fetchJson<MyResponse>('/v1/ecopontos', {
+    baseUrl: clientEnv.apiBaseUrl,
+    params: { zona: '123' },
+  })
+} catch (err) {
+  if (err instanceof HttpError) {
+    console.error(err.status, err.body)
+  }
+}
+```
 
-This is the router factory.
+### `src/lib/query/client.ts`
 
-What it does:
+Creates the app-wide `QueryClient`. Already wired in `main.tsx` via `QueryClientProvider`. Use TanStack Query hooks anywhere:
 
-- imports the generated route tree
-- creates the app Query client
-- creates the TanStack Router instance
-- registers default pending, error, and not-found UI
-- exports the router type registration for TanStack
+```ts
+import { useQuery } from '@tanstack/react-query'
+import { fetchJson } from '@/lib/http/fetch-json'
+import { clientEnv } from '@/lib/env'
 
-Why it exists:
+const { data, isPending, isError } = useQuery({
+  queryKey: ['ecopontos'],
+  queryFn: () => fetchJson('/v1/ecopontos', { baseUrl: clientEnv.apiBaseUrl }),
+})
+```
 
-- keeps router creation centralized
-- gives the app one shared router configuration
-- ensures route generation and runtime router config stay connected
+### `src/lib/utils.ts`
 
-### `src/routeTree.gen.ts`
+`cn()` utility for class composition with clsx + tailwind-merge.
 
-This file is **generated**.
+```ts
+import { cn } from '@/lib/utils'
 
-What it does:
-
-- converts the file-based route structure into the internal TanStack route tree
-- gives TanStack Router the typed route map it needs
-
-Why it exists:
-
-- file-based routing needs a generated output file
-- this keeps route registration automatic
-
-Important:
-
-- do **not** edit this file manually
-- it will be regenerated by TanStack when routes change
-
-### `src/components/layout`
-
-This folder contains shared layout-level components.
-
-What it does:
-
-- `root-frame.tsx`: the app-wide outer shell and global chrome
-- `root-navigation.tsx`: the top navigation between scaffold areas
-- `area-shell.tsx`: shared framing for route groups like `/app` and `/admin`
-- `area-navigation.tsx`: local navigation for those route groups
-- `placeholder-page.tsx`: neutral route placeholder template
-
-Why this folder exists:
-
-- layout decisions should be shared
-- feature teams should not rebuild top-level shells page by page
-- keeping layout separate from UI primitives makes ownership clearer
-
-### `src/components/ui`
-
-This folder contains small shared UI primitives and boundary components.
-
-What it does:
-
-- `surface-card.tsx`: a reusable content surface
-- `default-catch-boundary.tsx`: shared error UI
-- `not-found.tsx`: shared not-found UI
-- `route-pending.tsx`: shared loading placeholder
-
-Why this folder exists:
-
-- these pieces are generic enough to reuse across routes
-- they are not tied to one route group
-- they are intentionally minimal so we do not impose a full design system too early
-
-### `src/lib`
-
-This folder contains shared application infrastructure.
-
-It is for code that is not presentation and not route definitions.
-
-#### `src/lib/env.ts`
-
-What it does:
-
-- reads frontend env vars
-- provides defaults
-- throws if values are blank or invalid
-
-Current variables:
-
-- `VITE_APP_NAME`
-- `VITE_API_BASE_URL`
-- `VITE_ANALYTICS_BASE_URL`
-
-Why it exists:
-
-- reading env vars directly all over the app creates duplication and inconsistency
-- centralizing env parsing makes future changes safer
-
-#### `src/lib/http/fetch-json.ts`
-
-What it does:
-
-- wraps `fetch`
-- builds URLs with query parameters
-- parses JSON or text responses
-- throws a typed `HttpError` for failed responses
-
-Why it exists:
-
-- feature teams need one sane default request helper
-- it avoids repeating low-level fetch and error boilerplate
-- it is generic enough to replace later if the team adopts a more specific API client
-
-#### `src/lib/query/client.ts`
-
-What it does:
-
-- creates the app-wide TanStack Query client
-- sets default query behavior
-
-Why it exists:
-
-- the app should have one shared Query client
-- default query behavior belongs in one place
-
-#### `src/lib/utils/cn.ts`
-
-What it does:
-
-- joins CSS class strings conditionally
-
-Why it exists:
-
-- keeps component class composition readable
-- gives the team a simple utility without adding a larger dependency
-
-### `src/styles`
-
-This folder contains global styling.
-
-What it does:
-
-- `tokens.css` defines CSS custom properties like colors and text tones
-- `app.css` imports Tailwind and defines global shared classes like `surface-panel`, `tag`, and `action-link`
-
-Why it exists:
-
-- tokens should live outside components
-- global app styling should be separated from route logic
-- Tailwind utilities are useful, but a few shared semantic classes reduce repetition
-
-### `src/test`
-
-This folder contains shared frontend test setup and app-level tests.
-
-What it does:
-
-- `setup.ts` loads Testing Library matchers
-- route and layout tests verify the scaffold still renders and behaves as expected
-
-Why it exists:
-
-- the scaffold itself is now a product of the repo and should be protected from accidental breakage
-- we want baseline tests even before feature work starts
+<div className={cn('base-class', condition && 'conditional-class')} />
+```
 
 ## How The App Boots
 
-The startup flow is:
+1. Vite starts the app from `apps/web/vite.config.ts`.
+2. `TanStackRouterVite` plugin scans `src/routes` and generates `src/routeTree.gen.ts`.
+3. `main.tsx` creates a `QueryClient` and wraps the app in `QueryClientProvider` + `RouterProvider`.
+4. `__root.tsx` provides `ThemeProvider` (next-themes) and optional `GoogleOAuthProvider`.
+5. `_layoutmain.tsx` runs `requireAuth()` — unauthenticated users are redirected to `/login`.
+6. Authenticated route files render inside `<Outlet />` within the vertical layout.
 
-1. Vite starts the app using TanStack Start from [apps/web/vite.config.ts](../apps/web/vite.config.ts).
-2. TanStack Start scans `src/routes`.
-3. TanStack generates `src/routeTree.gen.ts`.
-4. [apps/web/src/router.tsx](../apps/web/src/router.tsx) creates the router using that generated route tree.
-5. [apps/web/src/routes/__root.tsx](../apps/web/src/routes/__root.tsx) provides the document shell, Query provider, global layout, and shared boundaries.
-6. Nested route files render inside `<Outlet />`.
+## Route Pattern
 
-## Why The Route Groups Look The Way They Do
+```tsx
+// src/routes/_layoutmain.feature-name.tsx
+import { createFileRoute } from '@tanstack/react-router'
 
-We split the app into:
+export const Route = createFileRoute('/_layoutmain/feature-name')({
+  component: FeatureNamePage,
+})
 
-- `src/routes/app`
-- `src/routes/admin`
+function FeatureNamePage() {
+  return <div>Feature content</div>
+}
+```
 
-Why:
+- Auth pages (`login`, `register`, `forgot-password`): directly in `src/routes/` without layout prefix.
+- Dashboard pages: use the `_layoutmain.<name>.tsx` convention.
+- Do **not** edit `routeTree.gen.ts` manually — it is regenerated by TanStack on every route change.
 
-- it creates a clear separation between the two broad product areas already known in the project
-- teammates can immediately see where new pages belong
-- shared area-specific layout can live once in `route.tsx`
+## UI Components (`src/components/ui`)
 
-This is why [apps/web/src/routes/app/route.tsx](../apps/web/src/routes/app/route.tsx) and [apps/web/src/routes/admin/route.tsx](../apps/web/src/routes/admin/route.tsx) exist even though they currently render placeholders.
+Based on **shadcn/ui** (Radix UI primitives + Tailwind). Current components:
 
-They are route-group layout boundaries, not feature pages.
+`avatar`, `badge`, `button`, `card`, `dropdown-menu`, `input`, `label`, `progress`, `sheet`
 
-## Why We Committed The Generated Route Tree
+All components use the `cn()` utility and CSS token variables. Add new components following the existing pattern.
 
-We committed `src/routeTree.gen.ts` on purpose.
+## How To Extend Safely
 
-Why:
+### Add a new dashboard route
 
-- the app needs it for type-safe routing
-- teammates should not have to guess whether a missing generated file is expected
-- keeping it committed avoids “works on my machine” issues when someone checks out the repo fresh
+1. Create `src/routes/_layoutmain.<route-name>.tsx`
+2. Use `createFileRoute('/_layoutmain/<route-name>')({...})`
+3. Let TanStack regenerate `routeTree.gen.ts`
+4. Commit both files
 
-The rule is simple:
+### Add shared layout components
 
-- route files are authored by humans
-- `routeTree.gen.ts` is authored by the generator
+Place in `src/components/layout/` (shared framing, navigation, shells).
 
-## Why These Dependencies Exist
+### Add small reusable UI primitives
 
-Main runtime dependencies in [apps/web/package.json](../apps/web/package.json):
+Place in `src/components/ui/` (generic, presentational, not domain-coupled).
 
-- `@tanstack/react-start`: frontend app runtime
-- `@tanstack/react-router`: routing
-- `@tanstack/react-query`: shared async state and data caching
-- `react` and `react-dom`: React runtime
+### Add app-wide infrastructure
 
-Main dev dependencies:
+Place in `src/lib/` (shared non-UI logic: HTTP, query, auth, env).
 
-- `vite`: dev/build tool
-- `@vitejs/plugin-react`: React support for Vite
-- `@tanstack/router-plugin`: route generation support
-- `tailwindcss` and `@tailwindcss/vite`: styling
-- `vitest`, `@testing-library/react`, `@testing-library/jest-dom`, `jsdom`: test baseline
-- router/query devtools: useful during development, excluded from production behavior
+### Add feature-specific code
 
-## Why The Versions Were Pinned
-
-The TanStack Start stack was pinned to exact versions instead of loose ranges.
-
-Why:
-
-- TanStack Start is still moving quickly
-- router, start, and plugin packages need to stay in sync
-- exact versions reduce surprise breakage during the early scaffolding phase
+Keep route-specific logic local to the route file first. Extract to a feature folder only when repeated domain logic genuinely appears.
 
 ## What Is Intentionally Missing
 
 This scaffold does **not** define:
 
-- authentication flows
-- protected route logic
-- feature-specific API hooks
-- feature folders by domain
-- a full design system
-- real product pages
+- real API calls (all data is from `src/mocks/` — replace with `fetchJson` + `useQuery`)
+- JWT refresh flow (scaffold uses `sessionStorage` — implement proper auth with the NestJS API)
+- feature-specific API hooks (those belong to feature work)
+- a full design system specification (patterns emerge from the existing component set)
 
-Why:
-
-- those decisions belong to the feature teams and future implementation work
-- the scaffold should enable product work, not pre-empt it
-
-## How To Extend It Safely
-
-### Add a new route
-
-1. Add a file under `src/routes`.
-2. Use `createFileRoute(...)`.
-3. Let TanStack regenerate `src/routeTree.gen.ts`.
-
-Good examples:
-
-- add `src/routes/app/profile.tsx` for `/app/profile`
-- add `src/routes/admin/users.tsx` for `/admin/users`
-
-### Add shared layout
-
-If the code affects route framing or shared navigation, place it in:
-
-- `src/components/layout`
-
-### Add small reusable UI
-
-If the code is generic and presentational, place it in:
-
-- `src/components/ui`
-
-### Add app-wide infrastructure
-
-If the code is shared logic and not UI, place it in:
-
-- `src/lib`
-
-### Add feature-specific code later
-
-When feature work begins, route files can either:
-
-- keep route-specific logic local to the route
-- or introduce feature folders once repeated domain logic actually exists
-
-We intentionally did not create speculative `features/*` folders yet, because that would pretend we know future feature boundaries before the team has built them.
-
-## Commands The Team Should Know
+## Commands
 
 From the repo root:
 
@@ -474,38 +286,14 @@ From the repo root:
 pnpm --filter @ecobairro/web dev
 pnpm --filter @ecobairro/web lint
 pnpm --filter @ecobairro/web typecheck
-pnpm --filter @ecobairro/web test
 pnpm --filter @ecobairro/web build
 ```
 
 ## Mental Model
 
-If you only remember one thing, remember this:
-
-- `routes` define where the app goes
-- `layout` defines shared page structure
-- `ui` defines small reusable presentation pieces
-- `lib` defines shared non-UI infrastructure
-- `routeTree.gen.ts` is generated glue
-
-That separation is the main architectural choice behind this scaffold.
-
-## Current Validation
-
-The scaffold was validated with:
-
-- `pnpm --filter @ecobairro/web lint`
-- `pnpm --filter @ecobairro/web typecheck`
-- `pnpm --filter @ecobairro/web test`
-- `pnpm --filter @ecobairro/web build`
-
-## Future Evolution
-
-This scaffold can evolve in a few directions later:
-
-- add auth and protected route boundaries
-- add real domain query hooks or a typed API client
-- add SSR if the product truly benefits from it
-- add a fuller design system once repeated UI patterns emerge
-
-Those are intentionally deferred until they are justified by real feature work.
+- `routes/` — where the app goes and who can go there
+- `@layouts/` + `components/layout/` — shared page framing and navigation
+- `components/ui/` — small reusable presentational primitives
+- `lib/` — shared non-UI infrastructure (env, http, query, auth)
+- `styles/` — global CSS tokens and Tailwind config
+- `routeTree.gen.ts` — generated glue, never edit manually

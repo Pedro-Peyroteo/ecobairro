@@ -1,21 +1,43 @@
-import { createFileRoute, Outlet } from '@tanstack/react-router'
+import { createFileRoute, Outlet, useRouter } from '@tanstack/react-router'
 import { useState } from 'react'
 import VerticalLayout from '@/@layouts/VerticalLayout'
 import Navigation from '@/components/layout/vertical/Navigation'
 import Navbar from '@/components/layout/vertical/Navbar'
 import Footer from '@/components/layout/vertical/Footer'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import { requireAuth } from '@/lib/auth'
+import { AlertTriangle } from 'lucide-react'
 import type { User } from '@/types'
 
+function DashboardError({ error }: { error: Error }) {
+  const router = useRouter()
+  return (
+    <div className="flex flex-col items-center justify-center h-full min-h-[60vh] gap-4 text-center px-4">
+      <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center text-destructive">
+        <AlertTriangle className="w-7 h-7" strokeWidth={1.5} />
+      </div>
+      <div className="space-y-1">
+        <h2 className="text-lg font-semibold text-[var(--foreground)]">Algo correu mal</h2>
+        <p className="text-sm text-[var(--muted-foreground)] max-w-sm">{error.message}</p>
+      </div>
+      <button
+        onClick={() => router.invalidate()}
+        className="px-5 py-2 rounded-[var(--radius-md)] bg-[var(--primary)] text-white text-sm font-medium hover:opacity-90 transition-opacity"
+      >
+        Tentar novamente
+      </button>
+    </div>
+  )
+}
+
 export const Route = createFileRoute('/_layoutmain')({
+  beforeLoad: requireAuth,
+  errorComponent: DashboardError,
   component: DashboardRoute,
 })
 
 function DashboardRoute() {
-  const stored = sessionStorage.getItem('user')
-  const user: User = stored
-    ? JSON.parse(stored)
-    : { id: 'guest', name: 'Visitante', email: '', role: 'guest' }
+  const { user } = Route.useRouteContext() as { user: User }
 
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
