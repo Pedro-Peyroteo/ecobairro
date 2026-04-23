@@ -1,49 +1,30 @@
-const envDefaults = {
-  VITE_APP_NAME: "EcoBairro",
-  VITE_API_BASE_URL: "/api",
-  VITE_ANALYTICS_BASE_URL: "/analytics",
-} as const;
+/**
+ * Centralized frontend environment variable access.
+ * All VITE_* vars must be read through this module — never via import.meta.env directly.
+ */
 
-export type ClientEnv = {
-  appName: string;
-  apiBaseUrl: string;
-  analyticsBaseUrl: string;
-};
-
-function readString(
-  env: ImportMetaEnv,
-  key: keyof typeof envDefaults,
-  fallback: string,
-) {
-  const rawValue = env[key] ?? fallback;
-
-  if (typeof rawValue !== "string") {
-    throw new Error(`Expected ${key} to be a string.`);
+function requireEnv(key: string, fallback?: string): string {
+  const value = (import.meta.env[key] as string | undefined) ?? fallback
+  if (!value) {
+    throw new Error(`[env] Missing required environment variable: ${key}`)
   }
-
-  const trimmedValue = rawValue.trim();
-
-  if (!trimmedValue) {
-    throw new Error(`Expected ${key} to be defined.`);
-  }
-
-  return trimmedValue;
+  return value
 }
 
-export function readClientEnv(env: ImportMetaEnv = import.meta.env): ClientEnv {
-  return {
-    appName: readString(env, "VITE_APP_NAME", envDefaults.VITE_APP_NAME),
-    apiBaseUrl: readString(
-      env,
-      "VITE_API_BASE_URL",
-      envDefaults.VITE_API_BASE_URL,
-    ),
-    analyticsBaseUrl: readString(
-      env,
-      "VITE_ANALYTICS_BASE_URL",
-      envDefaults.VITE_ANALYTICS_BASE_URL,
-    ),
-  };
+function optionalEnv(key: string): string | undefined {
+  return import.meta.env[key] as string | undefined
 }
 
-export const clientEnv = readClientEnv();
+export const clientEnv = {
+  /** Base URL for the NestJS API — defaults to /api (via Nginx proxy) */
+  apiBaseUrl: requireEnv('VITE_API_BASE_URL', '/api'),
+
+  /** Base URL for the FastAPI analytics service — defaults to /analytics */
+  analyticsBaseUrl: requireEnv('VITE_ANALYTICS_BASE_URL', '/analytics'),
+
+  /** Google OAuth client ID — optional, disables Google login when absent */
+  googleClientId: optionalEnv('VITE_GOOGLE_CLIENT_ID'),
+
+  /** Application display name */
+  appName: requireEnv('VITE_APP_NAME', 'ecoBairro'),
+} as const

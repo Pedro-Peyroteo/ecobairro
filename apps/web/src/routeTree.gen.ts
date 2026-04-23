@@ -9,22 +9,52 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as AppRouteRouteImport } from './routes/app/route'
-import { Route as AdminRouteRouteImport } from './routes/admin/route'
+import { Route as RegisterRouteImport } from './routes/register'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
+import { Route as LayoutpublicRouteImport } from './routes/_layoutpublic'
+import { Route as LayoutmainRouteImport } from './routes/_layoutmain'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AppIndexRouteImport } from './routes/app/index'
-import { Route as AdminIndexRouteImport } from './routes/admin/index'
-import { Route as AppDashboardRouteImport } from './routes/app/dashboard'
-import { Route as AdminDashboardRouteImport } from './routes/admin/dashboard'
+import { Route as LayoutpublicHomeRouteImport } from './routes/_layoutpublic.home'
+import { Route as LayoutmainZonasRouteImport } from './routes/_layoutmain.zonas'
+import { Route as LayoutmainUtilizadoresRouteImport } from './routes/_layoutmain.utilizadores'
+import { Route as LayoutmainRotasRouteImport } from './routes/_layoutmain.rotas'
+import { Route as LayoutmainReportesRouteImport } from './routes/_layoutmain.reportes'
+import { Route as LayoutmainRecolhasRouteImport } from './routes/_layoutmain.recolhas'
+import { Route as LayoutmainQuizRouteImport } from './routes/_layoutmain.quiz'
+import { Route as LayoutmainPartilhasRouteImport } from './routes/_layoutmain.partilhas'
+import { Route as LayoutmainNoticiasRouteImport } from './routes/_layoutmain.noticias'
+import { Route as LayoutmainMapaSensoresRouteImport } from './routes/_layoutmain.mapa-sensores'
+import { Route as LayoutmainMapaRouteImport } from './routes/_layoutmain.mapa'
+import { Route as LayoutmainFilaRouteImport } from './routes/_layoutmain.fila'
+import { Route as LayoutmainEcopontosRouteImport } from './routes/_layoutmain.ecopontos'
+import { Route as LayoutmainDashboardRouteImport } from './routes/_layoutmain.dashboard'
+import { Route as LayoutmainConfiguracoesRouteImport } from './routes/_layoutmain.configuracoes'
+import { Route as LayoutmainCampanhasRouteImport } from './routes/_layoutmain.campanhas'
+import { Route as LayoutmainAuditRouteImport } from './routes/_layoutmain.audit'
+import { Route as LayoutmainAnalyticsRouteImport } from './routes/_layoutmain.analytics'
 
-const AppRouteRoute = AppRouteRouteImport.update({
-  id: '/app',
-  path: '/app',
+const RegisterRoute = RegisterRouteImport.update({
+  id: '/register',
+  path: '/register',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminRouteRoute = AdminRouteRouteImport.update({
-  id: '/admin',
-  path: '/admin',
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LayoutpublicRoute = LayoutpublicRouteImport.update({
+  id: '/_layoutpublic',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LayoutmainRoute = LayoutmainRouteImport.update({
+  id: '/_layoutmain',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -32,96 +62,293 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AppIndexRoute = AppIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AppRouteRoute,
+const LayoutpublicHomeRoute = LayoutpublicHomeRouteImport.update({
+  id: '/home',
+  path: '/home',
+  getParentRoute: () => LayoutpublicRoute,
 } as any)
-const AdminIndexRoute = AdminIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AdminRouteRoute,
+const LayoutmainZonasRoute = LayoutmainZonasRouteImport.update({
+  id: '/zonas',
+  path: '/zonas',
+  getParentRoute: () => LayoutmainRoute,
 } as any)
-const AppDashboardRoute = AppDashboardRouteImport.update({
+const LayoutmainUtilizadoresRoute = LayoutmainUtilizadoresRouteImport.update({
+  id: '/utilizadores',
+  path: '/utilizadores',
+  getParentRoute: () => LayoutmainRoute,
+} as any)
+const LayoutmainRotasRoute = LayoutmainRotasRouteImport.update({
+  id: '/rotas',
+  path: '/rotas',
+  getParentRoute: () => LayoutmainRoute,
+} as any)
+const LayoutmainReportesRoute = LayoutmainReportesRouteImport.update({
+  id: '/reportes',
+  path: '/reportes',
+  getParentRoute: () => LayoutmainRoute,
+} as any)
+const LayoutmainRecolhasRoute = LayoutmainRecolhasRouteImport.update({
+  id: '/recolhas',
+  path: '/recolhas',
+  getParentRoute: () => LayoutmainRoute,
+} as any)
+const LayoutmainQuizRoute = LayoutmainQuizRouteImport.update({
+  id: '/quiz',
+  path: '/quiz',
+  getParentRoute: () => LayoutmainRoute,
+} as any)
+const LayoutmainPartilhasRoute = LayoutmainPartilhasRouteImport.update({
+  id: '/partilhas',
+  path: '/partilhas',
+  getParentRoute: () => LayoutmainRoute,
+} as any)
+const LayoutmainNoticiasRoute = LayoutmainNoticiasRouteImport.update({
+  id: '/noticias',
+  path: '/noticias',
+  getParentRoute: () => LayoutmainRoute,
+} as any)
+const LayoutmainMapaSensoresRoute = LayoutmainMapaSensoresRouteImport.update({
+  id: '/mapa-sensores',
+  path: '/mapa-sensores',
+  getParentRoute: () => LayoutmainRoute,
+} as any)
+const LayoutmainMapaRoute = LayoutmainMapaRouteImport.update({
+  id: '/mapa',
+  path: '/mapa',
+  getParentRoute: () => LayoutmainRoute,
+} as any)
+const LayoutmainFilaRoute = LayoutmainFilaRouteImport.update({
+  id: '/fila',
+  path: '/fila',
+  getParentRoute: () => LayoutmainRoute,
+} as any)
+const LayoutmainEcopontosRoute = LayoutmainEcopontosRouteImport.update({
+  id: '/ecopontos',
+  path: '/ecopontos',
+  getParentRoute: () => LayoutmainRoute,
+} as any)
+const LayoutmainDashboardRoute = LayoutmainDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
-  getParentRoute: () => AppRouteRoute,
+  getParentRoute: () => LayoutmainRoute,
 } as any)
-const AdminDashboardRoute = AdminDashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => AdminRouteRoute,
+const LayoutmainConfiguracoesRoute = LayoutmainConfiguracoesRouteImport.update({
+  id: '/configuracoes',
+  path: '/configuracoes',
+  getParentRoute: () => LayoutmainRoute,
+} as any)
+const LayoutmainCampanhasRoute = LayoutmainCampanhasRouteImport.update({
+  id: '/campanhas',
+  path: '/campanhas',
+  getParentRoute: () => LayoutmainRoute,
+} as any)
+const LayoutmainAuditRoute = LayoutmainAuditRouteImport.update({
+  id: '/audit',
+  path: '/audit',
+  getParentRoute: () => LayoutmainRoute,
+} as any)
+const LayoutmainAnalyticsRoute = LayoutmainAnalyticsRouteImport.update({
+  id: '/analytics',
+  path: '/analytics',
+  getParentRoute: () => LayoutmainRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRouteRouteWithChildren
-  '/app': typeof AppRouteRouteWithChildren
-  '/admin/dashboard': typeof AdminDashboardRoute
-  '/app/dashboard': typeof AppDashboardRoute
-  '/admin/': typeof AdminIndexRoute
-  '/app/': typeof AppIndexRoute
+  '/forgot-password': typeof ForgotPasswordRoute
+  '/login': typeof LoginRoute
+  '/register': typeof RegisterRoute
+  '/analytics': typeof LayoutmainAnalyticsRoute
+  '/audit': typeof LayoutmainAuditRoute
+  '/campanhas': typeof LayoutmainCampanhasRoute
+  '/configuracoes': typeof LayoutmainConfiguracoesRoute
+  '/dashboard': typeof LayoutmainDashboardRoute
+  '/ecopontos': typeof LayoutmainEcopontosRoute
+  '/fila': typeof LayoutmainFilaRoute
+  '/mapa': typeof LayoutmainMapaRoute
+  '/mapa-sensores': typeof LayoutmainMapaSensoresRoute
+  '/noticias': typeof LayoutmainNoticiasRoute
+  '/partilhas': typeof LayoutmainPartilhasRoute
+  '/quiz': typeof LayoutmainQuizRoute
+  '/recolhas': typeof LayoutmainRecolhasRoute
+  '/reportes': typeof LayoutmainReportesRoute
+  '/rotas': typeof LayoutmainRotasRoute
+  '/utilizadores': typeof LayoutmainUtilizadoresRoute
+  '/zonas': typeof LayoutmainZonasRoute
+  '/home': typeof LayoutpublicHomeRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/admin/dashboard': typeof AdminDashboardRoute
-  '/app/dashboard': typeof AppDashboardRoute
-  '/admin': typeof AdminIndexRoute
-  '/app': typeof AppIndexRoute
+  '/forgot-password': typeof ForgotPasswordRoute
+  '/login': typeof LoginRoute
+  '/register': typeof RegisterRoute
+  '/analytics': typeof LayoutmainAnalyticsRoute
+  '/audit': typeof LayoutmainAuditRoute
+  '/campanhas': typeof LayoutmainCampanhasRoute
+  '/configuracoes': typeof LayoutmainConfiguracoesRoute
+  '/dashboard': typeof LayoutmainDashboardRoute
+  '/ecopontos': typeof LayoutmainEcopontosRoute
+  '/fila': typeof LayoutmainFilaRoute
+  '/mapa': typeof LayoutmainMapaRoute
+  '/mapa-sensores': typeof LayoutmainMapaSensoresRoute
+  '/noticias': typeof LayoutmainNoticiasRoute
+  '/partilhas': typeof LayoutmainPartilhasRoute
+  '/quiz': typeof LayoutmainQuizRoute
+  '/recolhas': typeof LayoutmainRecolhasRoute
+  '/reportes': typeof LayoutmainReportesRoute
+  '/rotas': typeof LayoutmainRotasRoute
+  '/utilizadores': typeof LayoutmainUtilizadoresRoute
+  '/zonas': typeof LayoutmainZonasRoute
+  '/home': typeof LayoutpublicHomeRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/admin': typeof AdminRouteRouteWithChildren
-  '/app': typeof AppRouteRouteWithChildren
-  '/admin/dashboard': typeof AdminDashboardRoute
-  '/app/dashboard': typeof AppDashboardRoute
-  '/admin/': typeof AdminIndexRoute
-  '/app/': typeof AppIndexRoute
+  '/_layoutmain': typeof LayoutmainRouteWithChildren
+  '/_layoutpublic': typeof LayoutpublicRouteWithChildren
+  '/forgot-password': typeof ForgotPasswordRoute
+  '/login': typeof LoginRoute
+  '/register': typeof RegisterRoute
+  '/_layoutmain/analytics': typeof LayoutmainAnalyticsRoute
+  '/_layoutmain/audit': typeof LayoutmainAuditRoute
+  '/_layoutmain/campanhas': typeof LayoutmainCampanhasRoute
+  '/_layoutmain/configuracoes': typeof LayoutmainConfiguracoesRoute
+  '/_layoutmain/dashboard': typeof LayoutmainDashboardRoute
+  '/_layoutmain/ecopontos': typeof LayoutmainEcopontosRoute
+  '/_layoutmain/fila': typeof LayoutmainFilaRoute
+  '/_layoutmain/mapa': typeof LayoutmainMapaRoute
+  '/_layoutmain/mapa-sensores': typeof LayoutmainMapaSensoresRoute
+  '/_layoutmain/noticias': typeof LayoutmainNoticiasRoute
+  '/_layoutmain/partilhas': typeof LayoutmainPartilhasRoute
+  '/_layoutmain/quiz': typeof LayoutmainQuizRoute
+  '/_layoutmain/recolhas': typeof LayoutmainRecolhasRoute
+  '/_layoutmain/reportes': typeof LayoutmainReportesRoute
+  '/_layoutmain/rotas': typeof LayoutmainRotasRoute
+  '/_layoutmain/utilizadores': typeof LayoutmainUtilizadoresRoute
+  '/_layoutmain/zonas': typeof LayoutmainZonasRoute
+  '/_layoutpublic/home': typeof LayoutpublicHomeRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/admin'
-    | '/app'
-    | '/admin/dashboard'
-    | '/app/dashboard'
-    | '/admin/'
-    | '/app/'
+    | '/forgot-password'
+    | '/login'
+    | '/register'
+    | '/analytics'
+    | '/audit'
+    | '/campanhas'
+    | '/configuracoes'
+    | '/dashboard'
+    | '/ecopontos'
+    | '/fila'
+    | '/mapa'
+    | '/mapa-sensores'
+    | '/noticias'
+    | '/partilhas'
+    | '/quiz'
+    | '/recolhas'
+    | '/reportes'
+    | '/rotas'
+    | '/utilizadores'
+    | '/zonas'
+    | '/home'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin/dashboard' | '/app/dashboard' | '/admin' | '/app'
+  to:
+    | '/'
+    | '/forgot-password'
+    | '/login'
+    | '/register'
+    | '/analytics'
+    | '/audit'
+    | '/campanhas'
+    | '/configuracoes'
+    | '/dashboard'
+    | '/ecopontos'
+    | '/fila'
+    | '/mapa'
+    | '/mapa-sensores'
+    | '/noticias'
+    | '/partilhas'
+    | '/quiz'
+    | '/recolhas'
+    | '/reportes'
+    | '/rotas'
+    | '/utilizadores'
+    | '/zonas'
+    | '/home'
   id:
     | '__root__'
     | '/'
-    | '/admin'
-    | '/app'
-    | '/admin/dashboard'
-    | '/app/dashboard'
-    | '/admin/'
-    | '/app/'
+    | '/_layoutmain'
+    | '/_layoutpublic'
+    | '/forgot-password'
+    | '/login'
+    | '/register'
+    | '/_layoutmain/analytics'
+    | '/_layoutmain/audit'
+    | '/_layoutmain/campanhas'
+    | '/_layoutmain/configuracoes'
+    | '/_layoutmain/dashboard'
+    | '/_layoutmain/ecopontos'
+    | '/_layoutmain/fila'
+    | '/_layoutmain/mapa'
+    | '/_layoutmain/mapa-sensores'
+    | '/_layoutmain/noticias'
+    | '/_layoutmain/partilhas'
+    | '/_layoutmain/quiz'
+    | '/_layoutmain/recolhas'
+    | '/_layoutmain/reportes'
+    | '/_layoutmain/rotas'
+    | '/_layoutmain/utilizadores'
+    | '/_layoutmain/zonas'
+    | '/_layoutpublic/home'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AdminRouteRoute: typeof AdminRouteRouteWithChildren
-  AppRouteRoute: typeof AppRouteRouteWithChildren
+  LayoutmainRoute: typeof LayoutmainRouteWithChildren
+  LayoutpublicRoute: typeof LayoutpublicRouteWithChildren
+  ForgotPasswordRoute: typeof ForgotPasswordRoute
+  LoginRoute: typeof LoginRoute
+  RegisterRoute: typeof RegisterRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/app': {
-      id: '/app'
-      path: '/app'
-      fullPath: '/app'
-      preLoaderRoute: typeof AppRouteRouteImport
+    '/register': {
+      id: '/register'
+      path: '/register'
+      fullPath: '/register'
+      preLoaderRoute: typeof RegisterRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin': {
-      id: '/admin'
-      path: '/admin'
-      fullPath: '/admin'
-      preLoaderRoute: typeof AdminRouteRouteImport
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_layoutpublic': {
+      id: '/_layoutpublic'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof LayoutpublicRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_layoutmain': {
+      id: '/_layoutmain'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof LayoutmainRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -131,79 +358,199 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/app/': {
-      id: '/app/'
-      path: '/'
-      fullPath: '/app/'
-      preLoaderRoute: typeof AppIndexRouteImport
-      parentRoute: typeof AppRouteRoute
+    '/_layoutpublic/home': {
+      id: '/_layoutpublic/home'
+      path: '/home'
+      fullPath: '/home'
+      preLoaderRoute: typeof LayoutpublicHomeRouteImport
+      parentRoute: typeof LayoutpublicRoute
     }
-    '/admin/': {
-      id: '/admin/'
-      path: '/'
-      fullPath: '/admin/'
-      preLoaderRoute: typeof AdminIndexRouteImport
-      parentRoute: typeof AdminRouteRoute
+    '/_layoutmain/zonas': {
+      id: '/_layoutmain/zonas'
+      path: '/zonas'
+      fullPath: '/zonas'
+      preLoaderRoute: typeof LayoutmainZonasRouteImport
+      parentRoute: typeof LayoutmainRoute
     }
-    '/app/dashboard': {
-      id: '/app/dashboard'
+    '/_layoutmain/utilizadores': {
+      id: '/_layoutmain/utilizadores'
+      path: '/utilizadores'
+      fullPath: '/utilizadores'
+      preLoaderRoute: typeof LayoutmainUtilizadoresRouteImport
+      parentRoute: typeof LayoutmainRoute
+    }
+    '/_layoutmain/rotas': {
+      id: '/_layoutmain/rotas'
+      path: '/rotas'
+      fullPath: '/rotas'
+      preLoaderRoute: typeof LayoutmainRotasRouteImport
+      parentRoute: typeof LayoutmainRoute
+    }
+    '/_layoutmain/reportes': {
+      id: '/_layoutmain/reportes'
+      path: '/reportes'
+      fullPath: '/reportes'
+      preLoaderRoute: typeof LayoutmainReportesRouteImport
+      parentRoute: typeof LayoutmainRoute
+    }
+    '/_layoutmain/recolhas': {
+      id: '/_layoutmain/recolhas'
+      path: '/recolhas'
+      fullPath: '/recolhas'
+      preLoaderRoute: typeof LayoutmainRecolhasRouteImport
+      parentRoute: typeof LayoutmainRoute
+    }
+    '/_layoutmain/quiz': {
+      id: '/_layoutmain/quiz'
+      path: '/quiz'
+      fullPath: '/quiz'
+      preLoaderRoute: typeof LayoutmainQuizRouteImport
+      parentRoute: typeof LayoutmainRoute
+    }
+    '/_layoutmain/partilhas': {
+      id: '/_layoutmain/partilhas'
+      path: '/partilhas'
+      fullPath: '/partilhas'
+      preLoaderRoute: typeof LayoutmainPartilhasRouteImport
+      parentRoute: typeof LayoutmainRoute
+    }
+    '/_layoutmain/noticias': {
+      id: '/_layoutmain/noticias'
+      path: '/noticias'
+      fullPath: '/noticias'
+      preLoaderRoute: typeof LayoutmainNoticiasRouteImport
+      parentRoute: typeof LayoutmainRoute
+    }
+    '/_layoutmain/mapa-sensores': {
+      id: '/_layoutmain/mapa-sensores'
+      path: '/mapa-sensores'
+      fullPath: '/mapa-sensores'
+      preLoaderRoute: typeof LayoutmainMapaSensoresRouteImport
+      parentRoute: typeof LayoutmainRoute
+    }
+    '/_layoutmain/mapa': {
+      id: '/_layoutmain/mapa'
+      path: '/mapa'
+      fullPath: '/mapa'
+      preLoaderRoute: typeof LayoutmainMapaRouteImport
+      parentRoute: typeof LayoutmainRoute
+    }
+    '/_layoutmain/fila': {
+      id: '/_layoutmain/fila'
+      path: '/fila'
+      fullPath: '/fila'
+      preLoaderRoute: typeof LayoutmainFilaRouteImport
+      parentRoute: typeof LayoutmainRoute
+    }
+    '/_layoutmain/ecopontos': {
+      id: '/_layoutmain/ecopontos'
+      path: '/ecopontos'
+      fullPath: '/ecopontos'
+      preLoaderRoute: typeof LayoutmainEcopontosRouteImport
+      parentRoute: typeof LayoutmainRoute
+    }
+    '/_layoutmain/dashboard': {
+      id: '/_layoutmain/dashboard'
       path: '/dashboard'
-      fullPath: '/app/dashboard'
-      preLoaderRoute: typeof AppDashboardRouteImport
-      parentRoute: typeof AppRouteRoute
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof LayoutmainDashboardRouteImport
+      parentRoute: typeof LayoutmainRoute
     }
-    '/admin/dashboard': {
-      id: '/admin/dashboard'
-      path: '/dashboard'
-      fullPath: '/admin/dashboard'
-      preLoaderRoute: typeof AdminDashboardRouteImport
-      parentRoute: typeof AdminRouteRoute
+    '/_layoutmain/configuracoes': {
+      id: '/_layoutmain/configuracoes'
+      path: '/configuracoes'
+      fullPath: '/configuracoes'
+      preLoaderRoute: typeof LayoutmainConfiguracoesRouteImport
+      parentRoute: typeof LayoutmainRoute
+    }
+    '/_layoutmain/campanhas': {
+      id: '/_layoutmain/campanhas'
+      path: '/campanhas'
+      fullPath: '/campanhas'
+      preLoaderRoute: typeof LayoutmainCampanhasRouteImport
+      parentRoute: typeof LayoutmainRoute
+    }
+    '/_layoutmain/audit': {
+      id: '/_layoutmain/audit'
+      path: '/audit'
+      fullPath: '/audit'
+      preLoaderRoute: typeof LayoutmainAuditRouteImport
+      parentRoute: typeof LayoutmainRoute
+    }
+    '/_layoutmain/analytics': {
+      id: '/_layoutmain/analytics'
+      path: '/analytics'
+      fullPath: '/analytics'
+      preLoaderRoute: typeof LayoutmainAnalyticsRouteImport
+      parentRoute: typeof LayoutmainRoute
     }
   }
 }
 
-interface AdminRouteRouteChildren {
-  AdminDashboardRoute: typeof AdminDashboardRoute
-  AdminIndexRoute: typeof AdminIndexRoute
+interface LayoutmainRouteChildren {
+  LayoutmainAnalyticsRoute: typeof LayoutmainAnalyticsRoute
+  LayoutmainAuditRoute: typeof LayoutmainAuditRoute
+  LayoutmainCampanhasRoute: typeof LayoutmainCampanhasRoute
+  LayoutmainConfiguracoesRoute: typeof LayoutmainConfiguracoesRoute
+  LayoutmainDashboardRoute: typeof LayoutmainDashboardRoute
+  LayoutmainEcopontosRoute: typeof LayoutmainEcopontosRoute
+  LayoutmainFilaRoute: typeof LayoutmainFilaRoute
+  LayoutmainMapaRoute: typeof LayoutmainMapaRoute
+  LayoutmainMapaSensoresRoute: typeof LayoutmainMapaSensoresRoute
+  LayoutmainNoticiasRoute: typeof LayoutmainNoticiasRoute
+  LayoutmainPartilhasRoute: typeof LayoutmainPartilhasRoute
+  LayoutmainQuizRoute: typeof LayoutmainQuizRoute
+  LayoutmainRecolhasRoute: typeof LayoutmainRecolhasRoute
+  LayoutmainReportesRoute: typeof LayoutmainReportesRoute
+  LayoutmainRotasRoute: typeof LayoutmainRotasRoute
+  LayoutmainUtilizadoresRoute: typeof LayoutmainUtilizadoresRoute
+  LayoutmainZonasRoute: typeof LayoutmainZonasRoute
 }
 
-const AdminRouteRouteChildren: AdminRouteRouteChildren = {
-  AdminDashboardRoute: AdminDashboardRoute,
-  AdminIndexRoute: AdminIndexRoute,
+const LayoutmainRouteChildren: LayoutmainRouteChildren = {
+  LayoutmainAnalyticsRoute: LayoutmainAnalyticsRoute,
+  LayoutmainAuditRoute: LayoutmainAuditRoute,
+  LayoutmainCampanhasRoute: LayoutmainCampanhasRoute,
+  LayoutmainConfiguracoesRoute: LayoutmainConfiguracoesRoute,
+  LayoutmainDashboardRoute: LayoutmainDashboardRoute,
+  LayoutmainEcopontosRoute: LayoutmainEcopontosRoute,
+  LayoutmainFilaRoute: LayoutmainFilaRoute,
+  LayoutmainMapaRoute: LayoutmainMapaRoute,
+  LayoutmainMapaSensoresRoute: LayoutmainMapaSensoresRoute,
+  LayoutmainNoticiasRoute: LayoutmainNoticiasRoute,
+  LayoutmainPartilhasRoute: LayoutmainPartilhasRoute,
+  LayoutmainQuizRoute: LayoutmainQuizRoute,
+  LayoutmainRecolhasRoute: LayoutmainRecolhasRoute,
+  LayoutmainReportesRoute: LayoutmainReportesRoute,
+  LayoutmainRotasRoute: LayoutmainRotasRoute,
+  LayoutmainUtilizadoresRoute: LayoutmainUtilizadoresRoute,
+  LayoutmainZonasRoute: LayoutmainZonasRoute,
 }
 
-const AdminRouteRouteWithChildren = AdminRouteRoute._addFileChildren(
-  AdminRouteRouteChildren,
+const LayoutmainRouteWithChildren = LayoutmainRoute._addFileChildren(
+  LayoutmainRouteChildren,
 )
 
-interface AppRouteRouteChildren {
-  AppDashboardRoute: typeof AppDashboardRoute
-  AppIndexRoute: typeof AppIndexRoute
+interface LayoutpublicRouteChildren {
+  LayoutpublicHomeRoute: typeof LayoutpublicHomeRoute
 }
 
-const AppRouteRouteChildren: AppRouteRouteChildren = {
-  AppDashboardRoute: AppDashboardRoute,
-  AppIndexRoute: AppIndexRoute,
+const LayoutpublicRouteChildren: LayoutpublicRouteChildren = {
+  LayoutpublicHomeRoute: LayoutpublicHomeRoute,
 }
 
-const AppRouteRouteWithChildren = AppRouteRoute._addFileChildren(
-  AppRouteRouteChildren,
+const LayoutpublicRouteWithChildren = LayoutpublicRoute._addFileChildren(
+  LayoutpublicRouteChildren,
 )
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AdminRouteRoute: AdminRouteRouteWithChildren,
-  AppRouteRoute: AppRouteRouteWithChildren,
+  LayoutmainRoute: LayoutmainRouteWithChildren,
+  LayoutpublicRoute: LayoutpublicRouteWithChildren,
+  ForgotPasswordRoute: ForgotPasswordRoute,
+  LoginRoute: LoginRoute,
+  RegisterRoute: RegisterRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}

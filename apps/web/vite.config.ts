@@ -1,14 +1,14 @@
+import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
-import { tanstackStart } from "@tanstack/react-start/plugin/vite";
-import { defineConfig } from "vitest/config";
+import { TanStackRouterVite } from "@tanstack/router-plugin/vite";
+import path from "path";
 
 export default defineConfig({
   plugins: [
-    tanstackStart({
-      spa: {
-        enabled: true,
-      },
+    TanStackRouterVite({
+      routesDirectory: path.resolve(__dirname, "./src/routes"),
+      generatedRouteTree: path.resolve(__dirname, "./src/routeTree.gen.ts"),
     }),
     react(),
     tailwindcss(),
@@ -19,13 +19,9 @@ export default defineConfig({
     port: 5173,
     strictPort: true,
   },
-  preview: {
-    host: true,
-    port: 4173,
-    strictPort: true,
-  },
-  test: {
-    environment: "jsdom",
-    setupFiles: ["./src/test/setup.ts"],
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
+    },
   },
 });

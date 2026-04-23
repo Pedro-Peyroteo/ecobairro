@@ -1,97 +1,87 @@
+/**
+ * Typed HTTP helper for JSON API requests.
+ * Wraps fetch with URL building, JSON parsing, and typed error handling.
+ *
+ * Usage:
+ *   import { fetchJson } from '@/lib/http/fetch-json'
+ *   import { clientEnv } from '@/lib/env'
+ *
+ *   const data = await fetchJson<MyResponse>('/v1/ecopontos', {
+ *     baseUrl: clientEnv.apiBaseUrl,
+ *   })
+ */
+
 export class HttpError extends Error {
-  status: number;
-  statusText: string;
-  body: unknown;
-  url: string;
+  readonly status: number
+  readonly statusText: string
+  readonly body: unknown
 
-  constructor({
-    body,
-    status,
-    statusText,
-    url,
-  }: {
-    body: unknown;
-    status: number;
-    statusText: string;
-    url: string;
-  }) {
-    super(`Request to ${url} failed with ${status} ${statusText}.`);
-    this.name = "HttpError";
-    this.body = body;
-    this.status = status;
-    this.statusText = statusText;
-    this.url = url;
+  constructor(
+    status: number,
+    statusText: string,
+    body: unknown,
+  ) {
+    super(`HTTP ${status}: ${statusText}`)
+    this.name = 'HttpError'
+    this.status = status
+    this.statusText = statusText
+    this.body = body
   }
 }
 
-type QueryValue = string | number | boolean | null | undefined;
-
-export type FetchJsonOptions = RequestInit & {
-  baseUrl?: string;
-  query?: Record<string, QueryValue>;
-};
-
-function resolveOrigin(baseUrl?: string) {
-  if (baseUrl) {
-    return baseUrl;
-  }
-
-  if (typeof window !== "undefined") {
-    return window.location.origin;
-  }
-
-  return "http://localhost";
+export interface FetchJsonOptions extends RequestInit {
+  /** Prepended to the path. Defaults to '' (relative). */
+  baseUrl?: string
+  /** Query string params appended to the URL. */
+  params?: Record<string, string | number | boolean | undefined>
 }
 
-function buildUrl(
-  input: string,
-  baseUrl?: string,
-  query?: Record<string, QueryValue>,
-) {
-  const url = new URL(input, resolveOrigin(baseUrl));
+export async function fetchJson<T = unknown>(
+  path: string,
+  options: FetchJsonOptions = {},
+): Promise<T> {
+  const { baseUrl = '', params, ...init } = options
 
-  if (query) {
-    for (const [key, value] of Object.entries(query)) {
-      if (value === null || value === undefined) {
-        continue;
+  // Build URL
+  const url = new URL(`${baseUrl}${path}`, window.location.origin)
+  if (params) {
+    for (const [key, value] of Object.entries(params)) {
+      if (value !== undefined) {
+        url.searchParams.set(key, String(value))
       }
-
-      url.searchParams.set(key, String(value));
     }
   }
 
-  return url;
-}
-
-async function parseResponseBody(response: Response) {
-  const contentType = response.headers.get("content-type") ?? "";
-
-  if (contentType.includes("application/json")) {
-    return response.json();
+  // Default headers
+  const headers = new Headers(init.headers)
+  if (!headers.has('Content-Type') && init.body) {
+    headers.set('Content-Type', 'application/json')
+  }
+  if (!headers.has('Accept')) {
+    headers.set('Accept', 'application/json')
   }
 
-  return response.text();
-}
-
-export async function fetchJson<T>(
-  input: string,
-  { baseUrl, query, headers, ...init }: FetchJsonOptions = {},
-) {
-  const url = buildUrl(input, baseUrl, query);
-  const response = await fetch(url.toString(), {
-    ...init,
-    headers: new Headers(headers),
-  });
-  const body = await parseResponseBody(response);
+  const response = await fetch(url.toString(), { ...init, headers })
 
   if (!response.ok) {
-    throw new HttpError({
-      body,
-      status: response.status,
-      statusText: response.statusText,
-      url: url.toString(),
-    });
+    let body: unknown
+    try {
+      body = await response.json()
+    } catch {
+      body = await response.text()
+    }
+    throw new HttpError(response.status, response.statusText, body)
   }
 
-  return body as T;
+  // 204 No Content — return undefined cast to T
+  if (response.status === 204) {
+    return undefined as T
+  }
+
+  const contentType = response.headers.get('content-type') ?? ''
+  if (contentType.includes('application/json')) {
+    return response.json() as Promise<T>
+  }
+
+  return response.text() as unknown as T
 }

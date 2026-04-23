@@ -1,511 +1,281 @@
-# Guia Do Frontend Scaffold
+# Frontend Scaffold Guide
 
-## Objetivo
+## Purpose
 
-Este documento explica o frontend scaffold que existe atualmente em `apps/web`.
+This document explains the frontend scaffold currently living in `apps/web`.
 
-O objetivo deste scaffold nao e entregar UI de funcionalidade. O seu papel e dar a equipa:
+The goal of this scaffold is not to ship feature UI. Its job is to give the team:
 
-- um runtime frontend estavel
-- uma estrutura de rotas clara
-- primitivos de layout e UI partilhados
-- uma camada minima de infraestrutura da app
-- um lugar previsivel para codigo futuro de funcionalidade
+- a stable frontend runtime built with Vite and TanStack Router in SPA mode
+- a clear route structure with shared public and authenticated layouts
+- a reusable vertical navigation shell and UI primitive set
+- a minimal app infrastructure layer for env, auth, HTTP, and query state
+- a predictable place for future feature code
 
-Em resumo: esta e a base de handoff que permite as equipas de funcionalidade comecarem a construir sem terem primeiro de debater arquitetura frontend.
-
-## O Que Escolhemos
+## What We Chose
 
 ### Runtime
 
-O frontend usa agora **TanStack Start** em `apps/web`.
+The frontend uses **Vite + TanStack Router** in SPA mode.
 
-Porquê:
+Why:
 
-- da-nos um runtime React moderno com suporte de primeira classe para TanStack Router
-- mantem routing, document/head handling e bootstrap da app no mesmo sitio
-- deixa a porta aberta para SSR e server functions mais tarde, se a equipa precisar
-- funciona bem com o setup atual do monorepo e com o workflow baseado em Vite
-
-### Modo de rendering
-
-Escolhemos **SPA mode primeiro**.
-
-Porquê:
-
-- a fase atual do projeto e de scaffolding, nao de SEO ou paginas de produto renderizadas no servidor
-- SPA mode e mais simples de compreender enquanto a API continua a ser a principal superficie backend
-- reduz a complexidade de runtime que os colegas precisam de perceber no primeiro dia
-- mantem aberta uma via para SSR no futuro se os requisitos mudarem
-
-Esta escolha esta em [apps/web/vite.config.ts](../apps/web/vite.config.ts).
+- the runtime is straightforward to reason about during the scaffolding phase
+- TanStack Router gives file-based routing with strong TypeScript support
+- the current branch keeps a simple client-only bootstrap instead of reintroducing TanStack Start
+- this shape fits the current monorepo and Docker workflow cleanly
 
 ### Routing
 
-Escolhemos **TanStack Router com file-based routing**.
+We use **TanStack Router file-based flat routes**.
 
-Porquê:
+Why:
 
-- as rotas sao faceis de encontrar porque a estrutura das pastas espelha a estrutura dos URLs
-- os colegas podem adicionar paginas criando ficheiros em `src/routes`
-- a ownership das rotas fica visivel num relance
-- o TanStack gera a route tree por nos, reduzindo a necessidade de wiring manual
+- flat route files make ownership easy to find
+- `_layoutmain` groups authenticated dashboard pages under one shared shell
+- `_layoutpublic` groups public-facing pages without duplicating framing logic
+- teammates can add a route by adding a single file in `src/routes`
 
-E por isso que `src/routes` e tratado como a unica superficie de autoria de rotas.
+This is why `src/routes` is treated as the route-authoring surface.
 
-### Camada de dados
+### Data Layer
 
-Adicionamos **TanStack Query**, mas apenas como plumbing partilhado.
+We provide **TanStack Query** as shared plumbing via `QueryClientProvider` in `main.tsx`.
 
-Porquê:
+Why:
 
-- as equipas de funcionalidade vao quase de certeza precisar de cache, estado assincrono e gestao do ciclo de vida dos pedidos
-- e melhor configurar agora um Query client app-wide do que deixar cada funcionalidade criar o seu proprio padrao
-- queriamos a infraestrutura pronta sem definir cedo demais hooks de dados especificos de funcionalidade
+- feature teams will need caching, async state, and request lifecycle management
+- one app-wide query client avoids each feature inventing its own pattern
+- the shared infrastructure is ready without locking in domain-specific hooks too early
 
-Importante:
+Important:
 
-- **nao** adicionamos query hooks de dominio
-- **nao** adicionamos um SDK completo da API
-- **nao** adicionamos fluxos de autenticacao
+- we did **not** add domain query hooks
+- we did **not** add a full API SDK
+- we did **not** add server-side auth flows
 
 ### Styling
 
-Escolhemos **Tailwind v4** mais uma pequena **camada de tokens com variaveis CSS**.
+We use **Tailwind v4** plus a shared token layer in `src/styles/globals.css`.
 
-Porquê:
+Why:
 
-- o Tailwind da velocidade as equipas quando constroem UI de funcionalidade
-- as variaveis CSS mantem centralizadas as decisoes globais sobre cores e superficies
-- esta combinacao e suficientemente leve para scaffolding sem comprometer a equipa com um component system pesado demasiado cedo
+- Tailwind keeps feature work fast
+- the token layer centralizes cross-app colors, surfaces, spacing, and radius choices
+- this is enough structure for scaffolding without forcing a heavy design system too early
 
-### Limite da app
+### Layout
 
-Mantivemos **uma unica app frontend** em `apps/web` com dois grupos de rotas:
+The scaffold provides a shared authenticated shell via `_layoutmain.tsx` and public framing via `_layoutpublic.tsx`.
 
-- `/app` para trabalho citizen-facing
-- `/admin` para trabalho operator/admin-facing
+Authenticated pages inherit:
 
-Porquê:
+- a desktop sidebar navigation
+- a mobile drawer via `Sheet`
+- a top navbar with user actions
+- footer framing and shared shell spacing
 
-- o repositorio ja tinha uma unica app `web` e o respetivo wiring em Docker/Nginx
-- uma app e suficiente para a fase atual
-- os grupos de rotas dao-nos separacao sem criar apps extra, configuracao duplicada ou UI partilhada duplicada
+Authentication is enforced in the authenticated layout route through `requireAuth()`.
 
-## Porque Nao Construimos UI De Funcionalidade
-
-Este scaffold para intencionalmente em placeholders.
-
-Porquê:
-
-- a ownership das funcionalidades pertence a outros colegas
-- scaffolding deve fornecer estrutura, nao tomar decisoes de produto por conta das equipas de funcionalidade
-- uma rota placeholder e mais facil de substituir do que uma "feature de exemplo" meio acabada que acaba por se tornar arquitetura acidental
-
-E por isso que as rotas renderizam hoje paginas placeholder neutras e notas de ownership, em vez de workflows especificos de dominio.
-
-## Estrutura De Diretorios
-
-Estrutura atual:
+## Directory Structure
 
 ```text
 apps/web/
   src/
+    @layouts/
+      VerticalLayout.tsx
+      components/vertical/
     components/
       layout/
+        DashboardLayout.tsx
+        Navbar.tsx
+        Sidebar.tsx
+        shared/
+          Logo.tsx
+        vertical/
+          Footer.tsx
+          FooterContent.tsx
+          Navbar.tsx
+          NavbarContent.tsx
+          Navigation.tsx
       ui/
+        avatar.tsx
+        badge.tsx
+        button.tsx
+        card.tsx
+        dropdown-menu.tsx
+        input.tsx
+        label.tsx
+        pagination-bar.tsx
+        progress.tsx
+        sheet.tsx
     lib/
+      auth.ts
+      env.ts
+      utils.ts
       http/
+        fetch-json.ts
       query/
-      utils/
+        client.ts
+    mocks/
     routes/
-      admin/
-      app/
       __root.tsx
+      _layoutmain.tsx
+      _layoutmain.*.tsx
+      _layoutpublic.tsx
+      _layoutpublic.home.tsx
+      login.tsx
+      register.tsx
+      forgot-password.tsx
       index.tsx
     styles/
-    test/
+      globals.css
+    types/
+      index.ts
     routeTree.gen.ts
-    router.tsx
-    vite-env.d.ts
+    main.tsx
 ```
 
-### `src/routes`
+## Authentication Model
 
-Esta e a pasta mais importante.
+Authentication is scaffolded on the client:
 
-O que faz:
+- `sessionStorage.getItem('user')` stores the current `User`
+- `requireAuth()` redirects unauthenticated users to `/login`
+- `requireRole(allowed)` redirects users without the right role to `/home`
+- `_layoutmain` runs the auth guard once so protected child routes inherit it automatically
 
-- define as rotas da aplicacao
-- define route layouts
-- define route pages
-- e a fonte de entrada para a geracao do TanStack Router
+This is intentionally scaffold-level auth. Replace it with the real NestJS-backed auth flow when the feature work lands.
 
-Porquê existe:
+## Infrastructure Layer
 
-- mantem a ownership das rotas obvia
-- faz com que os URLs correspondam diretamente aos ficheiros
-- reduz configuracao de router escondida
+### `src/lib/env.ts`
 
-Estrutura atual das rotas:
+Centralized env parsing. Route and component files should not read `import.meta.env` directly.
 
-- `/` a partir de [apps/web/src/routes/index.tsx](../apps/web/src/routes/index.tsx)
-- `/app` a partir de [apps/web/src/routes/app/index.tsx](../apps/web/src/routes/app/index.tsx)
-- `/app/dashboard` a partir de [apps/web/src/routes/app/dashboard.tsx](../apps/web/src/routes/app/dashboard.tsx)
-- `/admin` a partir de [apps/web/src/routes/admin/index.tsx](../apps/web/src/routes/admin/index.tsx)
-- `/admin/dashboard` a partir de [apps/web/src/routes/admin/dashboard.tsx](../apps/web/src/routes/admin/dashboard.tsx)
+Available vars:
 
-### `src/routes/__root.tsx`
+- `VITE_API_BASE_URL` with default `/api`
+- `VITE_ANALYTICS_BASE_URL` with default `/analytics`
+- `VITE_APP_NAME` with default `ecoBairro`
+- `VITE_GOOGLE_CLIENT_ID` as an optional Google OAuth toggle
 
-Esta e a root route da app.
+### `src/lib/http/fetch-json.ts`
 
-O que faz:
+Typed fetch wrapper for API calls.
 
-- define o wrapper HTML do documento
-- injeta a stylesheet principal
-- fornece metadata app-wide
-- monta o `RootFrame` partilhado
-- monta o provider do TanStack Query
-- monta Router e Query devtools em desenvolvimento
-- fornece tratamento partilhado de erro e not-found
+Use it for:
 
-Porquê existe:
+- base URL handling
+- query param construction
+- JSON or text response parsing
+- typed HTTP error handling
 
-- todas as rotas devem herdar uma app shell consistente
-- os providers globais devem viver num unico sitio
-- a equipa nao deve repetir layout chrome ou providers dentro das feature routes
+### `src/lib/query/client.ts`
 
-### `src/router.tsx`
+Creates the shared `QueryClient` used by the app root.
 
-Esta e a factory do router.
+### `src/lib/utils.ts`
 
-O que faz:
+Provides `cn()` for conditional class composition with `clsx` and `tailwind-merge`.
 
-- importa a route tree gerada
-- cria o Query client da app
-- cria a instancia TanStack Router
-- regista UI por omissao para pending, error e not-found
-- exporta o registo do tipo do router para o TanStack
+## How The App Boots
 
-Porquê existe:
+1. Vite starts the app from `apps/web/vite.config.ts`.
+2. `TanStackRouterVite` scans `src/routes` and generates `src/routeTree.gen.ts`.
+3. `main.tsx` creates the query client and mounts `RouterProvider`.
+4. `__root.tsx` provides the app-wide providers.
+5. `_layoutmain.tsx` applies the authenticated shell and route guard.
+6. Route files render into the appropriate shared layout via `<Outlet />`.
 
-- mantem a criacao do router centralizada
-- da a app uma unica configuracao de router partilhada
-- garante que a geracao das rotas e a configuracao runtime do router permanecem ligadas
+## Route Pattern
 
-### `src/routeTree.gen.ts`
+```tsx
+import { createFileRoute } from '@tanstack/react-router'
 
-Este ficheiro e **gerado**.
+export const Route = createFileRoute('/_layoutmain/feature-name')({
+  component: FeaturePage,
+})
 
-O que faz:
+function FeaturePage() {
+  return <div>Feature content</div>
+}
+```
 
-- converte a estrutura file-based das rotas na route tree interna do TanStack
-- da ao TanStack Router o mapa tipado de rotas de que ele precisa
+- auth pages such as `login`, `register`, and `forgot-password` live directly under `src/routes`
+- authenticated dashboard pages use the `_layoutmain.<name>.tsx` convention
+- public pages can live under `_layoutpublic`
+- `routeTree.gen.ts` is generated and should not be edited by hand
 
-Porquê existe:
+## UI Components
 
-- file-based routing precisa de um ficheiro de output gerado
-- isto mantem o registo das rotas automatico
+`src/components/ui` contains small reusable primitives built around Radix UI and Tailwind.
 
-Importante:
+Current shared primitives include:
 
-- **nao** edites este ficheiro manualmente
-- ele sera regenerado pelo TanStack quando as rotas mudarem
+- `avatar`
+- `badge`
+- `button`
+- `card`
+- `dropdown-menu`
+- `input`
+- `label`
+- `pagination-bar`
+- `progress`
+- `sheet`
 
-### `src/components/layout`
+## How To Extend Safely
 
-Esta pasta contem componentes de layout partilhados.
+### Add a new dashboard route
 
-O que faz:
+1. Create `src/routes/_layoutmain.<route-name>.tsx`.
+2. Use `createFileRoute('/_layoutmain/<route-name>')({...})`.
+3. Let TanStack regenerate `routeTree.gen.ts`.
+4. Commit both the authored route file and the regenerated route tree.
 
-- `root-frame.tsx`: shell exterior app-wide e chrome global
-- `root-navigation.tsx`: navegacao de topo entre as areas do scaffold
-- `area-shell.tsx`: framing partilhado para grupos de rotas como `/app` e `/admin`
-- `area-navigation.tsx`: navegacao local desses grupos de rotas
-- `placeholder-page.tsx`: template placeholder neutro para rotas
+### Add shared layout components
 
-Porquê existe:
+Place them in `src/components/layout/`.
 
-- as decisoes de layout devem ser partilhadas
-- as equipas de funcionalidade nao devem reconstruir shells de topo pagina a pagina
-- manter layout separado dos primitivos de UI torna a ownership mais clara
+### Add reusable UI primitives
 
-### `src/components/ui`
+Place them in `src/components/ui/`.
 
-Esta pasta contem pequenos primitivos UI partilhados e boundary components.
+### Add app-wide infrastructure
 
-O que faz:
+Place it in `src/lib/`.
 
-- `surface-card.tsx`: superficie de conteudo reutilizavel
-- `default-catch-boundary.tsx`: UI partilhada para erro
-- `not-found.tsx`: UI partilhada para not-found
-- `route-pending.tsx`: placeholder partilhado para loading
+### Add feature-specific code
 
-Porquê existe:
+Keep route-specific logic local to the route file first. Extract a feature folder only after real repeated domain logic appears.
 
-- estas pecas sao genericas o suficiente para serem reutilizadas entre rotas
-- nao estao ligadas a um grupo de rotas especifico
-- sao intencionalmente minimas para nao impor demasiado cedo um design system completo
+## What Is Intentionally Missing
 
-### `src/lib`
+This scaffold does **not** define:
 
-Esta pasta contem infraestrutura partilhada da aplicacao.
+- real API integrations for the mocked pages
+- a production-ready JWT refresh flow
+- feature-specific query hooks
+- a full design system specification
 
-Serve para codigo que nao e apresentacao nem definicao de rotas.
+Those decisions belong to the feature work that will land on top of this scaffold.
 
-#### `src/lib/env.ts`
+## Commands
 
-O que faz:
-
-- le variaveis de ambiente do frontend
-- fornece defaults
-- lanca erro se os valores estiverem vazios ou invalidos
-
-Variaveis atuais:
-
-- `VITE_APP_NAME`
-- `VITE_API_BASE_URL`
-- `VITE_ANALYTICS_BASE_URL`
-
-Porquê existe:
-
-- ler env vars diretamente por toda a app cria duplicacao e inconsistencia
-- centralizar o parsing das env vars torna futuras alteracoes mais seguras
-
-#### `src/lib/http/fetch-json.ts`
-
-O que faz:
-
-- encapsula `fetch`
-- constroi URLs com query parameters
-- faz parse de respostas JSON ou texto
-- lanca um `HttpError` tipado para respostas com falha
-
-Porquê existe:
-
-- as equipas de funcionalidade precisam de um helper de requests com um default sensato
-- evita repetir boilerplate baixo nivel de fetch e tratamento de erro
-- e suficientemente generico para ser substituido mais tarde se a equipa adotar um cliente API mais especifico
-
-#### `src/lib/query/client.ts`
-
-O que faz:
-
-- cria o TanStack Query client app-wide
-- define o comportamento por omissao das queries
-
-Porquê existe:
-
-- a app deve ter um unico Query client partilhado
-- o comportamento default das queries deve viver num unico sitio
-
-#### `src/lib/utils/cn.ts`
-
-O que faz:
-
-- junta strings de classes CSS de forma condicional
-
-Porquê existe:
-
-- mantem legivel a composicao de classes nos componentes
-- da a equipa um utilitario simples sem adicionar uma dependencia maior
-
-### `src/styles`
-
-Esta pasta contem styling global.
-
-O que faz:
-
-- `tokens.css` define CSS custom properties como cores e tons de texto
-- `app.css` importa Tailwind e define classes globais partilhadas como `surface-panel`, `tag` e `action-link`
-
-Porquê existe:
-
-- os tokens devem viver fora dos componentes
-- o styling global da app deve estar separado da logica de rotas
-- as utilidades Tailwind sao uteis, mas algumas classes semanticas partilhadas reduzem repeticao
-
-### `src/test`
-
-Esta pasta contem setup de testes frontend partilhado e testes ao nivel da app.
-
-O que faz:
-
-- `setup.ts` carrega matchers do Testing Library
-- testes de layout e de rotas verificam que o scaffold continua a renderizar e a comportar-se como esperado
-
-Porquê existe:
-
-- o scaffold e agora um produto do repositorio e deve ser protegido contra regressões acidentais
-- queremos uma baseline de testes mesmo antes de comecar o trabalho de funcionalidade
-
-## Como A App Arranca
-
-O fluxo de arranque e:
-
-1. O Vite arranca a app usando TanStack Start a partir de [apps/web/vite.config.ts](../apps/web/vite.config.ts).
-2. O TanStack Start analisa `src/routes`.
-3. O TanStack gera `src/routeTree.gen.ts`.
-4. [apps/web/src/router.tsx](../apps/web/src/router.tsx) cria o router usando essa route tree gerada.
-5. [apps/web/src/routes/__root.tsx](../apps/web/src/routes/__root.tsx) fornece a document shell, o Query provider, o layout global e as shared boundaries.
-6. Os ficheiros de rotas aninhadas renderizam dentro de `<Outlet />`.
-
-## Porque Os Grupos De Rotas Têm Este Aspeto
-
-Dividimos a app em:
-
-- `src/routes/app`
-- `src/routes/admin`
-
-Porquê:
-
-- cria uma separacao clara entre as duas grandes areas de produto ja conhecidas no projeto
-- os colegas conseguem ver imediatamente onde novas paginas pertencem
-- o layout partilhado de cada area pode viver uma unica vez em `route.tsx`
-
-E por isso que [apps/web/src/routes/app/route.tsx](../apps/web/src/routes/app/route.tsx) e [apps/web/src/routes/admin/route.tsx](../apps/web/src/routes/admin/route.tsx) existem mesmo renderizando apenas placeholders neste momento.
-
-Elas sao boundaries de layout para grupos de rotas, nao feature pages.
-
-## Porque Fizemos Commit Da Route Tree Gerada
-
-Fizemos commit de `src/routeTree.gen.ts` de forma intencional.
-
-Porquê:
-
-- a app precisa dele para routing tipado
-- os colegas nao devem ter de adivinhar se um ficheiro gerado em falta e esperado ou nao
-- mantê-lo versionado evita problemas de "funciona na minha maquina" quando alguem faz checkout do repositorio de fresco
-
-A regra e simples:
-
-- os ficheiros de rotas sao escritos por pessoas
-- `routeTree.gen.ts` e escrito pelo gerador
-
-## Porque Estas Dependencias Existem
-
-Dependencias runtime principais em [apps/web/package.json](../apps/web/package.json):
-
-- `@tanstack/react-start`: runtime da app frontend
-- `@tanstack/react-router`: routing
-- `@tanstack/react-query`: estado assincrono partilhado e cache de dados
-- `react` e `react-dom`: runtime React
-
-Dependencias de desenvolvimento principais:
-
-- `vite`: ferramenta de dev/build
-- `@vitejs/plugin-react`: suporte React no Vite
-- `@tanstack/router-plugin`: suporte a geracao de rotas
-- `tailwindcss` e `@tailwindcss/vite`: styling
-- `vitest`, `@testing-library/react`, `@testing-library/jest-dom`, `jsdom`: baseline de testes
-- router/query devtools: uteis durante desenvolvimento, fora do comportamento de producao
-
-## Porque As Versoes Foram Fixadas
-
-O stack TanStack Start foi fixado em versoes exatas em vez de intervalos soltos.
-
-Porquê:
-
-- o TanStack Start ainda esta a evoluir rapidamente
-- os packages de router, start e plugin precisam de ficar sincronizados
-- versoes exatas reduzem quebras inesperadas durante a fase inicial de scaffolding
-
-## O Que Esta Intencionalmente Em Falta
-
-Este scaffold **nao** define:
-
-- fluxos de autenticacao
-- logica de rotas protegidas
-- API hooks especificos de funcionalidade
-- pastas de funcionalidade por dominio
-- um design system completo
-- paginas de produto reais
-
-Porquê:
-
-- essas decisoes pertencem ao trabalho futuro e as equipas de funcionalidade
-- o scaffold deve permitir trabalho de produto, nao antecipar-se a ele
-
-## Como O Estender Em Seguranca
-
-### Adicionar uma nova rota
-
-1. Adiciona um ficheiro em `src/routes`.
-2. Usa `createFileRoute(...)`.
-3. Deixa o TanStack regenerar `src/routeTree.gen.ts`.
-
-Bons exemplos:
-
-- adicionar `src/routes/app/profile.tsx` para `/app/profile`
-- adicionar `src/routes/admin/users.tsx` para `/admin/users`
-
-### Adicionar layout partilhado
-
-Se o codigo afeta o enquadramento das rotas ou a navegacao partilhada, coloca-o em:
-
-- `src/components/layout`
-
-### Adicionar UI reutilizavel pequena
-
-Se o codigo for generico e apresentacional, coloca-o em:
-
-- `src/components/ui`
-
-### Adicionar infraestrutura app-wide
-
-Se o codigo for logica partilhada e nao UI, coloca-o em:
-
-- `src/lib`
-
-### Adicionar codigo especifico de funcionalidade mais tarde
-
-Quando o trabalho de funcionalidade comecar, os ficheiros de rota podem:
-
-- manter a logica especifica da rota local a essa rota
-- ou introduzir feature folders quando realmente existir logica de dominio repetida
-
-Nao criamos `features/*` especulativos de forma intencional, porque isso fingiria que ja sabemos os limites futuros das funcionalidades antes de a equipa os ter construído.
-
-## Comandos Que A Equipa Deve Conhecer
-
-A partir da raiz do repositorio:
+From the repo root:
 
 ```bash
 pnpm --filter @ecobairro/web dev
 pnpm --filter @ecobairro/web lint
 pnpm --filter @ecobairro/web typecheck
-pnpm --filter @ecobairro/web test
 pnpm --filter @ecobairro/web build
+pnpm --filter @ecobairro/web test
 ```
 
-## Modelo Mental
+## Mental Model
 
-Se so te lembrares de uma coisa, lembra-te disto:
-
-- `routes` define para onde a app vai
-- `layout` define a estrutura partilhada da pagina
-- `ui` define pequenas pecas de apresentacao reutilizaveis
-- `lib` define infraestrutura partilhada que nao e UI
-- `routeTree.gen.ts` e a cola gerada
-
-Esta separacao e a principal escolha arquitetural por tras deste scaffold.
-
-## Validacao Atual
-
-O scaffold foi validado com:
-
-- `pnpm --filter @ecobairro/web lint`
-- `pnpm --filter @ecobairro/web typecheck`
-- `pnpm --filter @ecobairro/web test`
-- `pnpm --filter @ecobairro/web build`
-
-## Evolucao Futura
-
-Este scaffold pode evoluir em varias direcoes mais tarde:
-
-- adicionar auth e boundaries de rotas protegidas
-- adicionar query hooks de dominio reais ou um cliente API tipado
-- adicionar SSR se o produto beneficiar realmente com isso
-- adicionar um design system mais completo quando surgirem padroes de UI repetidos
-
-Essas decisoes ficam intencionalmente adiadas ate serem justificadas por trabalho real de funcionalidade.
+- `routes/` defines where the app goes
+- `@layouts/` and `components/layout/` define shared framing and navigation
+- `components/ui/` holds small reusable presentational primitives
+- `lib/` holds shared non-UI infrastructure
+- `routeTree.gen.ts` is generated glue and should stay machine-owned

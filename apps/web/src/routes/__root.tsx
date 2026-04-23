@@ -1,85 +1,48 @@
-import type { ReactNode } from "react";
+import { createRootRoute, Outlet, Link } from '@tanstack/react-router'
+import { ThemeProvider } from 'next-themes'
+import { GoogleOAuthProvider } from '@react-oauth/google'
+import { MapPin } from 'lucide-react'
 
-import { QueryClientProvider } from "@tanstack/react-query";
-import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
-import type { ErrorComponentProps } from "@tanstack/react-router";
-import {
-  HeadContent,
-  Outlet,
-  Scripts,
-  createRootRouteWithContext,
-} from "@tanstack/react-router";
-import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
+import { clientEnv } from '@/lib/env'
 
-import appCssHref from "../styles/app.css?url";
-import { RootFrame } from "../components/layout/root-frame";
-import { RootNavigation } from "../components/layout/root-navigation";
-import { DefaultCatchBoundary } from "../components/ui/default-catch-boundary";
-import { NotFound } from "../components/ui/not-found";
-import { clientEnv } from "../lib/env";
-import type { RouterAppContext } from "../router";
+const GOOGLE_CLIENT_ID = clientEnv.googleClientId
 
-export const Route = createRootRouteWithContext<RouterAppContext>()({
-  head: () => ({
-    meta: [
-      {
-        title: `${clientEnv.appName} | Frontend Scaffold`,
-      },
-      {
-        name: "description",
-        content:
-          "TanStack Start scaffold for route ownership, layout placeholders, and teammate handoff.",
-      },
-    ],
-    links: [{ href: appCssHref, rel: "stylesheet" }],
-  }),
-  component: RootComponent,
-  errorComponent: RootErrorBoundary,
+function NotFound() {
+  return (
+    <div className="min-h-svh flex flex-col items-center justify-center gap-6 px-4 text-center bg-[var(--background)]">
+      <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+        <MapPin className="w-9 h-9" strokeWidth={1.5} />
+      </div>
+      <div className="space-y-2">
+        <h1 className="text-6xl font-bold text-[var(--foreground)]">404</h1>
+        <p className="text-xl font-semibold text-[var(--foreground)]">Página não encontrada</p>
+        <p className="text-[var(--muted-foreground)] max-w-sm">
+          A página que procura não existe ou foi movida.
+        </p>
+      </div>
+      <Link
+        to="/home"
+        className="px-6 py-2.5 rounded-[var(--radius-md)] bg-[var(--primary)] text-white text-sm font-medium hover:opacity-90 transition-opacity"
+      >
+        Voltar ao início
+      </Link>
+    </div>
+  )
+}
+
+export const Route = createRootRoute({
   notFoundComponent: NotFound,
-});
+  component: () => {
+    const content = (
+      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        <Outlet />
+      </ThemeProvider>
+    )
 
-export function RootDocument({ children }: { children: ReactNode }) {
-  return (
-    <html lang="en">
-      <head>
-        <meta charSet="utf-8" />
-        <meta content="width=device-width, initial-scale=1" name="viewport" />
-        <HeadContent />
-      </head>
-      <body>
-        {children}
-        <Scripts />
-      </body>
-    </html>
-  );
-}
+    if (GOOGLE_CLIENT_ID) {
+      return <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>{content}</GoogleOAuthProvider>
+    }
 
-function RootComponent() {
-  const { queryClient } = Route.useRouteContext();
-
-  return (
-    <RootDocument>
-      <QueryClientProvider client={queryClient}>
-        <RootFrame appName={clientEnv.appName} navigation={<RootNavigation />}>
-          <Outlet />
-        </RootFrame>
-        {import.meta.env.DEV ? (
-          <>
-            <TanStackRouterDevtools position="bottom-right" />
-            <ReactQueryDevtools buttonPosition="bottom-left" />
-          </>
-        ) : null}
-      </QueryClientProvider>
-    </RootDocument>
-  );
-}
-
-function RootErrorBoundary(props: ErrorComponentProps) {
-  return (
-    <RootDocument>
-      <RootFrame appName={clientEnv.appName} navigation={<RootNavigation />}>
-        <DefaultCatchBoundary {...props} />
-      </RootFrame>
-    </RootDocument>
-  );
-}
+    return content
+  },
+})
