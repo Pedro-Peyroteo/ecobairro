@@ -8,7 +8,7 @@ import {
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
-export const Route = createFileRoute('/_layoutmain/home')({
+export const Route = createFileRoute('/_layoutpublic/home')({
   component: HomePage,
 })
 

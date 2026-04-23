@@ -42,6 +42,7 @@ ecobairro/
 |---|---|
 | Framework | React 19 |
 | Routing | TanStack Router (file-based, flat routes with `_layoutmain` prefix) |
+| Data fetching | TanStack Query v5 (`useQuery`, `QueryClientProvider`) |
 | Build tool | Vite 8 |
 | Styling | Tailwind CSS v4 + CSS variables |
 | UI components | shadcn/ui (Radix primitives) |
@@ -102,4 +103,5 @@ ecobairro/
 - `BCRYPT_ROUNDS` — Password hashing rounds (default: 12)
 - `VITE_API_BASE_URL` — Frontend API base URL (`/api`)
 - `VITE_ANALYTICS_BASE_URL` — Frontend analytics base URL (`/analytics`)
+- `VITE_APP_NAME` — Application display name (defaults to `ecoBairro`)
 - `VITE_GOOGLE_CLIENT_ID` — Google OAuth client ID (optional)

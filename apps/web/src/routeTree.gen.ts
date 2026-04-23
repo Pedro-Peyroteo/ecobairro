@@ -12,8 +12,10 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
+import { Route as LayoutpublicRouteImport } from './routes/_layoutpublic'
 import { Route as LayoutmainRouteImport } from './routes/_layoutmain'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as LayoutpublicHomeRouteImport } from './routes/_layoutpublic.home'
 import { Route as LayoutmainZonasRouteImport } from './routes/_layoutmain.zonas'
 import { Route as LayoutmainUtilizadoresRouteImport } from './routes/_layoutmain.utilizadores'
 import { Route as LayoutmainRotasRouteImport } from './routes/_layoutmain.rotas'
@@ -24,7 +26,6 @@ import { Route as LayoutmainPartilhasRouteImport } from './routes/_layoutmain.pa
 import { Route as LayoutmainNoticiasRouteImport } from './routes/_layoutmain.noticias'
 import { Route as LayoutmainMapaSensoresRouteImport } from './routes/_layoutmain.mapa-sensores'
 import { Route as LayoutmainMapaRouteImport } from './routes/_layoutmain.mapa'
-import { Route as LayoutmainHomeRouteImport } from './routes/_layoutmain.home'
 import { Route as LayoutmainFilaRouteImport } from './routes/_layoutmain.fila'
 import { Route as LayoutmainEcopontosRouteImport } from './routes/_layoutmain.ecopontos'
 import { Route as LayoutmainDashboardRouteImport } from './routes/_layoutmain.dashboard'
@@ -48,6 +49,10 @@ const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
   path: '/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LayoutpublicRoute = LayoutpublicRouteImport.update({
+  id: '/_layoutpublic',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LayoutmainRoute = LayoutmainRouteImport.update({
   id: '/_layoutmain',
   getParentRoute: () => rootRouteImport,
@@ -56,6 +61,11 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const LayoutpublicHomeRoute = LayoutpublicHomeRouteImport.update({
+  id: '/home',
+  path: '/home',
+  getParentRoute: () => LayoutpublicRoute,
 } as any)
 const LayoutmainZonasRoute = LayoutmainZonasRouteImport.update({
   id: '/zonas',
@@ -107,11 +117,6 @@ const LayoutmainMapaRoute = LayoutmainMapaRouteImport.update({
   path: '/mapa',
   getParentRoute: () => LayoutmainRoute,
 } as any)
-const LayoutmainHomeRoute = LayoutmainHomeRouteImport.update({
-  id: '/home',
-  path: '/home',
-  getParentRoute: () => LayoutmainRoute,
-} as any)
 const LayoutmainFilaRoute = LayoutmainFilaRouteImport.update({
   id: '/fila',
   path: '/fila',
@@ -160,7 +165,6 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof LayoutmainDashboardRoute
   '/ecopontos': typeof LayoutmainEcopontosRoute
   '/fila': typeof LayoutmainFilaRoute
-  '/home': typeof LayoutmainHomeRoute
   '/mapa': typeof LayoutmainMapaRoute
   '/mapa-sensores': typeof LayoutmainMapaSensoresRoute
   '/noticias': typeof LayoutmainNoticiasRoute
@@ -171,6 +175,7 @@ export interface FileRoutesByFullPath {
   '/rotas': typeof LayoutmainRotasRoute
   '/utilizadores': typeof LayoutmainUtilizadoresRoute
   '/zonas': typeof LayoutmainZonasRoute
+  '/home': typeof LayoutpublicHomeRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -184,7 +189,6 @@ export interface FileRoutesByTo {
   '/dashboard': typeof LayoutmainDashboardRoute
   '/ecopontos': typeof LayoutmainEcopontosRoute
   '/fila': typeof LayoutmainFilaRoute
-  '/home': typeof LayoutmainHomeRoute
   '/mapa': typeof LayoutmainMapaRoute
   '/mapa-sensores': typeof LayoutmainMapaSensoresRoute
   '/noticias': typeof LayoutmainNoticiasRoute
@@ -195,11 +199,13 @@ export interface FileRoutesByTo {
   '/rotas': typeof LayoutmainRotasRoute
   '/utilizadores': typeof LayoutmainUtilizadoresRoute
   '/zonas': typeof LayoutmainZonasRoute
+  '/home': typeof LayoutpublicHomeRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_layoutmain': typeof LayoutmainRouteWithChildren
+  '/_layoutpublic': typeof LayoutpublicRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
@@ -210,7 +216,6 @@ export interface FileRoutesById {
   '/_layoutmain/dashboard': typeof LayoutmainDashboardRoute
   '/_layoutmain/ecopontos': typeof LayoutmainEcopontosRoute
   '/_layoutmain/fila': typeof LayoutmainFilaRoute
-  '/_layoutmain/home': typeof LayoutmainHomeRoute
   '/_layoutmain/mapa': typeof LayoutmainMapaRoute
   '/_layoutmain/mapa-sensores': typeof LayoutmainMapaSensoresRoute
   '/_layoutmain/noticias': typeof LayoutmainNoticiasRoute
@@ -221,6 +226,7 @@ export interface FileRoutesById {
   '/_layoutmain/rotas': typeof LayoutmainRotasRoute
   '/_layoutmain/utilizadores': typeof LayoutmainUtilizadoresRoute
   '/_layoutmain/zonas': typeof LayoutmainZonasRoute
+  '/_layoutpublic/home': typeof LayoutpublicHomeRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -236,7 +242,6 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/ecopontos'
     | '/fila'
-    | '/home'
     | '/mapa'
     | '/mapa-sensores'
     | '/noticias'
@@ -247,6 +252,7 @@ export interface FileRouteTypes {
     | '/rotas'
     | '/utilizadores'
     | '/zonas'
+    | '/home'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -260,7 +266,6 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/ecopontos'
     | '/fila'
-    | '/home'
     | '/mapa'
     | '/mapa-sensores'
     | '/noticias'
@@ -271,10 +276,12 @@ export interface FileRouteTypes {
     | '/rotas'
     | '/utilizadores'
     | '/zonas'
+    | '/home'
   id:
     | '__root__'
     | '/'
     | '/_layoutmain'
+    | '/_layoutpublic'
     | '/forgot-password'
     | '/login'
     | '/register'
@@ -285,7 +292,6 @@ export interface FileRouteTypes {
     | '/_layoutmain/dashboard'
     | '/_layoutmain/ecopontos'
     | '/_layoutmain/fila'
-    | '/_layoutmain/home'
     | '/_layoutmain/mapa'
     | '/_layoutmain/mapa-sensores'
     | '/_layoutmain/noticias'
@@ -296,11 +302,13 @@ export interface FileRouteTypes {
     | '/_layoutmain/rotas'
     | '/_layoutmain/utilizadores'
     | '/_layoutmain/zonas'
+    | '/_layoutpublic/home'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   LayoutmainRoute: typeof LayoutmainRouteWithChildren
+  LayoutpublicRoute: typeof LayoutpublicRouteWithChildren
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   LoginRoute: typeof LoginRoute
   RegisterRoute: typeof RegisterRoute
@@ -329,6 +337,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_layoutpublic': {
+      id: '/_layoutpublic'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof LayoutpublicRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_layoutmain': {
       id: '/_layoutmain'
       path: ''
@@ -342,6 +357,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_layoutpublic/home': {
+      id: '/_layoutpublic/home'
+      path: '/home'
+      fullPath: '/home'
+      preLoaderRoute: typeof LayoutpublicHomeRouteImport
+      parentRoute: typeof LayoutpublicRoute
     }
     '/_layoutmain/zonas': {
       id: '/_layoutmain/zonas'
@@ -413,13 +435,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutmainMapaRouteImport
       parentRoute: typeof LayoutmainRoute
     }
-    '/_layoutmain/home': {
-      id: '/_layoutmain/home'
-      path: '/home'
-      fullPath: '/home'
-      preLoaderRoute: typeof LayoutmainHomeRouteImport
-      parentRoute: typeof LayoutmainRoute
-    }
     '/_layoutmain/fila': {
       id: '/_layoutmain/fila'
       path: '/fila'
@@ -480,7 +495,6 @@ interface LayoutmainRouteChildren {
   LayoutmainDashboardRoute: typeof LayoutmainDashboardRoute
   LayoutmainEcopontosRoute: typeof LayoutmainEcopontosRoute
   LayoutmainFilaRoute: typeof LayoutmainFilaRoute
-  LayoutmainHomeRoute: typeof LayoutmainHomeRoute
   LayoutmainMapaRoute: typeof LayoutmainMapaRoute
   LayoutmainMapaSensoresRoute: typeof LayoutmainMapaSensoresRoute
   LayoutmainNoticiasRoute: typeof LayoutmainNoticiasRoute
@@ -501,7 +515,6 @@ const LayoutmainRouteChildren: LayoutmainRouteChildren = {
   LayoutmainDashboardRoute: LayoutmainDashboardRoute,
   LayoutmainEcopontosRoute: LayoutmainEcopontosRoute,
   LayoutmainFilaRoute: LayoutmainFilaRoute,
-  LayoutmainHomeRoute: LayoutmainHomeRoute,
   LayoutmainMapaRoute: LayoutmainMapaRoute,
   LayoutmainMapaSensoresRoute: LayoutmainMapaSensoresRoute,
   LayoutmainNoticiasRoute: LayoutmainNoticiasRoute,
@@ -518,9 +531,22 @@ const LayoutmainRouteWithChildren = LayoutmainRoute._addFileChildren(
   LayoutmainRouteChildren,
 )
 
+interface LayoutpublicRouteChildren {
+  LayoutpublicHomeRoute: typeof LayoutpublicHomeRoute
+}
+
+const LayoutpublicRouteChildren: LayoutpublicRouteChildren = {
+  LayoutpublicHomeRoute: LayoutpublicHomeRoute,
+}
+
+const LayoutpublicRouteWithChildren = LayoutpublicRoute._addFileChildren(
+  LayoutpublicRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LayoutmainRoute: LayoutmainRouteWithChildren,
+  LayoutpublicRoute: LayoutpublicRouteWithChildren,
   ForgotPasswordRoute: ForgotPasswordRoute,
   LoginRoute: LoginRoute,
   RegisterRoute: RegisterRoute,

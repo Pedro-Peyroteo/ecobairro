@@ -3,7 +3,9 @@ import { ThemeProvider } from 'next-themes'
 import { GoogleOAuthProvider } from '@react-oauth/google'
 import { MapPin } from 'lucide-react'
 
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined
+import { clientEnv } from '@/lib/env'
+
+const GOOGLE_CLIENT_ID = clientEnv.googleClientId
 
 function NotFound() {
   return (

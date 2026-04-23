@@ -10,7 +10,9 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
 
-const hasGoogleClientId = !!import.meta.env.VITE_GOOGLE_CLIENT_ID
+import { clientEnv } from '@/lib/env'
+
+const hasGoogleClientId = !!clientEnv.googleClientId
 
 export const Route = createFileRoute('/login')({
   component: LoginPage,
