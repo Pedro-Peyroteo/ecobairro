@@ -12,13 +12,20 @@
  */
 
 export class HttpError extends Error {
+  readonly status: number
+  readonly statusText: string
+  readonly body: unknown
+
   constructor(
-    public readonly status: number,
-    public readonly statusText: string,
-    public readonly body: unknown,
+    status: number,
+    statusText: string,
+    body: unknown,
   ) {
     super(`HTTP ${status}: ${statusText}`)
     this.name = 'HttpError'
+    this.status = status
+    this.statusText = statusText
+    this.body = body
   }
 }
 

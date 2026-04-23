@@ -21,7 +21,7 @@ const categoriasIds = ['moveis', 'eletro', 'livros', 'roupa'] as const
 
 const novaPartilhaSchema = z.object({
   titulo:    z.string().min(3, 'Título obrigatório (mín. 3 caracteres)'),
-  categoria: z.enum(categoriasIds, { errorMap: () => ({ message: 'Selecione uma categoria' }) }),
+  categoria: z.enum(categoriasIds, { message: 'Selecione uma categoria' }),
   zona:      z.string().min(2, 'Zona obrigatória'),
   imagem:    z.custom<FileList>()
     .refine(fl => fl && fl.length > 0, 'Fotografia obrigatória')

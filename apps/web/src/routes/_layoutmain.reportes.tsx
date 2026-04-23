@@ -62,7 +62,7 @@ const tiposReporte = ['Ecoponto Cheio', 'Deposição Ilegal', 'Dano em Equipamen
 
 const novoReporteSchema = z.object({
   titulo:   z.string().min(3, 'Título obrigatório (mín. 3 caracteres)'),
-  tipo:     z.enum(tiposReporte, { errorMap: () => ({ message: 'Selecione um tipo' }) }),
+  tipo:     z.enum(tiposReporte, { message: 'Selecione um tipo' }),
   descricao: z.string().min(10, 'Descrição obrigatória (mín. 10 caracteres)'),
   local:    z.string().min(3, 'Local obrigatório'),
   imagem:   z.custom<FileList>()
