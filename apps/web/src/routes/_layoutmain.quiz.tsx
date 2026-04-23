@@ -57,7 +57,7 @@ function QuizPage() {
               </div>
               <Button 
                 onClick={() => setIsQuizStarting(true)}
-                className="bg-[var(--primary)] text-white hover:opacity-90 font-bold px-8 py-5 rounded-xl transition-all hover:scale-[1.02] active:scale-[0.98] text-sm mt-2 w-full sm:w-auto"
+                className="gap-2 bg-[var(--primary)] hover:opacity-90 transition-opacity rounded-xl hover:scale-[1.02] active:scale-[0.98] mt-2 w-full sm:w-auto"
               >
                 Começar Agora
               </Button>

@@ -2,11 +2,12 @@ import { createFileRoute } from '@tanstack/react-router'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { 
-  Truck, PlusCircle, Clock, Calendar, CheckCircle, 
-  ChevronRight, Info, MapPin, Package, AlertTriangle 
+import {
+  Truck, PlusCircle, Clock, Calendar, CheckCircle,
+  ChevronRight, Info, MapPin, Package, AlertTriangle
 } from 'lucide-react'
 import { useState } from 'react'
+import { PaginationBar } from '@/components/ui/pagination-bar'
 
 export const Route = createFileRoute('/_layoutmain/recolhas')({
   component: RecolhasPage,
@@ -14,9 +15,9 @@ export const Route = createFileRoute('/_layoutmain/recolhas')({
 
 /* ─── Dados Mock ─── */
 const pedidosMock = [
-  { 
-    id: '#REC-021', 
-    tipo: 'Monos Volumosos', 
+  {
+    id: '#REC-021',
+    tipo: 'Monos Volumosos',
     subtipo: 'Frigorífico e Máquina de Lavar',
     morada: 'Rua de Aveiro, 12, 3º Dto',
     dataPedido: '18/04/2026',
@@ -24,9 +25,9 @@ const pedidosMock = [
     status: 'agendado',
     obs: 'Deixar junto à porta do prédio.'
   },
-  { 
-    id: '#REC-018', 
-    tipo: 'Entulho', 
+  {
+    id: '#REC-018',
+    tipo: 'Entulho',
     subtipo: 'Restos de obras (Tijolos)',
     morada: 'Av. Dr. Lourenço Peixinho, 45',
     dataPedido: '10/04/2026',
@@ -34,9 +35,9 @@ const pedidosMock = [
     status: 'concluido',
     obs: 'Sacos bem fechados.'
   },
-  { 
-    id: '#REC-025', 
-    tipo: 'Monos Volumosos', 
+  {
+    id: '#REC-025',
+    tipo: 'Monos Volumosos',
     subtipo: 'Sofá de 3 lugares',
     morada: 'Rua Direita, 8',
     dataPedido: '20/04/2026',
@@ -46,24 +47,30 @@ const pedidosMock = [
   }
 ]
 
-const statusConfig: Record<string, { label: string; icon: any; color: string; bg: string }> = {
-  pendente: { label: 'Pendente', icon: Clock, color: '#fb923c', bg: 'bg-orange-500/10' },
-  agendado: { label: 'Agendado', icon: Calendar, color: '#60a5fa', bg: 'bg-blue-500/10' },
-  concluido: { label: 'Concluído', icon: CheckCircle, color: 'oklch(0.55 0.18 150)', bg: 'bg-green-500/10' }
+const statusConfig: Record<string, { label: string; icon: React.ElementType; color: string; bg: string }> = {
+  pendente:  { label: 'Pendente',  icon: Clock,        color: '#fb923c',              bg: 'bg-orange-500/10' },
+  agendado:  { label: 'Agendado',  icon: Calendar,     color: '#60a5fa',              bg: 'bg-blue-500/10'   },
+  concluido: { label: 'Concluído', icon: CheckCircle,  color: 'oklch(0.55 0.18 150)', bg: 'bg-green-500/10'  },
 }
+
+const POR_PAGINA = 5
 
 function RecolhasPage() {
   const [expandido, setExpandido] = useState<string | null>(null)
+  const [pagina, setPagina] = useState(1)
 
   const contagens = {
-    pendente: pedidosMock.filter(p => p.status === 'pendente').length,
-    agendado: pedidosMock.filter(p => p.status === 'agendado').length,
+    pendente:  pedidosMock.filter(p => p.status === 'pendente').length,
+    agendado:  pedidosMock.filter(p => p.status === 'agendado').length,
     concluido: pedidosMock.filter(p => p.status === 'concluido').length,
   }
 
+  const pageCount = Math.ceil(pedidosMock.length / POR_PAGINA)
+  const paginados = pedidosMock.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA)
+
   return (
     <div className="flex flex-col gap-10 pb-12">
-      
+
       {/* ── Cabeçalho ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
         <div>
@@ -82,9 +89,9 @@ function RecolhasPage() {
       {/* ── Resumo ── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {[
-          { label: 'Pedidos Pendentes', value: contagens.pendente, icon: Clock, color: '#fb923c', desc: 'Aguardando agendamento' },
-          { label: 'Recolhas Agendadas', value: contagens.agendado, icon: Calendar, color: '#60a5fa', desc: 'Próximas intervenções' },
-          { label: 'Pedidos Concluídos', value: contagens.concluido, icon: CheckCircle, color: 'oklch(0.55 0.18 150)', desc: 'Recolhas realizadas' },
+          { label: 'Pedidos Pendentes',  value: contagens.pendente,  icon: Clock,        color: '#fb923c',              desc: 'Aguardando agendamento' },
+          { label: 'Recolhas Agendadas', value: contagens.agendado,  icon: Calendar,     color: '#60a5fa',              desc: 'Próximas intervenções'  },
+          { label: 'Pedidos Concluídos', value: contagens.concluido, icon: CheckCircle,  color: 'oklch(0.55 0.18 150)', desc: 'Recolhas realizadas'     },
         ].map((stat) => {
           const Icon = stat.icon
           return (
@@ -147,20 +154,23 @@ function RecolhasPage() {
 
       {/* ── Lista de Pedidos ── */}
       <section className="space-y-4">
-        <div className="flex items-center gap-2">
-          <Package className="w-4 h-4 text-[var(--primary)]" />
-          <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">Os Meus Pedidos</h2>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Package className="w-4 h-4 text-[var(--primary)]" />
+            <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">Os Meus Pedidos</h2>
+          </div>
+          <span className="text-xs text-muted-foreground">{pedidosMock.length} pedido{pedidosMock.length !== 1 ? 's' : ''}</span>
         </div>
-        
+
         <div className="flex flex-col gap-3">
-          {pedidosMock.map((p) => {
+          {paginados.map((p) => {
             const cfg = statusConfig[p.status]
             const SIcon = cfg.icon
             const isOpen = expandido === p.id
 
             return (
-              <Card 
-                key={p.id} 
+              <Card
+                key={p.id}
                 className="border border-border/70 shadow-sm rounded-xl hover:shadow-md transition-all cursor-pointer overflow-hidden"
                 onClick={() => setExpandido(isOpen ? null : p.id)}
               >
@@ -172,7 +182,7 @@ function RecolhasPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
                         <p className="text-sm font-bold text-foreground truncate">{p.tipo}</p>
-                        <Badge variant="outline" className="text-[10px] font-bold uppercase tracking-tight h-5" style={{ color: cfg.color, borderColor: `${cfg.color}40` }}>
+                        <Badge variant="outline" className="text-[10px] font-bold uppercase tracking-tight h-5 shrink-0" style={{ color: cfg.color, borderColor: `${cfg.color}40` }}>
                           {cfg.label}
                         </Badge>
                       </div>
@@ -184,7 +194,7 @@ function RecolhasPage() {
                     </div>
                     <ChevronRight className={`w-5 h-5 text-muted-foreground/30 transition-transform ${isOpen ? 'rotate-90' : ''}`} />
                   </div>
-                  
+
                   {isOpen && (
                     <div className="px-4 pb-4 pt-2 border-t border-border/50 bg-muted/20">
                       <div className="grid grid-cols-2 gap-4 text-xs">
@@ -210,8 +220,8 @@ function RecolhasPage() {
             )
           })}
         </div>
+        <PaginationBar page={pagina} pageCount={pageCount} onPage={setPagina} />
       </section>
-
     </div>
   )
 }

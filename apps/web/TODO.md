@@ -6,9 +6,9 @@
 - [x] #3 Página 404 personalizada
 - [x] #4 Error boundaries no layout principal
 
-## Melhorias às páginas existentes
-- [ ] #5 Paginação nas listas (/reportes, /partilhas, /recolhas, /noticias)
-- [ ] #6 Upload de imagens em /reportes e /partilhas
+## Melhorias às páginas existentes ✅
+- [x] #5 Paginação nas listas (/reportes, /partilhas, /recolhas, /noticias)
+- [x] #6 Upload de imagens em /reportes e /partilhas
 
 ## Páginas implementadas ✅
 - [x] #7  /campanhas — Mensagens Institucionais (tecnico_autarquia)
@@ -23,6 +23,3 @@
 - [x] #16 /zonas — Gestão de zonas geográficas (tecnico_autarquia, tecnico_ccdr, admin)
 - [x] #17 /dashboard — KPIs expandidos, alertas, tabela com filtros e exportação
 
-## Por fazer
-- [ ] #5 Paginação nas listas (/reportes, /partilhas, /recolhas, /noticias)
-- [ ] #6 Upload de imagens em /reportes e /partilhas

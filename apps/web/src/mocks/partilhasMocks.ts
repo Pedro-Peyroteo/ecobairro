@@ -17,7 +17,7 @@ export const partilhasMock = [
     categoria: 'eletro', 
     zona: 'Rossio', 
     user: 'Ana Miranda', 
-    imagem: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?q=80&w=600&auto=format&fit=crop',
+    imagem: 'https://images.unsplash.com/photo-1571175443880-49e1d25b2bc5?q=80&w=600&auto=format&fit=crop',
     distancia: '400m de si',
     data: 'Hoje'
   },

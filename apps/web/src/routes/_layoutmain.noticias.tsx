@@ -2,7 +2,8 @@ import { createFileRoute } from '@tanstack/react-router'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Calendar, Clock, MapPin, ChevronRight, Search, Newspaper, CalendarDays } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { PaginationBar } from '@/components/ui/pagination-bar'
 
 export const Route = createFileRoute('/_layoutmain/noticias')({
   component: NoticiasPage,
@@ -102,27 +103,36 @@ const eventos = [
 ]
 
 const filtros: { label: string; value: Categoria }[] = [
-  { label: 'Tudo', value: 'tudo' },
-  { label: 'Notícias', value: 'noticias' },
-  { label: 'Eventos', value: 'eventos' },
+  { label: 'Tudo',      value: 'tudo'     },
+  { label: 'Notícias',  value: 'noticias' },
+  { label: 'Eventos',   value: 'eventos'  },
 ]
+
+const POR_PAGINA = 4
 
 /* ─── Página ─── */
 function NoticiasPage() {
   const [filtro, setFiltro] = useState<Categoria>('tudo')
   const [pesquisa, setPesquisa] = useState('')
+  const [pagina, setPagina] = useState(1)
 
   const todos = [...noticias, ...eventos]
-  const lista = todos.filter((item) => {
+
+  const listaFiltrada = todos.filter((item) => {
     const matchFiltro = filtro === 'tudo' || item.tipo === filtro
     const matchPesquisa = pesquisa === '' || item.titulo.toLowerCase().includes(pesquisa.toLowerCase())
     return matchFiltro && matchPesquisa
   })
 
+  useEffect(() => { setPagina(1) }, [filtro, pesquisa])
+
+  const pageCount = Math.ceil(listaFiltrada.length / POR_PAGINA)
+  const lista = listaFiltrada.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA)
+
   const noticiasVisiveis = lista.filter((i) => i.tipo === 'noticias')
-  const eventosVisiveis = lista.filter((i) => i.tipo === 'eventos')
-  const noticiaDestaque = noticiasVisiveis.find((n: any) => n.destaque)
-  const noticiasSec = noticiasVisiveis.filter((n: any) => !n.destaque)
+  const eventosVisiveis  = lista.filter((i) => i.tipo === 'eventos')
+  const noticiaDestaque  = noticiasVisiveis.find((n: any) => n.destaque)
+  const noticiasSec      = noticiasVisiveis.filter((n: any) => !n.destaque)
 
   return (
     <div className="flex flex-col gap-6 pb-10">
@@ -133,8 +143,6 @@ function NoticiasPage() {
           <h1 className="text-xl font-bold text-foreground">Notícias e Eventos</h1>
           <p className="text-sm text-muted-foreground mt-0.5">Fique a par do que acontece no ecoBairro</p>
         </div>
-
-        {/* Pesquisa */}
         <div className="relative w-full sm:w-64">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
           <input
@@ -244,17 +252,12 @@ function NoticiasPage() {
           <div className="flex flex-col divide-y divide-border rounded-xl border border-border/70 bg-card overflow-hidden">
             {eventosVisiveis.map((ev: any) => (
               <div key={ev.id} className="flex items-start gap-4 p-4 hover:bg-muted/30 transition-colors cursor-pointer group">
-                {/* Data badge */}
                 <div className="flex flex-col items-center justify-center w-12 shrink-0 text-center">
                   <span className="text-[10px] font-medium text-muted-foreground uppercase">{ev.diaSemana}</span>
                   <span className="text-2xl font-bold text-[var(--primary)] leading-none">{ev.dia}</span>
                   <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">{ev.mes}</span>
                 </div>
-
-                {/* Divisor */}
                 <div className="w-px self-stretch bg-border shrink-0" />
-
-                {/* Info */}
                 <div className="min-w-0 flex-1 space-y-1">
                   <div className="flex items-start gap-2 justify-between">
                     <h3 className="font-semibold text-sm text-foreground leading-snug group-hover:text-[var(--primary)] transition-colors">{ev.titulo}</h3>
@@ -266,7 +269,6 @@ function NoticiasPage() {
                     <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{ev.local}</span>
                   </div>
                 </div>
-
                 <ChevronRight className="w-4 h-4 text-muted-foreground/40 shrink-0 mt-1" />
               </div>
             ))}
@@ -275,7 +277,7 @@ function NoticiasPage() {
       )}
 
       {/* ── Empty state ── */}
-      {lista.length === 0 && (
+      {listaFiltrada.length === 0 && (
         <div className="flex flex-col items-center justify-center py-20 gap-3 text-center">
           <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
             <Search className="w-5 h-5 text-muted-foreground" />
@@ -287,6 +289,16 @@ function NoticiasPage() {
         </div>
       )}
 
+      {/* ── Paginação ── */}
+      {listaFiltrada.length > 0 && (
+        <>
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>{listaFiltrada.length} item{listaFiltrada.length !== 1 ? 's' : ''}</span>
+            <span>Página {pagina} de {pageCount}</span>
+          </div>
+          <PaginationBar page={pagina} pageCount={pageCount} onPage={setPagina} />
+        </>
+      )}
     </div>
   )
 }
