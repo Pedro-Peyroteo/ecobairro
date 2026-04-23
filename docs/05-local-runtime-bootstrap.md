@@ -1,64 +1,64 @@
-# Local Runtime Bootstrap
+# Bootstrap Do Runtime Local
 
-This guide documents the local runtime that exists today in the repository.
+Este guia documenta o runtime local que existe hoje no repositorio.
 
-It is written for teammates who need to:
+Foi escrito para colegas que precisam de:
 
-- bring the project up for the first time
-- understand what the Docker stack is doing
-- connect to the local PostgreSQL container
-- apply Prisma migrations
-- troubleshoot the Phase 1 backend stack
+- levantar o projeto pela primeira vez
+- perceber o que a stack Docker esta a fazer
+- ligar-se ao contentor PostgreSQL local
+- aplicar migrations Prisma
+- fazer troubleshooting da stack backend da Fase 1
 
-## Current Runtime Overview
+## Visao Geral Do Runtime Atual
 
-The local stack is orchestrated through Docker Compose at:
+A stack local e orquestrada com Docker Compose em:
 
 `infra/compose/docker-compose.yml`
 
-The services currently in the stack are:
+Os servicos atualmente presentes na stack sao:
 
-- `web`: frontend app
-- `api`: NestJS backend
-- `analytics`: FastAPI analytics service
-- `postgres`: PostgreSQL 16 with PostGIS
+- `web`: app frontend
+- `api`: backend NestJS
+- `analytics`: servico FastAPI analytics
+- `postgres`: PostgreSQL 16 com PostGIS
 - `redis`: Redis 7
-- `nginx`: single local entrypoint that routes traffic to the internal services
+- `nginx`: ponto de entrada local unico que encaminha o trafego para os servicos internos
 
-All local traffic goes through:
+Todo o trafego local passa por:
 
 `http://localhost:8080`
 
-## Prerequisites
+## Pre-Requisitos
 
-- Docker Desktop or a working local Docker daemon
+- Docker Desktop ou um daemon Docker local funcional
 - Node.js
-- Corepack-enabled `pnpm`
+- `pnpm` ativo via Corepack
 
-Recommended from the repository root:
+Recomendado a partir da raiz do repositorio:
 
 ```powershell
 pnpm install --no-frozen-lockfile
 ```
 
-## First-Time Startup
+## Primeiro Arranque
 
-From the repository root:
+A partir da raiz do repositorio:
 
 ```powershell
 pnpm compose:up
 pnpm compose:ps
 ```
 
-What this does:
+O que isto faz:
 
-- builds the app containers if needed
-- starts PostgreSQL, Redis, web, api, analytics, and nginx
-- mounts the repository into the JS containers for development
-- auto-installs workspace dependencies inside the containers when needed
-- auto-generates the Prisma client for `@ecobairro/api` on API startup
+- constroi os contentores das apps, se necessario
+- arranca PostgreSQL, Redis, web, api, analytics e nginx
+- monta o repositorio nos contentores JS para desenvolvimento
+- instala automaticamente as dependencias do workspace dentro dos contentores quando necessario
+- gera automaticamente o Prisma Client para `@ecobairro/api` no arranque da API
 
-Once the stack is healthy, open:
+Quando a stack estiver saudavel, abre:
 
 - `http://localhost:8080/`
 - `http://localhost:8080/api/health`
@@ -66,9 +66,9 @@ Once the stack is healthy, open:
 - `http://localhost:8080/analytics/health`
 - `http://localhost:8080/analytics/ready`
 
-## Useful Local Commands
+## Comandos Locais Uteis
 
-Use these from the repository root:
+Usa estes comandos a partir da raiz do repositorio:
 
 ```powershell
 pnpm compose:up
@@ -80,184 +80,184 @@ pnpm compose:logs:api
 pnpm compose:logs:db
 ```
 
-Recommended workflow:
+Fluxo recomendado:
 
-- keep the stack running in detached mode with `pnpm compose:up`
-- use `pnpm compose:ps` to confirm health quickly
-- use `pnpm compose:logs:api` when debugging backend work
-- use `pnpm compose:logs:db` when debugging PostgreSQL, Redis, or nginx
+- mantem a stack a correr em modo detached com `pnpm compose:up`
+- usa `pnpm compose:ps` para confirmar rapidamente o estado
+- usa `pnpm compose:logs:api` quando estiveres a depurar backend
+- usa `pnpm compose:logs:db` quando estiveres a depurar PostgreSQL, Redis ou nginx
 
-## PostgreSQL Container
+## Contentor PostgreSQL
 
-The database service is:
+O servico de base de dados e:
 
 - image: `postgis/postgis:16-3.4`
-- container service name inside Compose: `postgres`
-- host port: `localhost:5432`
-- default database: `ecobairro`
-- default user: `ecobairro`
-- default password: `ecobairro`
+- nome do servico dentro do Compose: `postgres`
+- porto no host: `localhost:5432`
+- base de dados por omissao: `ecobairro`
+- utilizador por omissao: `ecobairro`
+- password por omissao: `ecobairro`
 
-These values come from `.env.example` unless overridden in your local `.env`.
+Estes valores vem de `.env.example`, exceto se forem substituidos no teu `.env` local.
 
-Default host connection string:
+String de ligacao por omissao a partir do host:
 
 ```text
 postgresql://ecobairro:ecobairro@localhost:5432/ecobairro
 ```
 
-Internal Compose connection string used by the API container:
+String de ligacao interna usada pelo contentor da API:
 
 ```text
 postgresql://ecobairro:ecobairro@postgres:5432/ecobairro
 ```
 
-### Data persistence
+### Persistencia de dados
 
-PostgreSQL data is stored in the named Docker volume:
+Os dados de PostgreSQL sao guardados no volume Docker nomeado:
 
 `postgres-data`
 
-That means:
+Isto significa:
 
-- `pnpm compose:down` stops containers but keeps the database data
-- starting the stack again will reuse the same database state
+- `pnpm compose:down` para os contentores, mas mantem os dados da BD
+- ao arrancar novamente a stack, a mesma base de dados volta a ser reutilizada
 
-### PostGIS initialization
+### Inicializacao do PostGIS
 
-On first container initialization, the SQL file below is mounted into PostgreSQL init:
+Na primeira inicializacao do contentor, o seguinte ficheiro SQL e montado no init do PostgreSQL:
 
 `infra/postgres/init/001-enable-postgis.sql`
 
-Current content:
+Conteudo atual:
 
 ```sql
 CREATE EXTENSION IF NOT EXISTS postgis;
 ```
 
-This runs only when PostgreSQL initializes a fresh data directory.
+Isto corre apenas quando o PostgreSQL inicializa um diretoria de dados novo.
 
-## Prisma and Migrations
+## Prisma E Migrations
 
-The API uses Prisma 7.
+A API usa Prisma 7.
 
-Important files:
+Ficheiros importantes:
 
 - `apps/api/prisma/schema.prisma`
 - `apps/api/prisma.config.ts`
 - `apps/api/prisma/migrations/`
 
-### How Prisma gets the database URL
+### Como o Prisma obtem a database URL
 
-The Prisma schema does not inline the datasource URL.
-Instead, Prisma reads it from:
+O schema Prisma nao define a datasource URL inline.
+Em vez disso, o Prisma le-a a partir de:
 
 `apps/api/prisma.config.ts`
 
-That config tries, in order:
+Essa configuracao tenta, por esta ordem:
 
-1. root `.env`
+1. `.env` na raiz
 2. `apps/api/.env`
-3. fallback values based on `localhost:5432`
+3. valores fallback baseados em `localhost:5432`
 
-This is why Prisma CLI commands from your host machine can still connect to the local Postgres container.
+E por isso que os comandos Prisma CLI executados no host continuam a conseguir ligar-se ao contentor local de Postgres.
 
-### Apply migrations locally
+### Aplicar migrations localmente
 
-After the stack is up, apply the migrations from the repository root:
+Depois de a stack estar levantada, aplica as migrations a partir da raiz do repositorio:
 
 ```powershell
 pnpm --dir apps/api exec prisma migrate deploy
 ```
 
-For development-only migration authoring:
+Para criacao de migrations apenas em desenvolvimento:
 
 ```powershell
 pnpm --dir apps/api exec prisma migrate dev --name your_migration_name
 ```
 
-Regenerate the Prisma client if needed:
+Regenera o Prisma Client, se necessario:
 
 ```powershell
 pnpm --dir apps/api prisma:generate
 ```
 
-### Current migration state
+### Estado atual das migrations
 
-The first implemented backend migration is:
+A primeira migration backend efetivamente implementada e:
 
 `apps/api/prisma/migrations/20260418230000_init_auth_phase1/migration.sql`
 
-It creates:
+Ela cria:
 
 - `users`
 - `cidadao_perfis`
-- `UserRole` enum
-- indexes for role, email, citizen profile relation, and soft-delete lookup
+- enum `UserRole`
+- indices para role, email, relacao com o perfil de cidadao e pesquisa por soft-delete
 
-## Redis Container
+## Contentor Redis
 
-The local Redis service is:
+O servico Redis local e:
 
 - image: `redis:7-alpine`
-- host access from containers: `redis://redis:6379/0`
+- acesso a partir dos contentores: `redis://redis:6379/0`
 
-The current Phase 1 backend uses Redis for auth session storage.
+O backend atual da Fase 1 usa Redis para armazenamento de sessoes de autenticacao.
 
-Current Redis key pattern in use:
+Padrao atual de chaves Redis:
 
 - `user:session:{user_id}`
 
-## Routing Model
+## Modelo De Routing
 
-Externally, nginx exposes:
+Externamente, o nginx expoe:
 
-- web at `/`
-- api at `/api/...`
-- analytics at `/analytics/...`
+- web em `/`
+- api em `/api/...`
+- analytics em `/analytics/...`
 
-The Nest app itself uses the global prefix:
+A app Nest usa o prefixo global:
 
 `/v1`
 
-So the current backend business routes are exposed externally under:
+Por isso, as rotas de negocio backend estao expostas externamente em:
 
 `/api/v1/...`
 
-Examples:
+Exemplos:
 
 - `POST /api/v1/auth/register`
 - `POST /api/v1/auth/login`
 - `GET /api/v1/cidadaos/me`
 
-Health endpoints remain outside the API version prefix:
+Os endpoints de health ficam fora do prefixo de versao da API:
 
 - `/api/health`
 - `/api/ready`
 
-## Current Backend Status
+## Estado Atual Do Backend
 
-The backend is beyond scaffold stage now.
+O backend ja esta para alem da fase de scaffold.
 
-Implemented Phase 1 backend features:
+Funcionalidades backend da Fase 1 ja implementadas:
 
-- Prisma data model for users and citizen profiles
-- Redis-backed auth sessions
-- JWT bearer authentication
-- citizen self-registration
-- login, refresh, and logout
-- citizen self-profile read and update
-- unit coverage for auth service, JWT guard, and citizen profile service
+- modelo de dados Prisma para users e perfis de cidadao
+- sessoes de autenticacao em Redis
+- autenticacao JWT bearer
+- autorregisto de cidadao
+- login, refresh e logout
+- leitura e atualizacao do proprio perfil de cidadao
+- cobertura unit test para auth service, JWT guard e citizen profile service
 
-## Manual API Smoke Test
+## Smoke Test Manual Da API
 
-Use this base URL:
+Usa esta base URL:
 
 ```text
 http://localhost:8080/api/v1
 ```
 
-Example registration:
+Exemplo de registo:
 
 ```http
 POST /api/v1/auth/register
@@ -271,7 +271,7 @@ Content-Type: application/json
 }
 ```
 
-Example login:
+Exemplo de login:
 
 ```http
 POST /api/v1/auth/login
@@ -283,16 +283,16 @@ Content-Type: application/json
 }
 ```
 
-Example authenticated profile request:
+Exemplo de pedido autenticado ao perfil:
 
 ```http
 GET /api/v1/cidadaos/me
 Authorization: Bearer <access_token>
 ```
 
-## Running Checks
+## Executar Verificacoes
 
-API checks:
+Verificacoes da API:
 
 ```powershell
 pnpm --dir apps/api test
@@ -300,7 +300,7 @@ pnpm --dir apps/api typecheck
 pnpm --dir apps/api lint
 ```
 
-Workspace checks:
+Verificacoes do workspace:
 
 ```powershell
 pnpm typecheck
@@ -309,39 +309,39 @@ pnpm lint
 
 ## Troubleshooting
 
-### `api` is unhealthy
+### `api` esta unhealthy
 
-Check:
+Verifica:
 
 ```powershell
 pnpm compose:logs:api
 pnpm compose:ps
 ```
 
-Common causes:
+Causas comuns:
 
-- Postgres is not healthy yet
-- Redis is not healthy yet
-- missing or invalid env values
-- migrations were not applied yet
+- Postgres ainda nao esta healthy
+- Redis ainda nao esta healthy
+- variaveis de ambiente em falta ou invalidas
+- as migrations ainda nao foram aplicadas
 
-### Prisma commands cannot connect to the database
+### Os comandos Prisma nao conseguem ligar-se a base de dados
 
-Check:
+Verifica:
 
-- Docker is running
-- `postgres` is healthy in `pnpm compose:ps`
-- your local `DATABASE_URL` points to `localhost:5432`, not `postgres:5432`
+- o Docker esta a correr
+- `postgres` esta healthy em `pnpm compose:ps`
+- o teu `DATABASE_URL` local aponta para `localhost:5432`, e nao para `postgres:5432`
 
-Recommended host URL:
+URL recomendada no host:
 
 ```text
 postgresql://ecobairro:ecobairro@localhost:5432/ecobairro
 ```
 
-### I need to inspect the database manually
+### Preciso de inspecionar manualmente a base de dados
 
-Use any PostgreSQL client with:
+Usa qualquer cliente PostgreSQL com:
 
 - host: `localhost`
 - port: `5432`
@@ -349,11 +349,11 @@ Use any PostgreSQL client with:
 - user: `ecobairro`
 - password: `ecobairro`
 
-### I need a clean local database
+### Preciso de uma base de dados local limpa
 
-Be careful: removing the Compose volumes destroys local data.
+Cuidado: remover volumes do Compose destrui dados locais.
 
-If you intentionally want a clean database:
+Se quiseres intencionalmente uma base de dados limpa:
 
 ```powershell
 docker compose -f infra/compose/docker-compose.yml down -v
@@ -361,9 +361,9 @@ pnpm compose:up
 pnpm --dir apps/api exec prisma migrate deploy
 ```
 
-## Important Current Constraint
+## Restricao Importante Neste Momento
 
-The preferred backend development workflow right now is Docker-first.
+O fluxo de desenvolvimento backend preferencial neste momento e Docker-first.
 
-The API container already receives the required runtime env values from Compose.
-Running `apps/api` directly on the host machine is possible, but it is not the most standardized team workflow yet because you must provide the runtime env variables yourself.
+O contentor da API ja recebe do Compose as variaveis de ambiente de runtime de que precisa.
+Executar `apps/api` diretamente na maquina host e possivel, mas ainda nao e o fluxo de equipa mais padronizado, porque nesse caso tens de fornecer tu proprio as variaveis de ambiente de runtime.

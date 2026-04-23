@@ -6,71 +6,76 @@ This document explains the frontend scaffold currently living in `apps/web`.
 
 The goal of this scaffold is not to ship feature UI. Its job is to give the team:
 
-- a stable frontend runtime (Vite + TanStack Router SPA)
-- a clear route structure with authentication-aware layouts
-- a shared vertical navigation layout and UI component library
-- a minimal app infrastructure layer (env, HTTP, query)
+- a stable frontend runtime built with Vite and TanStack Router in SPA mode
+- a clear route structure with shared public and authenticated layouts
+- a reusable vertical navigation shell and UI primitive set
+- a minimal app infrastructure layer for env, auth, HTTP, and query state
 - a predictable place for future feature code
 
 ## What We Chose
 
 ### Runtime
 
-The frontend uses **Vite + TanStack Router** in SPA mode in `apps/web`.
+The frontend uses **Vite + TanStack Router** in SPA mode.
 
 Why:
 
-- straightforward SPA architecture, easy to reason about during the scaffolding phase
-- TanStack Router provides file-based routing with full TypeScript type safety
-- leaves the door open for SSR adoption later if the product needs it
-- works well with the current monorepo setup
+- the runtime is straightforward to reason about during the scaffolding phase
+- TanStack Router gives file-based routing with strong TypeScript support
+- the current branch keeps a simple client-only bootstrap instead of reintroducing TanStack Start
+- this shape fits the current monorepo and Docker workflow cleanly
 
 ### Routing
 
-We chose **TanStack Router file-based flat routes** with the `_layoutmain` prefix convention.
+We use **TanStack Router file-based flat routes**.
 
 Why:
 
-- flat file names mirror URL structure without nested folders
-- the `_layoutmain` prefix attaches all dashboard routes to one shared layout
-- teammates can add pages by adding a single file in `src/routes`
-- TanStack generates the route tree automatically
+- flat route files make ownership easy to find
+- `_layoutmain` groups authenticated dashboard pages under one shared shell
+- `_layoutpublic` groups public-facing pages without duplicating framing logic
+- teammates can add a route by adding a single file in `src/routes`
 
-This is why `src/routes` is treated as the only route-authoring surface.
+This is why `src/routes` is treated as the route-authoring surface.
 
-### Data layer
+### Data Layer
 
 We provide **TanStack Query** as shared plumbing via `QueryClientProvider` in `main.tsx`.
 
 Why:
 
 - feature teams will need caching, async state, and request lifecycle management
-- one app-wide Query client avoids each feature inventing its own pattern
-- infrastructure is ready without prematurely defining feature-specific hooks
+- one app-wide query client avoids each feature inventing its own pattern
+- the shared infrastructure is ready without locking in domain-specific hooks too early
 
 Important:
 
-- we did **not** add domain query hooks — those belong to feature work
-- we did **not** add a full API SDK — use `fetchJson` from `src/lib/http`
-- we did **not** add server-side auth flows — session is stored client-side for now
+- we did **not** add domain query hooks
+- we did **not** add a full API SDK
+- we did **not** add server-side auth flows
 
 ### Styling
 
-We chose **Tailwind v4** with a **CSS variable token layer** in `src/styles/globals.css`.
+We use **Tailwind v4** plus a shared token layer in `src/styles/globals.css`.
 
-Tokens cover: colors (primary green, backgrounds, sidebar), borders, shadows, and border-radius scale.
-Light and dark modes are supported via the `.dark` class (managed by `next-themes`).
+Why:
+
+- Tailwind keeps feature work fast
+- the token layer centralizes cross-app colors, surfaces, spacing, and radius choices
+- this is enough structure for scaffolding without forcing a heavy design system too early
 
 ### Layout
 
-The scaffold provides a **vertical sidebar layout** via `_layoutmain.tsx` which wraps all authenticated dashboard routes:
+The scaffold provides a shared authenticated shell via `_layoutmain.tsx` and public framing via `_layoutpublic.tsx`.
 
-- collapsible sidebar (`Navigation`) on desktop
-- drawer (`Sheet`) on mobile
-- top `Navbar` with user menu
-- `Footer`
+Authenticated pages inherit:
 
-Authentication is enforced via `requireAuth()` in `beforeLoad` on the `_layoutmain` route.
+- a desktop sidebar navigation
+- a mobile drawer via `Sheet`
+- a top navbar with user actions
+- footer framing and shared shell spacing
+
+Authentication is enforced in the authenticated layout route through `requireAuth()`.
 
 ## Directory Structure
 
@@ -78,205 +83,182 @@ Authentication is enforced via `requireAuth()` in `beforeLoad` on the `_layoutma
 apps/web/
   src/
     @layouts/
-      VerticalLayout.tsx          ← Sidebar + content grid
-      components/vertical/        ← Layout sub-components
+      VerticalLayout.tsx
+      components/vertical/
     components/
       layout/
-        vertical/
-          Navigation.tsx          ← Sidebar nav items (role-aware)
-          Navbar.tsx              ← Top bar with user menu
-          NavbarContent.tsx
-          Footer.tsx
-          FooterContent.tsx
+        DashboardLayout.tsx
+        Navbar.tsx
+        Sidebar.tsx
         shared/
           Logo.tsx
-      ui/                         ← shadcn/ui primitives (Radix-based)
+        vertical/
+          Footer.tsx
+          FooterContent.tsx
+          Navbar.tsx
+          NavbarContent.tsx
+          Navigation.tsx
+      ui/
+        avatar.tsx
+        badge.tsx
+        button.tsx
+        card.tsx
+        dropdown-menu.tsx
+        input.tsx
+        label.tsx
+        pagination-bar.tsx
+        progress.tsx
+        sheet.tsx
     lib/
-      env.ts                      ← Centralized VITE_* env access
-      auth.ts                     ← getUser(), requireAuth(), requireRole()
-      utils.ts                    ← cn() class merge utility
+      auth.ts
+      env.ts
+      utils.ts
       http/
-        fetch-json.ts             ← Typed fetch wrapper + HttpError
+        fetch-json.ts
       query/
-        client.ts                 ← createQueryClient() factory
-    mocks/                        ← Static placeholder data (remove in production)
+        client.ts
+    mocks/
     routes/
-      __root.tsx                  ← App root: ThemeProvider + GoogleOAuthProvider
-      _layoutmain.tsx             ← Authenticated layout shell (auth guard)
-      _layoutmain.home.tsx        ← /home
-      _layoutmain.dashboard.tsx   ← /dashboard
-      _layoutmain.mapa.tsx        ← /mapa
-      _layoutmain.ecopontos.tsx   ← /ecopontos
-      _layoutmain.reportes.tsx    ← /reportes
-      _layoutmain.recolhas.tsx    ← /recolhas
-      _layoutmain.partilhas.tsx   ← /partilhas
-      _layoutmain.campanhas.tsx   ← /campanhas
-      _layoutmain.noticias.tsx    ← /noticias
-      _layoutmain.quiz.tsx        ← /quiz
-      _layoutmain.rotas.tsx       ← /rotas
-      _layoutmain.zonas.tsx       ← /zonas
-      _layoutmain.utilizadores.tsx← /utilizadores
-      _layoutmain.audit.tsx       ← /audit
-      _layoutmain.analytics.tsx   ← /analytics
-      _layoutmain.fila.tsx        ← /fila
-      _layoutmain.mapa-sensores.tsx← /mapa-sensores
-      _layoutmain.configuracoes.tsx← /configuracoes
-      login.tsx                   ← /login
-      register.tsx                ← /register
-      forgot-password.tsx         ← /forgot-password
-      index.tsx                   ← / (redirect to /home)
+      __root.tsx
+      _layoutmain.tsx
+      _layoutmain.*.tsx
+      _layoutpublic.tsx
+      _layoutpublic.home.tsx
+      login.tsx
+      register.tsx
+      forgot-password.tsx
+      index.tsx
     styles/
-      globals.css                 ← Tailwind import, CSS tokens, dark mode, scrollbar
+      globals.css
     types/
-      index.ts                    ← UserRole, User, NavItem types
-    routeTree.gen.ts              ← Generated — do NOT edit manually
-    main.tsx                      ← App entry: QueryClientProvider + RouterProvider
+      index.ts
+    routeTree.gen.ts
+    main.tsx
 ```
 
 ## Authentication Model
 
-Authentication is session-based on the client:
+Authentication is scaffolded on the client:
 
-- `sessionStorage.getItem('user')` holds the current `User` object after login
-- `requireAuth()` in `src/lib/auth.ts` redirects unauthenticated users to `/login`
-- `requireRole(allowed)` redirects users whose role is not in the allowed list to `/home`
-- The `_layoutmain` route runs `requireAuth` in `beforeLoad` — all protected routes inherit this guard automatically
+- `sessionStorage.getItem('user')` stores the current `User`
+- `requireAuth()` redirects unauthenticated users to `/login`
+- `requireRole(allowed)` redirects users without the right role to `/home`
+- `_layoutmain` runs the auth guard once so protected child routes inherit it automatically
 
-**Important:** this is a scaffold-level auth mechanism. Replace with a proper JWT refresh flow connected to the NestJS API when building the real auth feature.
+This is intentionally scaffold-level auth. Replace it with the real NestJS-backed auth flow when the feature work lands.
 
-## Infrastructure Layer (`src/lib`)
+## Infrastructure Layer
 
 ### `src/lib/env.ts`
 
-Centralized env var parsing. Never read `import.meta.env` directly in route or component files.
-
-```ts
-import { clientEnv } from '@/lib/env'
-
-const url = `${clientEnv.apiBaseUrl}/v1/reports`
-```
+Centralized env parsing. Route and component files should not read `import.meta.env` directly.
 
 Available vars:
 
-- `VITE_API_BASE_URL` — defaults to `/api`
-- `VITE_ANALYTICS_BASE_URL` — defaults to `/analytics`
-- `VITE_APP_NAME` — defaults to `ecoBairro`
-- `VITE_GOOGLE_CLIENT_ID` — optional, disables Google OAuth when absent
+- `VITE_API_BASE_URL` with default `/api`
+- `VITE_ANALYTICS_BASE_URL` with default `/analytics`
+- `VITE_APP_NAME` with default `ecoBairro`
+- `VITE_GOOGLE_CLIENT_ID` as an optional Google OAuth toggle
 
 ### `src/lib/http/fetch-json.ts`
 
-Typed `fetch` wrapper. Use for all API calls.
+Typed fetch wrapper for API calls.
 
-```ts
-import { fetchJson, HttpError } from '@/lib/http/fetch-json'
-import { clientEnv } from '@/lib/env'
+Use it for:
 
-try {
-  const data = await fetchJson<MyResponse>('/v1/ecopontos', {
-    baseUrl: clientEnv.apiBaseUrl,
-    params: { zona: '123' },
-  })
-} catch (err) {
-  if (err instanceof HttpError) {
-    console.error(err.status, err.body)
-  }
-}
-```
+- base URL handling
+- query param construction
+- JSON or text response parsing
+- typed HTTP error handling
 
 ### `src/lib/query/client.ts`
 
-Creates the app-wide `QueryClient`. Already wired in `main.tsx` via `QueryClientProvider`. Use TanStack Query hooks anywhere:
-
-```ts
-import { useQuery } from '@tanstack/react-query'
-import { fetchJson } from '@/lib/http/fetch-json'
-import { clientEnv } from '@/lib/env'
-
-const { data, isPending, isError } = useQuery({
-  queryKey: ['ecopontos'],
-  queryFn: () => fetchJson('/v1/ecopontos', { baseUrl: clientEnv.apiBaseUrl }),
-})
-```
+Creates the shared `QueryClient` used by the app root.
 
 ### `src/lib/utils.ts`
 
-`cn()` utility for class composition with clsx + tailwind-merge.
-
-```ts
-import { cn } from '@/lib/utils'
-
-<div className={cn('base-class', condition && 'conditional-class')} />
-```
+Provides `cn()` for conditional class composition with `clsx` and `tailwind-merge`.
 
 ## How The App Boots
 
 1. Vite starts the app from `apps/web/vite.config.ts`.
-2. `TanStackRouterVite` plugin scans `src/routes` and generates `src/routeTree.gen.ts`.
-3. `main.tsx` creates a `QueryClient` and wraps the app in `QueryClientProvider` + `RouterProvider`.
-4. `__root.tsx` provides `ThemeProvider` (next-themes) and optional `GoogleOAuthProvider`.
-5. `_layoutmain.tsx` runs `requireAuth()` — unauthenticated users are redirected to `/login`.
-6. Authenticated route files render inside `<Outlet />` within the vertical layout.
+2. `TanStackRouterVite` scans `src/routes` and generates `src/routeTree.gen.ts`.
+3. `main.tsx` creates the query client and mounts `RouterProvider`.
+4. `__root.tsx` provides the app-wide providers.
+5. `_layoutmain.tsx` applies the authenticated shell and route guard.
+6. Route files render into the appropriate shared layout via `<Outlet />`.
 
 ## Route Pattern
 
 ```tsx
-// src/routes/_layoutmain.feature-name.tsx
 import { createFileRoute } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/_layoutmain/feature-name')({
-  component: FeatureNamePage,
+  component: FeaturePage,
 })
 
-function FeatureNamePage() {
+function FeaturePage() {
   return <div>Feature content</div>
 }
 ```
 
-- Auth pages (`login`, `register`, `forgot-password`): directly in `src/routes/` without layout prefix.
-- Dashboard pages: use the `_layoutmain.<name>.tsx` convention.
-- Do **not** edit `routeTree.gen.ts` manually — it is regenerated by TanStack on every route change.
+- auth pages such as `login`, `register`, and `forgot-password` live directly under `src/routes`
+- authenticated dashboard pages use the `_layoutmain.<name>.tsx` convention
+- public pages can live under `_layoutpublic`
+- `routeTree.gen.ts` is generated and should not be edited by hand
 
-## UI Components (`src/components/ui`)
+## UI Components
 
-Based on **shadcn/ui** (Radix UI primitives + Tailwind). Current components:
+`src/components/ui` contains small reusable primitives built around Radix UI and Tailwind.
 
-`avatar`, `badge`, `button`, `card`, `dropdown-menu`, `input`, `label`, `progress`, `sheet`
+Current shared primitives include:
 
-All components use the `cn()` utility and CSS token variables. Add new components following the existing pattern.
+- `avatar`
+- `badge`
+- `button`
+- `card`
+- `dropdown-menu`
+- `input`
+- `label`
+- `pagination-bar`
+- `progress`
+- `sheet`
 
 ## How To Extend Safely
 
 ### Add a new dashboard route
 
-1. Create `src/routes/_layoutmain.<route-name>.tsx`
-2. Use `createFileRoute('/_layoutmain/<route-name>')({...})`
-3. Let TanStack regenerate `routeTree.gen.ts`
-4. Commit both files
+1. Create `src/routes/_layoutmain.<route-name>.tsx`.
+2. Use `createFileRoute('/_layoutmain/<route-name>')({...})`.
+3. Let TanStack regenerate `routeTree.gen.ts`.
+4. Commit both the authored route file and the regenerated route tree.
 
 ### Add shared layout components
 
-Place in `src/components/layout/` (shared framing, navigation, shells).
+Place them in `src/components/layout/`.
 
-### Add small reusable UI primitives
+### Add reusable UI primitives
 
-Place in `src/components/ui/` (generic, presentational, not domain-coupled).
+Place them in `src/components/ui/`.
 
 ### Add app-wide infrastructure
 
-Place in `src/lib/` (shared non-UI logic: HTTP, query, auth, env).
+Place it in `src/lib/`.
 
 ### Add feature-specific code
 
-Keep route-specific logic local to the route file first. Extract to a feature folder only when repeated domain logic genuinely appears.
+Keep route-specific logic local to the route file first. Extract a feature folder only after real repeated domain logic appears.
 
 ## What Is Intentionally Missing
 
 This scaffold does **not** define:
 
-- real API calls (all data is from `src/mocks/` — replace with `fetchJson` + `useQuery`)
-- JWT refresh flow (scaffold uses `sessionStorage` — implement proper auth with the NestJS API)
-- feature-specific API hooks (those belong to feature work)
-- a full design system specification (patterns emerge from the existing component set)
+- real API integrations for the mocked pages
+- a production-ready JWT refresh flow
+- feature-specific query hooks
+- a full design system specification
+
+Those decisions belong to the feature work that will land on top of this scaffold.
 
 ## Commands
 
@@ -287,13 +269,13 @@ pnpm --filter @ecobairro/web dev
 pnpm --filter @ecobairro/web lint
 pnpm --filter @ecobairro/web typecheck
 pnpm --filter @ecobairro/web build
+pnpm --filter @ecobairro/web test
 ```
 
 ## Mental Model
 
-- `routes/` — where the app goes and who can go there
-- `@layouts/` + `components/layout/` — shared page framing and navigation
-- `components/ui/` — small reusable presentational primitives
-- `lib/` — shared non-UI infrastructure (env, http, query, auth)
-- `styles/` — global CSS tokens and Tailwind config
-- `routeTree.gen.ts` — generated glue, never edit manually
+- `routes/` defines where the app goes
+- `@layouts/` and `components/layout/` define shared framing and navigation
+- `components/ui/` holds small reusable presentational primitives
+- `lib/` holds shared non-UI infrastructure
+- `routeTree.gen.ts` is generated glue and should stay machine-owned

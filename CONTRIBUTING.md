@@ -1,33 +1,33 @@
-# Contributing
+# Contribuicao
 
-## Purpose
+## Objetivo
 
-This document defines the basic workflow, quality expectations, and collaboration rules for this repository.
+Este documento define o fluxo de trabalho base, as expectativas de qualidade e as regras de colaboracao deste repositorio.
 
-The goal is to keep the project consistent, reviewable, and safe to evolve.
+O objetivo e manter o projeto consistente, revisavel e seguro de evoluir.
 
 ---
 
-## Repository Workflow
+## Fluxo De Trabalho Do Repositorio
 
-- `main` is the protected branch
-- no one pushes directly to `main`
-- all changes go through pull requests
-- pull requests are merged using **Squash**
-- feature branches should be short-lived
+- `main` e a branch protegida
+- ninguem faz push diretamente para `main`
+- todas as alteracoes passam por pull requests
+- os pull requests sao integrados com **Squash**
+- as feature branches devem ser de curta duracao
 
-### Branch naming
+### Nome das branches
 
-Use one of the following prefixes:
+Usa um dos seguintes prefixos:
 
-- `feat/` for new features
-- `fix/` for bug fixes
-- `docs/` for documentation
-- `refactor/` for internal restructuring
-- `test/` for test-related work
-- `chore/` for maintenance and tooling
+- `feat/` para novas funcionalidades
+- `fix/` para correcao de bugs
+- `docs/` para documentacao
+- `refactor/` para reestruturacao interna
+- `test/` para trabalho relacionado com testes
+- `chore/` para manutencao e tooling
 
-### Examples
+### Exemplos
 
 - `feat/report-submission`
 - `fix/map-filter-state`
@@ -38,202 +38,202 @@ Use one of the following prefixes:
 
 ## Pull Requests
 
-### Before opening a PR
+### Antes de abrir um PR
 
-Make sure your branch:
+Garante que a tua branch:
 
-- is up to date with `main`
-- builds successfully
-- passes relevant tests
-- does not include unrelated changes
+- esta atualizada com `main`
+- compila com sucesso
+- passa os testes relevantes
+- nao inclui alteracoes nao relacionadas
 
-### PR rules
+### Regras dos PR
 
-- every change must be submitted through a pull request
-- at least **1 approval** is required
-- all review conversations must be resolved
-- stale approvals are dismissed automatically when new commits are pushed
-- code owner review is required when applicable
+- todas as alteracoes devem ser submetidas por pull request
+- e necessaria pelo menos **1 aprovacao**
+- todas as conversas de review devem estar resolvidas
+- aprovacoes antigas sao invalidadas automaticamente quando entram novos commits
+- e necessaria review de code owner quando aplicavel
 
-### PR title style
+### Estilo do titulo do PR
 
-Use a short, descriptive title because it becomes the squash commit message.
+Usa um titulo curto e descritivo, porque vai tornar-se na mensagem do squash commit.
 
-Examples:
+Exemplos:
 
 - `feat(api): add report submission flow`
 - `fix(web): correct map filter reset`
 - `docs(architecture): define domain ownership`
 
-### PR description should include
+### A descricao do PR deve incluir
 
-- what changed
-- why it changed
-- important implementation notes
-- screenshots if UI changed
-- known limitations or follow-ups
+- o que mudou
+- porque mudou
+- notas importantes de implementacao
+- screenshots se a UI mudou
+- limitacoes conhecidas ou follow-ups
 
 ---
 
-## Commit Guidelines
+## Regras Para Commits
 
-Prefer small, focused commits.
+Prefere commits pequenos e focados.
 
-Recommended format:
+Formato recomendado:
 
 - `feat: add telemetry ingestion endpoint`
 - `fix: prevent duplicate report submission`
 - `docs: add system scope and goals`
 - `refactor: isolate report validation service`
 
-Do not mix unrelated concerns in the same commit.
+Nao mistures preocupacoes nao relacionadas no mesmo commit.
 
 ---
 
-## Local Development
+## Desenvolvimento Local
 
-### First-time setup
+### Setup inicial
 
-Before working on the project locally:
+Antes de trabalhar no projeto localmente:
 
-- make sure Docker Desktop or your local Docker daemon is running
-- install workspace dependencies with `pnpm install --no-frozen-lockfile`
-- review the local runtime notes in `README.md` and `docs/05-local-runtime-bootstrap.md`
+- garante que o Docker Desktop ou o teu daemon Docker local esta a correr
+- instala as dependencias do workspace com `pnpm install --no-frozen-lockfile`
+- consulta as notas do runtime local em `README.md` e `docs/05-local-runtime-bootstrap.md`
 
-### Developer workflow
+### Fluxo de trabalho do developer
 
-Treat the repository root as the default command entrypoint.
+Trata a raiz do repositorio como ponto de entrada por omissao para os comandos.
 
-Important:
+Importante:
 
-- run `pnpm` commands from the repository root
-- run Docker Compose commands from the repository root
-- keep a single lockfile at the root: `pnpm-lock.yaml`
-- do not run `pnpm install` inside `apps/*` or `packages/*`
-- do not create per-app lockfiles
-- do not use `npm install` inside workspace packages
+- executa os comandos `pnpm` a partir da raiz do repositorio
+- executa os comandos Docker Compose a partir da raiz do repositorio
+- mantem um unico lockfile na raiz: `pnpm-lock.yaml`
+- nao executes `pnpm install` dentro de `apps/*` ou `packages/*`
+- nao cries lockfiles por app
+- nao uses `npm install` dentro dos packages do workspace
 
-When working on one app or package, still start from the root and use filters:
+Quando estiveres a trabalhar numa app ou package especifico, continua a partir da raiz e usa filtros:
 
 - `pnpm --filter @ecobairro/web dev`
 - `pnpm --filter @ecobairro/web test`
 - `pnpm --filter @ecobairro/api dev`
 - `pnpm --filter @ecobairro/contracts typecheck`
 
-### Common commands
+### Comandos comuns
 
-Use the root scripts when possible:
+Usa os scripts de raiz sempre que possivel:
 
-- `pnpm lint`: run lint checks for shared packages and JS/TS apps.
-- `pnpm typecheck`: run TypeScript checks for shared packages and JS/TS apps.
-- `pnpm compose:config`: inspect the resolved Docker Compose configuration.
-- `pnpm compose:up`: build and start the local runtime in detached mode.
-- `pnpm compose:down`: stop and remove the local runtime containers.
-- `pnpm compose:logs`: stream the combined logs for the whole stack.
-- `pnpm compose:logs:web`: stream frontend logs only.
-- `pnpm compose:logs:api`: stream API logs only.
-- `pnpm compose:logs:analytics`: stream analytics logs only.
-- `pnpm compose:logs:db`: stream PostgreSQL, Redis, and Nginx logs.
-- `pnpm compose:ps`: inspect current container status and health.
-- `pnpm compose:restart`: recreate the local runtime with a full down/up cycle.
+- `pnpm lint`: executa verificacoes de lint para os packages partilhados e apps JS/TS.
+- `pnpm typecheck`: executa verificacoes TypeScript para os packages partilhados e apps JS/TS.
+- `pnpm compose:config`: inspeciona a configuracao final do Docker Compose.
+- `pnpm compose:up`: constroi e arranca o runtime local em modo detached.
+- `pnpm compose:down`: para e remove os contentores do runtime local.
+- `pnpm compose:logs`: segue os logs combinados de toda a stack.
+- `pnpm compose:logs:web`: segue apenas os logs do frontend.
+- `pnpm compose:logs:api`: segue apenas os logs da API.
+- `pnpm compose:logs:analytics`: segue apenas os logs do analytics.
+- `pnpm compose:logs:db`: segue os logs de PostgreSQL, Redis e Nginx.
+- `pnpm compose:ps`: inspeciona o estado atual e health dos contentores.
+- `pnpm compose:restart`: recria o runtime local com um ciclo completo de down/up.
 
-Use detached startup and targeted logs by default:
+Usa arranque detached e logs direcionados por omissao:
 
-- prefer `pnpm compose:up` over foreground `docker compose up`
-- use `pnpm compose:logs:api` or `pnpm compose:logs:web` while working on one area
-- use `pnpm compose:logs` only when you want the full combined stream
+- prefere `pnpm compose:up` em vez de `docker compose up` em foreground
+- usa `pnpm compose:logs:api` ou `pnpm compose:logs:web` enquanto trabalhas numa area especifica
+- usa `pnpm compose:logs` apenas quando quiseres o stream combinado completo
 
-### Runtime expectation for this phase
+### Expectativa de runtime nesta fase
 
-The current repository foundation is considered healthy when:
+A fundacao atual do repositorio e considerada saudavel quando:
 
-- `web` is reachable through `http://localhost:8080/`
-- `api` responds on `/api/health` and `/api/ready`
-- `analytics` responds on `/analytics/health` and `/analytics/ready`
-- PostgreSQL and Redis are healthy in Docker Compose
-
----
-
-## Coding Expectations
-
-### General
-
-- keep code simple and readable
-- prefer explicit naming over cleverness
-- avoid large unreviewable pull requests
-- keep business logic close to the module that owns it
-
-### Shared code
-
-- only place code in shared packages if it is truly shared
-- do not move domain logic into shared packages unnecessarily
-
-### Documentation
-
-Update documentation when changing:
-
-- architecture
-- local setup flow
-- developer commands
-- service responsibilities
-- major workflows
-- shared contracts
-- repository structure
-
-If a change affects architecture significantly, add or update an ADR.
-
-### Frontend Scaffold Conventions
-
-- treat `apps/web/src/routes` as the only route-authoring surface
-- keep app and area-level framing in `apps/web/src/components/layout`
-- keep neutral shared UI in `apps/web/src/components/ui`
-- do not edit `apps/web/src/routeTree.gen.ts` manually
-- use placeholder routes and shells for scaffolding only; feature teams own product UI once implementation starts
+- `web` esta acessivel em `http://localhost:8080/`
+- `api` responde em `/api/health` e `/api/ready`
+- `analytics` responde em `/analytics/health` e `/analytics/ready`
+- PostgreSQL e Redis estao saudaveis no Docker Compose
 
 ---
 
-## Architecture-Sensitive Changes
+## Expectativas De Codigo
 
-These changes require extra care:
+### Geral
 
-- new app or service
-- changes to repo structure
-- changes to shared contracts
-- changes to database ownership
-- queue / worker model changes
-- infrastructure / CI / deployment changes
+- mantem o codigo simples e legivel
+- prefere nomes explicitos a solucoes demasiado espertas
+- evita pull requests grandes e pouco revisaveis
+- mantem a logica de negocio perto do modulo que a detem
 
-For these changes:
+### Codigo partilhado
 
-- document the reasoning
-- call out trade-offs in the PR
-- update architecture docs when needed
+- coloca codigo em packages partilhados apenas quando for realmente partilhado
+- nao movas logica de dominio para packages partilhados sem necessidade
+
+### Documentacao
+
+Atualiza a documentacao quando alterares:
+
+- arquitetura
+- fluxo de setup local
+- comandos de developer
+- responsabilidades dos servicos
+- workflows principais
+- contratos partilhados
+- estrutura do repositorio
+
+Se uma alteracao afetar significativamente a arquitetura, adiciona ou atualiza uma ADR.
+
+### Convencoes do scaffold frontend
+
+- trata `apps/web/src/routes` como a unica superficie de autoria de rotas
+- mantem o enquadramento da app e das areas em `apps/web/src/components/layout`
+- mantem UI partilhada e neutra em `apps/web/src/components/ui`
+- nao edites `apps/web/src/routeTree.gen.ts` manualmente
+- usa rotas e shells placeholder apenas para scaffolding; a UI de produto passa para as equipas de funcionalidade quando a implementacao comecar
 
 ---
 
-## Security Basics
+## Alteracoes Sensiveis Do Ponto De Vista Arquitetural
 
-- never commit real secrets
-- never commit `.env` files with real values
-- use `.env.example` for documented variables only
-- report exposed secrets immediately and rotate them
+Estas alteracoes exigem cuidado extra:
+
+- nova app ou servico
+- alteracoes na estrutura do repositorio
+- alteracoes em contratos partilhados
+- alteracoes na ownership da base de dados
+- alteracoes no modelo de filas/workers
+- alteracoes de infraestrutura / CI / deployment
+
+Para estas alteracoes:
+
+- documenta o racional
+- explicita os trade-offs no PR
+- atualiza a documentacao de arquitetura quando necessario
+
+---
+
+## Basicos De Seguranca
+
+- nunca facas commit de segredos reais
+- nunca facas commit de ficheiros `.env` com valores reais
+- usa `.env.example` apenas para variaveis documentadas
+- reporta imediatamente segredos expostos e faz a sua rotacao
 
 ---
 
 ## Code Owners
 
-Some folders may require review from designated maintainers through `CODEOWNERS`.
+Algumas pastas podem exigir review de maintainers designados atraves de `CODEOWNERS`.
 
 ---
 
-## Definition of Done
+## Definicao De Concluido
 
-A change is considered done when:
+Uma alteracao e considerada concluida quando:
 
-- code is implemented
-- relevant tests pass
-- local setup or runtime docs are updated if developer workflow changed
-- documentation is updated if needed
-- PR is reviewed
-- conversations are resolved
-- the change is merged through squash merge
+- o codigo esta implementado
+- os testes relevantes passam
+- a documentacao de setup local ou de runtime foi atualizada se o fluxo de developer mudou
+- a documentacao foi atualizada quando necessario
+- o PR foi revisto
+- as conversas foram resolvidas
+- a alteracao foi integrada atraves de squash merge
