@@ -1,9 +1,12 @@
 import assert from 'node:assert/strict';
 import { ConflictException, UnauthorizedException } from '@nestjs/common';
+import { plainToInstance } from 'class-transformer';
+import { validate } from 'class-validator';
 import { UserRole } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import { AuthService } from './auth.service';
 import type { TestCase } from '../test/test-helpers';
+import { RegisterDto } from './dto/register.dto';
 
 interface FakeUserRecord {
   id: string;
@@ -119,6 +122,31 @@ class FakeJwtService {
 }
 
 export const authServiceTests: TestCase[] = [
+  {
+    name: 'validates register phone min/max length and format',
+    run: async () => {
+      const invalidDto = plainToInstance(RegisterDto, {
+        email: 'citizen@example.com',
+        password: 'Password123!',
+        phone: 'abc',
+        rgpd_accepted: true,
+      });
+
+      const invalidErrors = await validate(invalidDto);
+      const invalidPhone = invalidErrors.find((error) => error.property === 'phone');
+      assert.ok(invalidPhone);
+
+      const validDto = plainToInstance(RegisterDto, {
+        email: 'citizen@example.com',
+        password: 'Password123!',
+        phone: '+351 912-345-678',
+        rgpd_accepted: true,
+      });
+
+      const validErrors = await validate(validDto);
+      assert.equal(validErrors.length, 0);
+    },
+  },
   {
     name: 'registers a citizen account and normalizes the email',
     run: async () => {

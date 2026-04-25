@@ -1,8 +1,11 @@
 import assert from 'node:assert/strict';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import { plainToInstance } from 'class-transformer';
+import { validate } from 'class-validator';
 import { ReportStatus } from '@prisma/client';
 import { ReportsService } from './reports.service';
 import type { TestCase } from '../test/test-helpers';
+import { CreateReportDto } from './dto/create-report.dto';
 
 interface FakeReportRecord {
   id: string;
@@ -136,6 +139,36 @@ class FakePrismaService {
 }
 
 export const reportsServiceTests: TestCase[] = [
+  {
+    name: 'validates minimum character limits for create report payload',
+    run: async () => {
+      const dto = plainToInstance(CreateReportDto, {
+        titulo: 'ab',
+        tipo: 'Ecoponto Cheio',
+        descricao: 'curta',
+        local: 'A',
+      });
+
+      const errors = await validate(dto);
+      const fieldsWithErrors = errors.map((error) => error.property);
+
+      assert.deepEqual(fieldsWithErrors.sort(), ['descricao', 'local', 'titulo']);
+    },
+  },
+  {
+    name: 'accepts create report payload exactly at minimum character limits',
+    run: async () => {
+      const dto = plainToInstance(CreateReportDto, {
+        titulo: 'abc',
+        tipo: 'Ecoponto Cheio',
+        descricao: '1234567890',
+        local: 'Ave',
+      });
+
+      const errors = await validate(dto);
+      assert.equal(errors.length, 0);
+    },
+  },
   {
     name: 'creates a report for citizen users',
     run: async () => {

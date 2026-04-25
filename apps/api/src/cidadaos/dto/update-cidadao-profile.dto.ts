@@ -10,6 +10,7 @@ export class UpdateCidadaoProfileDto {
 
   @IsOptional()
   @IsString()
+  @MinLength(2)
   @MaxLength(200)
   nome_completo?: string;
 
