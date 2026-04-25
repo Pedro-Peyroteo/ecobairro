@@ -5,8 +5,11 @@ import { AppModule } from './app.module';
 import { readNumberEnv } from '@ecobairro/config';
 
 async function bootstrap() {
+  const corsOrigin = process.env.CORS_ORIGIN ?? 'http://localhost:5173';
   const app = await NestFactory.create(AppModule, {
-    cors: true,
+    cors: {
+      origin: corsOrigin,
+    },
   });
 
   app.setGlobalPrefix('v1', {

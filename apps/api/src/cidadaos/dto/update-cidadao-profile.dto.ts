@@ -1,12 +1,16 @@
-import { IsBoolean, IsObject, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsObject, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
 
 export class UpdateCidadaoProfileDto {
   @IsOptional()
   @IsString()
+  @MinLength(7)
+  @MaxLength(30)
+  @Matches(/^\+?[\d\s\-().]+$/, { message: 'phone must be a valid phone number' })
   phone?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(200)
   nome_completo?: string;
 
   @IsOptional()
