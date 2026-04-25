@@ -115,8 +115,8 @@ export class ReportsService {
     scope: { userId?: string },
     query: ListReportsQuery,
   ): Promise<ListReportsResponse> {
-    const page = query.page ?? 1;
-    const pageSize = query.pageSize ?? 10;
+    const page = coercePositiveInt(query.page, 1);
+    const pageSize = coercePositiveInt(query.pageSize, 10);
     const skip = (page - 1) * pageSize;
 
     const where: Prisma.ReportWhereInput = {
@@ -198,4 +198,19 @@ function assertOperationalWriter(role: ContractUserRole): void {
   if (role !== UserRole.OPERADOR_VEOLIA && role !== UserRole.ADMIN) {
     throw new ForbiddenException('Only operators and admins can update report status');
   }
+}
+
+function coercePositiveInt(value: number | string | undefined, fallback: number): number {
+  if (typeof value === 'number' && Number.isInteger(value) && value > 0) {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    const parsed = Number.parseInt(value, 10);
+    if (Number.isInteger(parsed) && parsed > 0) {
+      return parsed;
+    }
+  }
+
+  return fallback;
 }
