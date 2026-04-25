@@ -19,6 +19,13 @@ enum UserRole {
   ADMIN
 }
 
+enum ReportStatus {
+  PENDENTE
+  ANALISE
+  RESOLVIDO
+  REJEITADO
+}
+
 model User {
   id            String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   email         String         @unique
@@ -31,6 +38,7 @@ model User {
   eliminadoEm   DateTime?      @map("eliminado_em") @db.Timestamptz(6)
 
   cidadaoPerfil CidadaoPerfil?
+  reports       Report[]
 
   @@index([role])
   @@map("users")
@@ -50,4 +58,24 @@ model CidadaoPerfil {
   user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("cidadao_perfis")
+}
+
+model Report {
+  id          String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  titulo      String
+  tipo        String
+  descricao   String
+  local       String
+  imagemUrl   String?      @map("imagem_url")
+  status      ReportStatus @default(PENDENTE)
+  userId      String       @map("user_id") @db.Uuid
+  criadoEm    DateTime     @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm DateTime    @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([criadoEm])
+  @@index([userId])
+  @@map("reports")
 }

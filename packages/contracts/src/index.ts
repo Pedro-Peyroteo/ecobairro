@@ -81,3 +81,59 @@ export interface UpdateCitizenSelfProfileRequest {
   dashboard_widgets?: Record<string, unknown>;
 }
 
+export type ReportStatus = 'pendente' | 'analise' | 'resolvido' | 'rejeitado';
+
+export type ReportTipo =
+  | 'Ecoponto Cheio'
+  | 'Deposição Ilegal'
+  | 'Dano em Equipamento'
+  | 'Odores'
+  | 'Vandalismo';
+
+export interface ReportRecord {
+  id: string;
+  titulo: string;
+  tipo: ReportTipo;
+  descricao: string;
+  local: string;
+  data: string;
+  status: ReportStatus;
+  imagem?: string;
+  user_id: string;
+}
+
+export interface CreateReportRequest {
+  titulo: string;
+  tipo: ReportTipo;
+  descricao: string;
+  local: string;
+  imagem?: string;
+}
+
+export interface CreateReportResponse {
+  report: ReportRecord;
+}
+
+export interface ListReportsQuery {
+  status?: ReportStatus;
+  tipo?: ReportTipo;
+  q?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface ListReportsResponse {
+  reports: ReportRecord[];
+  page: number;
+  pageSize: number;
+  total: number;
+}
+
+export interface UpdateReportStatusRequest {
+  status: ReportStatus;
+}
+
+export interface UpdateReportStatusResponse {
+  report: ReportRecord;
+}
+

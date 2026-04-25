@@ -18,6 +18,10 @@ O backend implementa atualmente a primeira fatia utilizavel da Fase 1:
 - logout
 - leitura do proprio perfil de cidadao
 - atualizacao do proprio perfil de cidadao
+- criacao de report por cidadao
+- listagem de reports do proprio cidadao
+- listagem operacional de reports com filtros
+- atualizacao de estado de report para operador/admin
 - readiness checks para PostgreSQL e Redis
 
 Ainda nao implementado:
@@ -54,6 +58,7 @@ As rotas de negocio vivem atualmente em:
 
 - `/api/v1/auth/...`
 - `/api/v1/cidadaos/...`
+- `/api/v1/reports/...`
 
 ## Estrutura De Modulos
 
@@ -67,6 +72,7 @@ src/
   health.service.ts
   auth/
   cidadaos/
+  reports/
   database/
   redis/
   test/
@@ -83,6 +89,9 @@ src/
 - `cidadaos/`
   - rotas do proprio perfil de cidadao
   - regras de negocio especificas do cidadao para `/me`
+- `reports/`
+  - rotas de criacao/listagem/atualizacao de status de reports
+  - regras de role para cidadao e perfis operacionais
 - `database/`
   - provider global do Prisma
 - `redis/`
@@ -107,6 +116,8 @@ Modelos atualmente implementados:
 - `User`
 - `CidadaoPerfil`
 - enum `UserRole`
+- `Report`
+- enum `ReportStatus`
 
 ### Tabelas atuais
 
@@ -149,11 +160,32 @@ Colunas implementadas:
 - `criado_em`
 - `atualizado_em`
 
+#### `reports`
+
+Objetivo:
+
+- guardar reports de ocorrencias submetidos por utilizadores
+- suportar triagem operacional por status
+
+Colunas implementadas:
+
+- `id`
+- `titulo`
+- `tipo`
+- `descricao`
+- `local`
+- `imagem_url`
+- `status`
+- `user_id`
+- `criado_em`
+- `atualizado_em`
+
 ### Migration atual
 
-Migration implementada:
+Migrations implementadas:
 
 `apps/api/prisma/migrations/20260418230000_init_auth_phase1/migration.sql`
+`apps/api/prisma/migrations/20260425095000_add_reports_phase1/migration.sql`
 
 Comportamentos de base de dados importantes ja presentes:
 
@@ -161,6 +193,10 @@ Comportamentos de base de dados importantes ja presentes:
 - indice em `users.role`
 - indice parcial em `users.eliminado_em`
 - relacao one-to-one de `cidadao_perfis.user_id` para `users.id`
+- indice em `reports.status`
+- indice em `reports.criado_em`
+- indice em `reports.user_id`
+- relacao many-to-one de `reports.user_id` para `users.id`
 
 ## Contratos Partilhados
 
@@ -179,6 +215,66 @@ Os contratos atualmente implementados incluem:
 - `RefreshRequest`
 - `CitizenSelfProfileResponse`
 - `UpdateCitizenSelfProfileRequest`
+- `ReportStatus`
+- `ReportTipo`
+- `ReportRecord`
+- `CreateReportRequest`
+- `CreateReportResponse`
+- `ListReportsQuery`
+- `ListReportsResponse`
+- `UpdateReportStatusRequest`
+- `UpdateReportStatusResponse`
+
+## Implementacao De Reports
+
+### Criar report (cidadao)
+
+Rota:
+
+`POST /api/v1/reports`
+
+Comportamento:
+
+- requer autenticacao JWT
+- exige role `CIDADAO`
+- cria report com status inicial `pendente`
+
+### Listar reports proprios (cidadao)
+
+Rota:
+
+`GET /api/v1/reports/me`
+
+Comportamento:
+
+- requer autenticacao JWT
+- exige role `CIDADAO`
+- devolve apenas reports do utilizador autenticado
+- suporta filtros e paginacao (`status`, `tipo`, `q`, `page`, `pageSize`)
+
+### Listar reports operacionais
+
+Rota:
+
+`GET /api/v1/reports`
+
+Comportamento:
+
+- requer autenticacao JWT
+- permite perfis `OPERADOR_VEOLIA`, `ADMIN`, `TECNICO_AUTARQUIA`, `TECNICO_CCDR`
+- devolve reports globais com filtros e paginacao
+
+### Atualizar status de report
+
+Rota:
+
+`PATCH /api/v1/reports/:id/status`
+
+Comportamento:
+
+- requer autenticacao JWT
+- permite apenas `OPERADOR_VEOLIA` e `ADMIN`
+- atualiza status entre `pendente`, `analise`, `resolvido`, `rejeitado`
 
 Regra pratica:
 
@@ -362,6 +458,7 @@ Ficheiros de teste:
 - `apps/api/src/auth/auth.service.test.ts`
 - `apps/api/src/auth/jwt-auth.guard.test.ts`
 - `apps/api/src/cidadaos/cidadaos.service.test.ts`
+- `apps/api/src/reports/reports.service.test.ts`
 - `apps/api/src/test/run-tests.ts`
 
 Corre-os com:
@@ -379,6 +476,9 @@ Os testes atuais cobrem:
 - invalidacao no logout
 - caminhos de sucesso e falha do JWT guard
 - leitura e atualizacao do proprio perfil de cidadao
+- criacao de reports
+- listagem por escopo (cidadao vs operacional)
+- controlo de permissao por role na atualizacao de status
 
 ## Como Implementar Uma Nova Funcionalidade Backend
 
