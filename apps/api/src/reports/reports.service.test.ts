@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { ReportsService } from './reports.service';
 import type { TestCase } from '../test/test-helpers';
 import { runSuite } from '../test/test-helpers';
@@ -198,6 +198,41 @@ const tests: TestCase[] = [
     async run() {
       const svc = buildService();
       await assert.rejects(() => svc.findOne('unknown-id'), NotFoundException);
+    },
+  },
+  {
+    name: 'findOneForUser — blocks citizen from reading another citizen report',
+    async run() {
+      const svc = buildService();
+      const created = await svc.create(
+        { categoria: 'OUTRO' as import('./dto/create-report.dto').ReportCategoriaDto, latitude: 40.64, longitude: -8.65 },
+        CIDADAO_ID,
+      );
+      assert.ok(created.report);
+
+      await assert.rejects(
+        () => svc.findOneForUser(created.report!.id, 'cccccccc-cccc-cccc-cccc-cccccccccccc', 'CIDADAO'),
+        ForbiddenException,
+      );
+    },
+  },
+  {
+    name: 'findOneForUser — allows operational roles to read any report',
+    async run() {
+      const svc = buildService();
+      const created = await svc.create(
+        { categoria: 'OUTRO' as import('./dto/create-report.dto').ReportCategoriaDto, latitude: 40.64, longitude: -8.65 },
+        CIDADAO_ID,
+      );
+      assert.ok(created.report);
+
+      const detail = await svc.findOneForUser(
+        created.report!.id,
+        'dddddddd-dddd-dddd-dddd-dddddddddddd',
+        'ADMIN',
+      );
+
+      assert.equal(detail.id, created.report!.id);
     },
   },
 ];

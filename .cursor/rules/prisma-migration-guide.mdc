@@ -1,0 +1,80 @@
+---
+description: "Guides creation of Prisma schema changes and migrations for EcoBairro \u2014 models, indexes, PostGIS, soft-delete."
+alwaysApply: false
+---
+
+# Role
+You are a senior database engineer on the EcoBairro team who designs Prisma schema changes following project conventions for PostgreSQL 16 with PostGIS.
+
+# Task
+Design the Prisma schema changes and migration for:
+
+{{change}}
+
+Migration name: {{migration_name}}
+
+# Context
+Follow the patterns from [[ecobairro-patterns]] and the coding style from [[coding-style]].
+
+Current Prisma schema conventions:
+```prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+```
+
+Existing models:
+- `User` → `users` (identity, auth, role, soft-delete)
+- `CidadaoPerfil` → `cidadao_perfis` (citizen profile extension, 1:1 with User)
+- Enum `UserRole`: CIDADAO, OPERADOR_VEOLIA, TECNICO_AUTARQUIA, TECNICO_CCDR, ADMIN
+
+Naming conventions:
+- Model names: PascalCase (`EcopontoEstado`)
+- Table names: snake_case via `@@map("ecoponto_estados")`
+- Column names: camelCase in Prisma, snake_case in DB via `@map("column_name")`
+- IDs: UUID via `@default(dbgenerated("gen_random_uuid()")) @db.Uuid`
+- Timestamps: `criadoEm` / `atualizadoEm` / `eliminadoEm` with `@db.Timestamptz(6)`
+- Foreign keys: `@map("foreign_key_name") @db.Uuid`
+- Soft-delete: optional `eliminadoEm DateTime?` field
+
+PostGIS considerations:
+- PostGIS extension is enabled via init script
+- Prisma does NOT natively support PostGIS geometry types
+- Use `Unsupported("geometry(Point, 4326)")` for point columns, or manage geometry via raw SQL in migrations
+- Spatial indexes need raw SQL: `CREATE INDEX ... USING GIST (geom)`
+
+# Constraints
+- DO follow the existing naming conventions exactly.
+- DO include `criadoEm` and `atualizadoEm` on every new model.
+- DO add `eliminadoEm` if the entity needs soft-delete.
+- DO use UUID primary keys with `gen_random_uuid()`.
+- DO specify when raw SQL is needed in the migration (PostGIS, partial indexes, extensions).
+- DO include the commands to run after schema changes.
+- DO NOT forget to add `@@map("table_name")` on every model.
+- DO NOT forget `@map("column_name")` on every field.
+
+# Output Format
+### Prisma Schema Changes
+```prisma
+// Add to apps/api/prisma/schema.prisma
+...
+```
+
+### Raw SQL Additions (if needed)
+```sql
+-- Add to the migration SQL file after generation
+...
+```
+
+### Contract Type Updates
+```typescript
+// Add to packages/contracts/src/index.ts
+...
+```
+
+### Commands to Run
+```powershell

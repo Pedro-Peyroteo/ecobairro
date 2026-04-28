@@ -183,6 +183,12 @@ export class ReportsService {
     };
   }
 
+  async findOneForUser(id: string, userId: string, role: UserRole): Promise<ReportDetail> {
+    const report = await this.findOne(id);
+    this.assertCanReadReport(report.cidadao_id, userId, role);
+    return report;
+  }
+
   async listMine(cidadaoId: string): Promise<ReportListItem[]> {
     const rows = await this.prisma.$queryRaw<Array<{
       id: string;
@@ -301,6 +307,16 @@ export class ReportsService {
     }));
   }
 
+  async getTimelineForUser(
+    reportId: string,
+    userId: string,
+    role: UserRole,
+  ): Promise<Array<{ estado_antes: string | null; estado_depois: string; nota: string | null; criado_em: string }>> {
+    const report = await this.findOne(reportId);
+    this.assertCanReadReport(report.cidadao_id, userId, role);
+    return this.getTimeline(reportId);
+  }
+
   // ── Antispam helpers (RF-09) ──────────────────────────────────────────────
 
   private antispamKey(cidadaoId: string, zonaId: string): string {
@@ -338,6 +354,12 @@ export class ReportsService {
     const newCount = await client.incr(key);
     if (newCount === 1) {
       await client.expire(key, ttlSeconds);
+    }
+  }
+
+  private assertCanReadReport(reportOwnerId: string, userId: string, role: UserRole): void {
+    if (role === 'CIDADAO' && reportOwnerId !== userId) {
+      throw new ForbiddenException('Cidadão só pode aceder aos próprios reports');
     }
   }
 }

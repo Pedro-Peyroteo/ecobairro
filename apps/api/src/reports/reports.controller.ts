@@ -22,29 +22,39 @@ export class ReportsController {
 
   // RF-08: Create a report (citizen only, with antispam + duplicate detection)
   @Post()
+  @UseGuards(RolesGuard)
+  @Roles('CIDADAO')
   create(@Body() dto: CreateReportDto, @CurrentUser() user: AuthenticatedUser) {
     return this.reportsService.create(dto, user.userId);
   }
 
   // View citizen's own reports
   @Get('meus')
+  @UseGuards(RolesGuard)
+  @Roles('CIDADAO')
   listMine(@CurrentUser() user: AuthenticatedUser) {
     return this.reportsService.listMine(user.userId);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.reportsService.findOne(id);
+  @UseGuards(RolesGuard)
+  @Roles('CIDADAO', 'OPERADOR_VEOLIA', 'TECNICO_AUTARQUIA', 'TECNICO_CCDR', 'ADMIN')
+  findOne(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.reportsService.findOneForUser(id, user.userId, user.role);
   }
 
   // RF-11: Timeline of state transitions
   @Get(':id/timeline')
-  getTimeline(@Param('id') id: string) {
-    return this.reportsService.getTimeline(id);
+  @UseGuards(RolesGuard)
+  @Roles('CIDADAO', 'OPERADOR_VEOLIA', 'TECNICO_AUTARQUIA', 'TECNICO_CCDR', 'ADMIN')
+  getTimeline(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.reportsService.getTimelineForUser(id, user.userId, user.role);
   }
 
   // RF-12: Subscribe to an existing report (instead of creating a duplicate)
   @Post(':id/subscricao')
+  @UseGuards(RolesGuard)
+  @Roles('CIDADAO')
   subscribe(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
     return this.reportsService.subscribe(id, user.userId);
   }
