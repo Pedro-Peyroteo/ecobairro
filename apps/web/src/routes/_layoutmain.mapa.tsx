@@ -7,44 +7,22 @@ import { Badge } from '@/components/ui/badge'
 import { MapPin, Search, Navigation, X, AlertTriangle } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import 'leaflet/dist/leaflet.css'
+import { fetchJson } from '@/lib/http/fetch-json'
+import { clientEnv } from '@/lib/env'
+import type { EcopontoRecord, ListEcopontosResponse } from '@ecobairro/contracts'
 
 export const Route = createFileRoute('/_layoutmain/mapa')({
   component: MapaPage,
 })
 
-type FillLevel = 'baixo' | 'medio' | 'alto'
-
-interface Ecoponto {
-  id: number
-  nome: string
-  morada: string
-  lat: number
-  lng: number
-  ocupacao: number
-  nivel: FillLevel
-  tipos: string[]
-  ultimaAtualizacao: string
-}
-
-const ecopontos: Ecoponto[] = [
-  { id: 1, nome: 'Ecoponto Rossio', morada: 'Praça do Rossio, Aveiro', lat: 40.6409, lng: -8.6537, ocupacao: 25, nivel: 'baixo', tipos: ['Papel', 'Vidro', 'Plástico'], ultimaAtualizacao: 'há 12 min' },
-  { id: 2, nome: 'Ecoponto Mercado', morada: 'R. do Mercado, Aveiro', lat: 40.6390, lng: -8.6510, ocupacao: 95, nivel: 'alto', tipos: ['Papel', 'Vidro', 'Plástico', 'Metal'], ultimaAtualizacao: 'há 5 min' },
-  { id: 3, nome: 'Ecoponto Universidade', morada: 'Campus Universitário, Aveiro', lat: 40.6315, lng: -8.6574, ocupacao: 60, nivel: 'medio', tipos: ['Papel', 'Plástico'], ultimaAtualizacao: 'há 28 min' },
-  { id: 4, nome: 'Ecoponto Glória', morada: 'R. da Glória, Aveiro', lat: 40.6445, lng: -8.6480, ocupacao: 18, nivel: 'baixo', tipos: ['Vidro', 'Plástico', 'Metal'], ultimaAtualizacao: 'há 1h' },
-  { id: 5, nome: 'Ecoponto Beira-Mar', morada: 'Av. Beira-Mar, Aveiro', lat: 40.6420, lng: -8.6610, ocupacao: 72, nivel: 'medio', tipos: ['Papel', 'Vidro'], ultimaAtualizacao: 'há 45 min' },
-  { id: 6, nome: 'Ecoponto Vera Cruz', morada: 'R. Vera Cruz, Aveiro', lat: 40.6370, lng: -8.6555, ocupacao: 88, nivel: 'alto', tipos: ['Papel', 'Vidro', 'Plástico', 'Metal'], ultimaAtualizacao: 'há 10 min' },
-  { id: 7, nome: 'Ecoponto São Bernardo', morada: 'Av. Dr. Lourenço Peixinho, Aveiro', lat: 40.6430, lng: -8.6490, ocupacao: 42, nivel: 'baixo', tipos: ['Papel', 'Metal'], ultimaAtualizacao: 'há 2h' },
-  { id: 8, nome: 'Ecoponto Aradas', morada: 'R. de Aradas, Aveiro', lat: 40.6350, lng: -8.6600, ocupacao: 78, nivel: 'medio', tipos: ['Vidro', 'Plástico'], ultimaAtualizacao: 'há 30 min' },
-  { id: 9, nome: 'Ecoponto Esgueira', morada: 'Zona Industrial de Aveiro', lat: 40.6460, lng: -8.6440, ocupacao: 91, nivel: 'alto', tipos: ['Papel', 'Vidro', 'Plástico', 'Metal'], ultimaAtualizacao: 'há 8 min' },
-]
-
 const nivelConfig = {
   baixo: { color: 'oklch(0.55 0.18 150)', bar: 'oklch(0.55 0.18 150 / 0.85)', label: 'Disponível' },
   medio: { color: '#fb923c',              bar: '#fb923ccc',                    label: 'Moderado'  },
   alto:  { color: '#f87171',              bar: '#f87171cc',                    label: 'Cheio'     },
-}
+  cheio: { color: '#f87171',              bar: '#f87171cc',                    label: 'Cheio'     },
+} as const
 
-function createMarker(nivel: FillLevel, isSelected: boolean) {
+function createMarker(nivel: EcopontoRecord['nivel'], isSelected: boolean) {
   const { color } = nivelConfig[nivel]
   const r = isSelected ? 14 : 10
   const svg = renderToStaticMarkup(
@@ -68,10 +46,21 @@ function FlyTo({ lat, lng }: { lat: number; lng: number }) {
   return null
 }
 
+type FiltroNivel = EcopontoRecord['nivel'] | 'todos'
+
 function MapaPage() {
+  const [ecopontos, setEcopontos] = useState<EcopontoRecord[]>([])
+  const [loading, setLoading] = useState(true)
   const [pesquisa, setPesquisa] = useState('')
-  const [filtroNivel, setFiltroNivel] = useState<FillLevel | 'todos'>('todos')
-  const [selected, setSelected] = useState<Ecoponto | null>(null)
+  const [filtroNivel, setFiltroNivel] = useState<FiltroNivel>('todos')
+  const [selected, setSelected] = useState<EcopontoRecord | null>(null)
+
+  useEffect(() => {
+    fetchJson<ListEcopontosResponse>('/v1/ecopontos', { baseUrl: clientEnv.apiBaseUrl })
+      .then((res) => setEcopontos(res.ecopontos))
+      .catch(() => setEcopontos([]))
+      .finally(() => setLoading(false))
+  }, [])
 
   const filtered = ecopontos.filter((e) => {
     const matchNivel = filtroNivel === 'todos' || e.nivel === filtroNivel
@@ -80,18 +69,16 @@ function MapaPage() {
   })
 
   return (
-    /*
-     * Usamos calc(100svh - X) onde X = navbar(~80px) + padding-top(24px) + padding-bottom(24px)
-     * + header-row(~56px) + filtros(~40px) + 2 gaps(~32px) = ~256px → arredondado 260px
-     * Assim o bloco de lista+mapa ocupa exatamente o espaço restante sem causar scroll externo.
-     */
     <div className="flex flex-col gap-4" style={{ height: 'calc(100svh - 200px)', minHeight: 480 }}>
 
       {/* ── Cabeçalho ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
         <div>
           <h1 className="text-xl font-bold text-foreground">Mapa de Ecopontos</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Aveiro · {ecopontos.length} ecopontos na sua zona</p>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Aveiro · {loading ? '…' : `${ecopontos.length} ecopontos na sua zona`}{' '}
+            {!loading && ecopontos[0]?.codigo ? <span className="text-[11px] opacity-70">({`DB: ${ecopontos[0].codigo}`})</span> : null}
+          </p>
         </div>
         <div className="relative w-full sm:w-60">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
@@ -107,7 +94,7 @@ function MapaPage() {
 
       {/* ── Filtros ── */}
       <div className="flex gap-2 flex-wrap items-center shrink-0">
-        {([['todos', 'Todos'], ['baixo', 'Disponível'], ['medio', 'Moderado'], ['alto', 'Cheio']] as const).map(([val, label]) => (
+        {([['todos', 'Todos'], ['baixo', 'Disponível'], ['medio', 'Moderado'], ['alto', 'Alto'], ['cheio', 'Cheio']] as const).map(([val, label]) => (
           <button
             key={val}
             onClick={() => setFiltroNivel(val)}
@@ -121,22 +108,20 @@ function MapaPage() {
           </button>
         ))}
         <div className="ml-auto hidden sm:flex items-center gap-4">
-          {Object.entries(nivelConfig).map(([k, v]) => (
+          {(['baixo', 'medio', 'alto'] as const).map((k) => (
             <div key={k} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: v.color }} />
-              {v.label}
+              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: nivelConfig[k].color }} />
+              {nivelConfig[k].label}
             </div>
           ))}
         </div>
       </div>
 
-      {/* ── Lista (esquerda) + Mapa (direita) ── preenche o espaço restante */}
+      {/* ── Lista + Mapa ── */}
       <div className="flex flex-col sm:flex-row gap-4 flex-1 min-h-0">
 
-        {/* ── Coluna esquerda: lista + popup flutuante ── */}
+        {/* Coluna esquerda: lista */}
         <div className="w-full sm:w-72 shrink-0 flex flex-col min-h-0 relative">
-
-          {/* Lista — sempre visível, scroll interno */}
           <Card className="border border-border/70 shadow-sm rounded-xl flex-1 min-h-0 overflow-hidden">
             <div className="px-3 py-2 border-b border-border/70">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
@@ -144,7 +129,10 @@ function MapaPage() {
               </p>
             </div>
             <div className="h-full overflow-y-auto divide-y divide-border">
-              {filtered.length === 0 && (
+              {loading && (
+                <div className="p-4 text-sm text-muted-foreground text-center">A carregar…</div>
+              )}
+              {!loading && filtered.length === 0 && (
                 <div className="p-4 text-sm text-muted-foreground text-center">Sem resultados</div>
               )}
               {filtered.map((eco) => {
@@ -167,10 +155,9 @@ function MapaPage() {
               })}
             </div>
           </Card>
-
         </div>
 
-        {/* ── Mapa direita ── */}
+        {/* Mapa direita */}
         <Card className="flex-1 min-h-0 overflow-hidden border border-border/70 shadow-sm rounded-xl relative">
           <div className="h-full">
             <MapContainer
@@ -195,7 +182,7 @@ function MapaPage() {
             </MapContainer>
           </div>
 
-          {/* Popup flutuante sobre o mapa */}
+          {/* Popup flutuante */}
           {selected && (
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[1100] w-80 animate-in slide-in-from-bottom-2 duration-200">
               <Card className="border border-border/70 shadow-lg rounded-xl overflow-hidden bg-card">
@@ -204,6 +191,7 @@ function MapaPage() {
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <p className="font-bold text-sm text-foreground leading-tight">{selected.nome}</p>
+                      <p className="text-[10px] font-mono text-muted-foreground">{selected.codigo}</p>
                       <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
                         <MapPin className="w-3 h-3 shrink-0" />{selected.morada}
                       </p>
@@ -221,7 +209,10 @@ function MapaPage() {
                         style={{ width: `${selected.ocupacao}%`, backgroundColor: nivelConfig[selected.nivel].bar }} />
                     </div>
                     <div className="flex justify-between text-[11px]">
-                      <span className="text-muted-foreground">{selected.ocupacao}% ocupado · {selected.ultimaAtualizacao}</span>
+                      <span className="text-muted-foreground">
+                        {selected.ocupacao}% ocupado
+                        {selected.ultima_atualizacao ? ` · ${selected.ultima_atualizacao}` : ''}
+                      </span>
                       <span className="font-medium" style={{ color: nivelConfig[selected.nivel].color }}>
                         {nivelConfig[selected.nivel].label}
                       </span>
@@ -233,9 +224,14 @@ function MapaPage() {
                     ))}
                   </div>
                   <div className="grid grid-cols-2 gap-2 pt-1">
-                    <button className="flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-semibold text-white bg-[var(--primary)] hover:opacity-90 rounded-lg transition-opacity">
+                    <a
+                      href={`https://www.openstreetmap.org/directions?from=&to=${selected.lat}%2C${selected.lng}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-semibold text-white bg-[var(--primary)] hover:opacity-90 rounded-lg transition-opacity"
+                    >
                       <Navigation className="w-3.5 h-3.5" /> Como chegar
-                    </button>
+                    </a>
                     <button className="flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-semibold border border-destructive/60 text-destructive hover:bg-destructive/5 rounded-lg transition-colors">
                       <AlertTriangle className="w-3.5 h-3.5" /> Reportar
                     </button>

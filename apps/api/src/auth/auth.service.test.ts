@@ -92,6 +92,18 @@ class FakePrismaService {
       this.usersByEmail.set(user.email, user);
       return { ...user };
     },
+    update: async (args: {
+      where: { id: string };
+      data: { passwordHash: string };
+    }) => {
+      const user = this.users.get(args.where.id);
+      if (!user) {
+        throw new Error('User not found');
+      }
+
+      user.passwordHash = args.data.passwordHash;
+      return { ...user };
+    },
   };
 
   async $transaction<T>(callback: (tx: FakePrismaService) => Promise<T>): Promise<T> {
@@ -145,6 +157,39 @@ export const authServiceTests: TestCase[] = [
 
       const validErrors = await validate(validDto);
       assert.equal(validErrors.length, 0);
+    },
+  },
+  {
+    name: 'returns current user profile from me endpoint service method',
+    run: async () => {
+      process.env.REFRESH_TOKEN_TTL_DAYS = '7';
+      process.env.BCRYPT_ROUNDS = '4';
+
+      const prisma = new FakePrismaService();
+      prisma.seedUser({
+        id: 'user-11',
+        email: 'citizen@example.com',
+        passwordHash: 'hashed',
+        phone: null,
+        emailVerified: true,
+        role: UserRole.CIDADAO,
+        eliminadoEm: null,
+        cidadaoPerfil: {
+          rgpdAccepted: true,
+        },
+      });
+
+      const service = new AuthService(
+        prisma as never,
+        new FakeRedisService(new FakeRedisClient()) as never,
+        new FakeJwtService() as never,
+      );
+
+      const me = await service.me('user-11');
+      assert.equal(me.id, 'user-11');
+      assert.equal(me.email, 'citizen@example.com');
+      assert.equal(me.role, 'CIDADAO');
+      assert.equal(me.email_verified, true);
     },
   },
   {
@@ -214,6 +259,92 @@ export const authServiceTests: TestCase[] = [
         (error: unknown) =>
           error instanceof ConflictException &&
           error.message === 'Email already registered',
+      );
+    },
+  },
+  {
+    name: 'generates a reset token for an existing user',
+    run: async () => {
+      process.env.REFRESH_TOKEN_TTL_DAYS = '7';
+      process.env.BCRYPT_ROUNDS = '4';
+      process.env.NODE_ENV = 'test';
+
+      const prisma = new FakePrismaService();
+      prisma.seedUser({
+        id: 'user-16',
+        email: 'citizen@example.com',
+        passwordHash: 'hashed',
+        phone: null,
+        emailVerified: false,
+        role: UserRole.CIDADAO,
+        eliminadoEm: null,
+        cidadaoPerfil: {
+          rgpdAccepted: true,
+        },
+      });
+      const redis = new FakeRedisClient();
+      const service = new AuthService(
+        prisma as never,
+        new FakeRedisService(redis) as never,
+        new FakeJwtService() as never,
+      );
+
+      const response = await service.forgotPassword({ email: 'citizen@example.com' });
+      assert.equal(response.ok, true);
+      assert.ok(response.reset_token);
+    },
+  },
+  {
+    name: 'resets password and invalidates active session',
+    run: async () => {
+      process.env.REFRESH_TOKEN_TTL_DAYS = '7';
+      process.env.BCRYPT_ROUNDS = '4';
+      process.env.NODE_ENV = 'test';
+
+      const prisma = new FakePrismaService();
+      const originalHash = await bcrypt.hash('Password123!', 4);
+      prisma.seedUser({
+        id: 'user-19',
+        email: 'citizen@example.com',
+        passwordHash: originalHash,
+        phone: null,
+        emailVerified: false,
+        role: UserRole.CIDADAO,
+        eliminadoEm: null,
+        cidadaoPerfil: {
+          rgpdAccepted: true,
+        },
+      });
+      const redis = new FakeRedisClient();
+      const service = new AuthService(
+        prisma as never,
+        new FakeRedisService(redis) as never,
+        new FakeJwtService() as never,
+      );
+
+      const login = await service.login({
+        email: 'citizen@example.com',
+        password: 'Password123!',
+      });
+      assert.ok(await redis.get('user:session:user-19'));
+
+      const forgot = await service.forgotPassword({ email: 'citizen@example.com' });
+      assert.ok(forgot.reset_token);
+
+      await service.resetPassword({
+        token: forgot.reset_token!,
+        new_password: 'NewPassword123!',
+      });
+
+      assert.equal(await redis.get('user:session:user-19'), null);
+      await assert.rejects(
+        () =>
+          service.refresh({
+            refresh_token: login.refresh_token,
+          }),
+        (error: unknown) =>
+          error instanceof UnauthorizedException &&
+          error.message === 'Invalid refresh token',
       );
     },
   },

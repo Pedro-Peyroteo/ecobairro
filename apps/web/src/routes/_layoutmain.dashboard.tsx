@@ -1,56 +1,100 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { MapPin, FileText, Trash2, Users, TrendingUp, TrendingDown, AlertCircle, Wifi, WifiOff, Download, Search } from 'lucide-react'
+import { AlertCircle, Clock3, Download, FileText, Loader2, Search } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { requireRole } from '@/lib/auth'
-import { getUser } from '@/lib/auth'
-import { useState } from 'react'
+import { getAccessToken, getUser } from '@/lib/auth'
+import { useEffect, useMemo, useState } from 'react'
+import { fetchJson } from '@/lib/http/fetch-json'
+import { clientEnv } from '@/lib/env'
+import type { ListReportsResponse, ReportRecord, ReportStatus } from '@ecobairro/contracts'
 
 export const Route = createFileRoute('/_layoutmain/dashboard')({
   beforeLoad: requireRole(['operador', 'admin']),
   component: DashboardPage,
 })
 
-const kpiCards = [
-  { title: 'Ecopontos Ativos',    value: '195', extra: '53 offline',    icon: MapPin,  trend: 'up',      trendVal: '+4 este mês',            color: '#60a5fa' },
-  { title: 'Reportes Abertos',    value: '37',  extra: '5 críticos',    icon: FileText,trend: 'down',     trendVal: '-12 vs semana passada',   color: '#fb923c' },
-  { title: 'Recolhas Pendentes',  value: '14',  extra: '3 urgentes',    icon: Trash2,  trend: 'neutral',  trendVal: 'igual à semana passada',  color: '#f87171' },
-  { title: 'Utilizadores Ativos', value: '1.2k',extra: '+89 este mês',  icon: Users,   trend: 'up',       trendVal: '+8% vs mês anterior',     color: 'oklch(0.55 0.18 150)' },
-  { title: 'Sensores Online',     value: '141', extra: '54 com alertas',icon: Wifi,    trend: 'down',     trendVal: '-12 offline',             color: '#22c55e' },
-  { title: 'Zonas Cobertas',      value: '5',   extra: '100% cobertura',icon: MapPin,  trend: 'neutral',  trendVal: 'sem alterações',          color: '#a78bfa' },
-]
-
-const allReports = [
-  { id: '#R-0295', local: 'Praça do Rossio',         tipo: 'Ecoponto cheio',     estado: 'critico',   tempo: '30min', zona: 'Centro' },
-  { id: '#R-0294', local: 'R. Vera Cruz, 33',         tipo: 'Deposição ilegal',   estado: 'aberto',    tempo: '1h',    zona: 'Centro' },
-  { id: '#R-0293', local: 'Av. Beira-Mar',            tipo: 'Sensor offline',     estado: 'em_curso',  tempo: '2h',    zona: 'Oeste'  },
-  { id: '#R-0292', local: 'Campus Universitário',     tipo: 'Tampa danificada',   estado: 'em_curso',  tempo: '4h',    zona: 'Norte'  },
-  { id: '#R-0291', local: 'Av. da República, 45',     tipo: 'Ecoponto cheio',     estado: 'aberto',    tempo: '5h',    zona: 'Centro' },
-  { id: '#R-0290', local: 'R. das Flores, 12',        tipo: 'Vidro derramado',    estado: 'em_curso',  tempo: '8h',    zona: 'Norte'  },
-  { id: '#R-0289', local: 'Praça do Comércio',        tipo: 'Ecoponto danificado',estado: 'resolvido', tempo: '1d',    zona: 'Centro' },
-  { id: '#R-0288', local: 'R. Augusta, 78',           tipo: 'Odor intenso',       estado: 'resolvido', tempo: '1d',    zona: 'Este'   },
-  { id: '#R-0287', local: 'Av. L. Peixinho, 90',      tipo: 'Porta bloqueada',    estado: 'resolvido', tempo: '2d',    zona: 'Norte'  },
-  { id: '#R-0286', local: 'R. da Glória, 45',         tipo: 'Vandalismo',         estado: 'rejeitado', tempo: '3d',    zona: 'Sul'    },
-]
-
-const estadoBadge: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; color: string }> = {
-  critico:   { label: 'Crítico',   variant: 'destructive', color: '#f87171' },
-  aberto:    { label: 'Aberto',    variant: 'outline',     color: '#fb923c' },
-  em_curso:  { label: 'Em curso',  variant: 'default',     color: '#60a5fa' },
-  resolvido: { label: 'Resolvido', variant: 'secondary',   color: 'oklch(0.55 0.18 150)' },
-  rejeitado: { label: 'Rejeitado', variant: 'secondary',   color: '#94a3b8' },
+const estadoBadge: Record<ReportStatus, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
+  pendente: { label: 'Pendente', variant: 'outline' },
+  analise: { label: 'Em análise', variant: 'default' },
+  resolvido: { label: 'Resolvido', variant: 'secondary' },
+  rejeitado: { label: 'Rejeitado', variant: 'destructive' },
 }
 
 function DashboardPage() {
   const user = getUser()
   const [pesquisa, setPesquisa] = useState('')
   const [filtroEstado, setFiltroEstado] = useState('todos')
-
-  const reportesFiltrados = allReports.filter(r => {
-    const matchSearch = pesquisa === '' || r.local.toLowerCase().includes(pesquisa.toLowerCase()) || r.tipo.toLowerCase().includes(pesquisa.toLowerCase())
-    const matchEstado = filtroEstado === 'todos' || r.estado === filtroEstado
-    return matchSearch && matchEstado
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [reports, setReports] = useState<ReportRecord[]>([])
+  const [totals, setTotals] = useState({
+    all: 0,
+    pendente: 0,
+    analise: 0,
+    resolvido: 0,
+    rejeitado: 0,
   })
+
+  useEffect(() => {
+    const accessToken = getAccessToken()
+    if (!accessToken) {
+      setError('Sessão inválida. Faça login novamente.')
+      setLoading(false)
+      return
+    }
+
+    const headers = { Authorization: `Bearer ${accessToken}` }
+
+    const load = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+
+        const [recent, all, pendente, analise, resolvido, rejeitado] = await Promise.all([
+          fetchJson<ListReportsResponse>('/v1/reports?page=1&pageSize=50', {
+            baseUrl: clientEnv.apiBaseUrl,
+            headers,
+          }),
+          fetchJson<ListReportsResponse>('/v1/reports?page=1&pageSize=1', { baseUrl: clientEnv.apiBaseUrl, headers }),
+          fetchJson<ListReportsResponse>('/v1/reports?page=1&pageSize=1&status=pendente', { baseUrl: clientEnv.apiBaseUrl, headers }),
+          fetchJson<ListReportsResponse>('/v1/reports?page=1&pageSize=1&status=analise', { baseUrl: clientEnv.apiBaseUrl, headers }),
+          fetchJson<ListReportsResponse>('/v1/reports?page=1&pageSize=1&status=resolvido', { baseUrl: clientEnv.apiBaseUrl, headers }),
+          fetchJson<ListReportsResponse>('/v1/reports?page=1&pageSize=1&status=rejeitado', { baseUrl: clientEnv.apiBaseUrl, headers }),
+        ])
+
+        setReports(recent.reports)
+        setTotals({
+          all: all.total,
+          pendente: pendente.total,
+          analise: analise.total,
+          resolvido: resolvido.total,
+          rejeitado: rejeitado.total,
+        })
+      } catch {
+        setError('Não foi possível carregar os dados do dashboard.')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    void load()
+  }, [])
+
+  const reportesFiltrados = useMemo(() => reports.filter(r => {
+    const matchSearch = pesquisa === '' || r.local.toLowerCase().includes(pesquisa.toLowerCase()) || r.tipo.toLowerCase().includes(pesquisa.toLowerCase())
+    const matchEstado = filtroEstado === 'todos' || r.status === filtroEstado
+    return matchSearch && matchEstado
+  }), [reports, pesquisa, filtroEstado])
+
+  const kpiCards = [
+    { title: 'Total de Reportes', value: totals.all, extra: 'registos em base de dados', icon: FileText },
+    { title: 'Pendentes', value: totals.pendente, extra: 'a aguardar triagem', icon: Clock3 },
+    { title: 'Em Análise', value: totals.analise, extra: 'em processamento', icon: Loader2 },
+    { title: 'Resolvidos', value: totals.resolvido, extra: 'fechados com sucesso', icon: FileText },
+    { title: 'Rejeitados', value: totals.rejeitado, extra: 'encerrados como inválidos', icon: AlertCircle },
+    { title: 'Taxa de Resolução', value: `${totals.all > 0 ? Math.round((totals.resolvido / totals.all) * 100) : 0}%`, extra: 'resolvidos / total', icon: FileText },
+  ] as const
 
   return (
     <div className="flex flex-col gap-8 pb-12">
@@ -65,11 +109,15 @@ function DashboardPage() {
               Resumo operacional da plataforma ecoBairro — {new Date().toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long' })}
             </p>
           </div>
-          <div className="hidden sm:flex absolute right-6 -bottom-4 opacity-10 pointer-events-none">
-            <TrendingUp className="w-36 h-36 text-[var(--primary)]" />
-          </div>
+          {loading && <Loader2 className="w-6 h-6 animate-spin text-[var(--primary)]" />}
         </CardContent>
       </Card>
+
+      {error && (
+        <div className="rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {error}
+        </div>
+      )}
 
       {/* KPIs */}
       <div className="grid gap-3 grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
@@ -79,38 +127,17 @@ function DashboardPage() {
             <Card key={kpi.title} className="border border-border/70 shadow-sm rounded-xl overflow-hidden">
               <CardHeader className="flex flex-row items-center justify-between pb-1 pt-4 px-4">
                 <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider leading-tight">{kpi.title}</p>
-                <div className="flex items-center justify-center w-7 h-7 rounded-lg shrink-0" style={{ backgroundColor: `color-mix(in srgb, ${kpi.color} 12%, transparent)` }}>
-                  <Icon className="w-3.5 h-3.5" style={{ color: kpi.color }} />
+                <div className="flex items-center justify-center w-7 h-7 rounded-lg shrink-0 bg-primary/10">
+                  <Icon className="w-3.5 h-3.5 text-primary" />
                 </div>
               </CardHeader>
               <CardContent className="px-4 pb-4">
-                <p className="text-xl font-bold text-foreground">{kpi.value}</p>
+                <p className="text-xl font-bold text-foreground">{loading ? '-' : kpi.value}</p>
                 <p className="text-[10px] text-muted-foreground mt-0.5">{kpi.extra}</p>
-                <div className={`flex items-center gap-0.5 mt-1 text-[10px] font-medium ${kpi.trend === 'up' ? 'text-emerald-600' : kpi.trend === 'down' ? 'text-red-500' : 'text-muted-foreground'}`}>
-                  {kpi.trend === 'up' && <TrendingUp className="w-3 h-3" />}
-                  {kpi.trend === 'down' && <TrendingDown className="w-3 h-3" />}
-                  {kpi.trend === 'neutral' && <AlertCircle className="w-3 h-3" />}
-                  <span className="truncate">{kpi.trendVal}</span>
-                </div>
               </CardContent>
             </Card>
           )
         })}
-      </div>
-
-      {/* Alertas rápidos */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        {[
-          { label: '5 sensores com bateria crítica (<10%)', icon: WifiOff, color: '#f87171', action: 'Ver sensores' },
-          { label: '3 ecopontos cheios sem recolha há +2 dias', icon: AlertCircle, color: '#fb923c', action: 'Ver fila' },
-          { label: '2 operadores sem tarefas atribuídas', icon: Users, color: '#60a5fa', action: 'Ver fila' },
-        ].map(({ label, icon: Icon, color, action }) => (
-          <div key={label} className="flex items-center gap-3 p-3 rounded-xl border" style={{ borderColor: `color-mix(in srgb, ${color} 30%, transparent)`, backgroundColor: `color-mix(in srgb, ${color} 6%, transparent)` }}>
-            <Icon className="w-4 h-4 shrink-0" style={{ color }} />
-            <p className="text-xs text-foreground flex-1">{label}</p>
-            <button className="text-xs font-medium hover:underline shrink-0" style={{ color }}>{action}</button>
-          </div>
-        ))}
       </div>
 
       {/* Tabela reportes */}
@@ -130,10 +157,10 @@ function DashboardPage() {
               <select value={filtroEstado} onChange={e => setFiltroEstado(e.target.value)}
                 className="px-3 py-1.5 text-xs rounded-xl border border-border bg-card text-foreground focus:outline-none">
                 <option value="todos">Todos</option>
-                <option value="critico">Crítico</option>
-                <option value="aberto">Aberto</option>
-                <option value="em_curso">Em curso</option>
+                <option value="pendente">Pendente</option>
+                <option value="analise">Em análise</option>
                 <option value="resolvido">Resolvido</option>
+                <option value="rejeitado">Rejeitado</option>
               </select>
               <button className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl border border-border bg-card text-foreground hover:bg-accent transition-colors">
                 <Download className="w-3.5 h-3.5" /> CSV
@@ -153,17 +180,17 @@ function DashboardPage() {
               </thead>
               <tbody>
                 {reportesFiltrados.map((r, i) => {
-                  const badge = estadoBadge[r.estado]
+                  const badge = estadoBadge[r.status]
                   return (
                     <tr key={r.id} className={`border-b border-border/50 hover:bg-muted/20 transition-colors ${i % 2 === 0 ? '' : 'bg-muted/10'}`}>
-                      <td className="px-4 py-2.5"><code className="text-[11px] text-muted-foreground">{r.id}</code></td>
+                      <td className="px-4 py-2.5"><code className="text-[11px] text-muted-foreground">{r.id.slice(0, 8)}</code></td>
                       <td className="px-4 py-2.5 text-xs text-foreground truncate max-w-[160px]">{r.local}</td>
                       <td className="px-4 py-2.5 text-xs text-muted-foreground">{r.tipo}</td>
-                      <td className="px-4 py-2.5 text-xs text-muted-foreground">{r.zona}</td>
+                      <td className="px-4 py-2.5 text-xs text-muted-foreground">-</td>
                       <td className="px-4 py-2.5">
                         <Badge variant={badge.variant} className="text-[10px]">{badge.label}</Badge>
                       </td>
-                      <td className="px-4 py-2.5 text-xs text-muted-foreground whitespace-nowrap">{r.tempo}</td>
+                      <td className="px-4 py-2.5 text-xs text-muted-foreground whitespace-nowrap">{timeAgo(r.data)}</td>
                     </tr>
                   )
                 })}
@@ -177,4 +204,19 @@ function DashboardPage() {
       </Card>
     </div>
   )
+}
+
+function timeAgo(value: string): string {
+  const date = new Date(value)
+  const diffMs = Date.now() - date.getTime()
+  const minutes = Math.floor(diffMs / 60000)
+
+  if (minutes < 1) return 'agora'
+  if (minutes < 60) return `${minutes}min`
+
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h`
+
+  const days = Math.floor(hours / 24)
+  return `${days}d`
 }

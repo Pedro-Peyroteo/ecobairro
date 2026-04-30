@@ -8,6 +8,9 @@ import { useGoogleLogin } from '@react-oauth/google'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { setAuthSession } from '@/lib/auth'
+import { getCitizenProfile, getMe, loginRequest, toUiRole } from '@/lib/api/auth'
+import { HttpError } from '@/lib/http/fetch-json'
 import { cn } from '@/lib/utils'
 
 import { clientEnv } from '@/lib/env'
@@ -58,6 +61,7 @@ function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [rememberMe, setRememberMe] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   const {
     register,
@@ -68,11 +72,50 @@ function LoginPage() {
   })
 
   const onSubmit = async (data: FormData) => {
-    setLoading(true)
-    await new Promise((r) => setTimeout(r, 800))
-    sessionStorage.setItem('user', JSON.stringify({ id: '1', name: 'João Silva', email: data.email, role: 'cidadao' }))
-    setLoading(false)
-    navigate({ to: '/dashboard' })
+    try {
+      setSubmitError(null)
+      setLoading(true)
+      const login = await loginRequest({
+        email: data.email,
+        password: data.password,
+      })
+      const me = await getMe(login.access_token)
+      const role = toUiRole(me.role)
+      let displayName = me.email
+
+      if (role === 'cidadao') {
+        try {
+          const profile = await getCitizenProfile(login.access_token)
+          if (profile.nome_completo?.trim()) {
+            displayName = profile.nome_completo
+          }
+        } catch {
+          // Keep login resilient even if profile fetch fails.
+        }
+      }
+
+      setAuthSession({
+        user: {
+          id: me.id,
+          name: displayName,
+          email: me.email,
+          role,
+        },
+        accessToken: login.access_token,
+        refreshToken: login.refresh_token,
+      })
+
+      navigate({ to: role === 'cidadao' ? '/home' : '/dashboard' })
+    } catch (error) {
+      if (error instanceof HttpError && typeof error.body === 'object' && error.body !== null && 'message' in error.body) {
+        const message = error.body.message
+        setSubmitError(typeof message === 'string' ? message : 'Falha ao autenticar. Tente novamente.')
+      } else {
+        setSubmitError('Falha ao autenticar. Tente novamente.')
+      }
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -224,6 +267,9 @@ function LoginPage() {
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? 'A entrar...' : 'Entrar'}
             </Button>
+            {submitError && (
+              <p className="text-xs text-destructive text-center">{submitError}</p>
+            )}
 
             <p className="text-center text-sm text-muted-foreground">
               Ainda não tens conta?{' '}
