@@ -40,6 +40,7 @@ model User {
   cidadaoPerfil CidadaoPerfil?
   reports       Report[]
   partilhas     Partilha[]
+  recolhas      Recolha[]
 
   @@index([role])
   @@map("users")
@@ -96,11 +97,86 @@ model Ecoponto {
   lat               Float    @default(40.6409)
   lng               Float    @default(-8.6537)
   mapTileUrl        String?  @map("map_tile_url")
+  bateria           Int?
+  temperatura       Float?
   ordem             Int      @default(0)
   ativo             Boolean  @default(true)
   criadoEm          DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
 
   @@map("ecopontos")
+}
+
+model Tarefa {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  titulo     String
+  local      String
+  tipo       String
+  prioridade String   @default("normal")
+  estado     String   @default("pendente")
+  atribuido  String?
+  criadoEm   DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  @@index([estado])
+  @@map("tarefas")
+}
+
+model Recolha {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tipo         String
+  subtipo      String
+  morada       String
+  status       String   @default("pendente")
+  obs          String?
+  dataPrevista String?  @map("data_prevista")
+  userId       String?  @map("user_id") @db.Uuid
+  criadoEm     DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([criadoEm])
+  @@map("recolhas")
+}
+
+model Campanha {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  titulo       String
+  corpo        String
+  estado       String   @default("rascunho")
+  dataValidade DateTime @map("data_validade") @db.Timestamptz(6)
+  autor        String   @default("Câmara de Aveiro")
+  criadoEm     DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  @@index([estado])
+  @@map("campanhas")
+}
+
+model AuditLog {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  utilizador String
+  papel      String
+  acao       String
+  descricao  String
+  ip         String   @default("0.0.0.0")
+  criadoEm   DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  @@index([criadoEm])
+  @@map("audit_logs")
+}
+
+model Rota {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nome      String
+  operador  String
+  estado    String   @default("pendente")
+  ecopontos Int      @default(0)
+  distancia String   @default("")
+  duracao   String   @default("")
+  waypoints Json     @default("[]")
+  cor       String   @default("#60a5fa")
+  criadoEm  DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  @@map("rotas")
 }
 
 model Partilha {

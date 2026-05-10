@@ -49,6 +49,8 @@ function mapRow(row: {
   ultimaAtualizacao: string | null;
   lat: number;
   lng: number;
+  bateria: number | null;
+  temperatura: number | null;
   ativo: boolean;
   ordem: number;
 }): EcopontoRecord {
@@ -68,6 +70,8 @@ function mapRow(row: {
     ultima_atualizacao: row.ultimaAtualizacao,
     lat: row.lat,
     lng: row.lng,
+    bateria: row.bateria,
+    temperatura: row.temperatura,
     ativo: row.ativo,
     ordem: row.ordem,
   };

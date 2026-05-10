@@ -72,6 +72,11 @@ async function main(): Promise<void> {
     },
   });
 
+  await prisma.rota.deleteMany();
+  await prisma.tarefa.deleteMany();
+  await prisma.recolha.deleteMany();
+  await prisma.campanha.deleteMany();
+  await prisma.auditLog.deleteMany();
   await prisma.ecoponto.deleteMany();
   await prisma.report.deleteMany();
   await prisma.partilha.deleteMany();
@@ -89,9 +94,11 @@ async function main(): Promise<void> {
         tipos: ['Papel', 'Vidro', 'Plástico'],
         sensorEstado: 'online',
         ultimaRecolha: '20 Jan 2026',
-        ultimaAtualizacao: 'há 12 min',
+        ultimaAtualizacao: 'há 2 min',
         lat: 40.6409,
         lng: -8.6537,
+        bateria: 87,
+        temperatura: 14.0,
         ordem: 0,
       },
       {
@@ -102,11 +109,13 @@ async function main(): Promise<void> {
         distanciaLabel: '400 m',
         ocupacao: 95,
         tipos: ['Papel', 'Vidro', 'Plástico', 'Metal'],
-        sensorEstado: 'online',
+        sensorEstado: 'alerta',
         ultimaRecolha: '21 Jan 2026',
         ultimaAtualizacao: 'há 5 min',
         lat: 40.639,
         lng: -8.651,
+        bateria: 12,
+        temperatura: 16.0,
         ordem: 1,
       },
       {
@@ -119,9 +128,11 @@ async function main(): Promise<void> {
         tipos: ['Papel', 'Plástico'],
         sensorEstado: 'online',
         ultimaRecolha: '19 Jan 2026',
-        ultimaAtualizacao: 'há 28 min',
+        ultimaAtualizacao: 'há 8 min',
         lat: 40.6315,
         lng: -8.6574,
+        bateria: 65,
+        temperatura: 13.0,
         ordem: 2,
       },
       {
@@ -134,9 +145,11 @@ async function main(): Promise<void> {
         tipos: ['Vidro', 'Plástico', 'Metal'],
         sensorEstado: 'offline',
         ultimaRecolha: '18 Jan 2026',
-        ultimaAtualizacao: 'há 1h',
+        ultimaAtualizacao: 'há 3 dias',
         lat: 40.6445,
         lng: -8.648,
+        bateria: null,
+        temperatura: null,
         ordem: 3,
       },
       {
@@ -145,13 +158,15 @@ async function main(): Promise<void> {
         morada: 'Av. Beira-Mar, Aveiro',
         zona: 'Oeste',
         distanciaLabel: '1.5 km',
-        ocupacao: 72,
+        ocupacao: 88,
         tipos: ['Papel', 'Vidro'],
-        sensorEstado: 'online',
+        sensorEstado: 'alerta',
         ultimaRecolha: '17 Jan 2026',
-        ultimaAtualizacao: 'há 45 min',
+        ultimaAtualizacao: 'há 12 min',
         lat: 40.642,
         lng: -8.661,
+        bateria: 8,
+        temperatura: 15.0,
         ordem: 4,
       },
       {
@@ -160,13 +175,15 @@ async function main(): Promise<void> {
         morada: 'R. Vera Cruz, Aveiro',
         zona: 'Centro',
         distanciaLabel: '900 m',
-        ocupacao: 88,
+        ocupacao: 72,
         tipos: ['Papel', 'Vidro', 'Plástico', 'Metal'],
         sensorEstado: 'online',
         ultimaRecolha: '22 Jan 2026',
-        ultimaAtualizacao: 'há 10 min',
+        ultimaAtualizacao: 'há 1 min',
         lat: 40.637,
         lng: -8.6555,
+        bateria: 72,
+        temperatura: 14.0,
         ordem: 5,
       },
       {
@@ -179,9 +196,11 @@ async function main(): Promise<void> {
         tipos: ['Papel', 'Metal'],
         sensorEstado: 'offline',
         ultimaRecolha: '15 Jan 2026',
-        ultimaAtualizacao: 'há 2h',
+        ultimaAtualizacao: 'há 2 dias',
         lat: 40.643,
         lng: -8.649,
+        bateria: null,
+        temperatura: null,
         ordem: 6,
       },
       {
@@ -190,13 +209,15 @@ async function main(): Promise<void> {
         morada: 'R. de Aradas, Aveiro',
         zona: 'Este',
         distanciaLabel: '2.1 km',
-        ocupacao: 78,
+        ocupacao: 42,
         tipos: ['Vidro', 'Plástico'],
         sensorEstado: 'online',
         ultimaRecolha: '20 Jan 2026',
-        ultimaAtualizacao: 'há 30 min',
+        ultimaAtualizacao: 'há 4 min',
         lat: 40.635,
         lng: -8.66,
+        bateria: 91,
+        temperatura: 13.0,
         ordem: 7,
       },
       {
@@ -212,6 +233,8 @@ async function main(): Promise<void> {
         ultimaAtualizacao: 'há 8 min',
         lat: 40.646,
         lng: -8.644,
+        bateria: 55,
+        temperatura: 15.0,
         ordem: 8,
       },
     ],
@@ -432,6 +455,130 @@ async function main(): Promise<void> {
         destaque: false,
         publishedAt: new Date('2025-12-10T12:00:00.000Z'),
         tempoLeituraMin: 3,
+      },
+    ],
+  });
+
+  // ─── Fila de Prioridades ───────────────────────────────────────────────────
+  await prisma.tarefa.createMany({
+    data: [
+      { titulo: 'Recolha urgente EP-001 — Rossio',         local: 'Praça do Rossio',        tipo: 'Recolha',    prioridade: 'critica', estado: 'pendente'  },
+      { titulo: 'Reparação porta EP-008 — Aradas',         local: 'R. de Aradas, Aveiro',   tipo: 'Manutenção', prioridade: 'alta',    estado: 'em_curso', atribuido: 'Pedro Mendes' },
+      { titulo: 'Recolha EP-005 — Beira-Mar',              local: 'Av. Beira-Mar',          tipo: 'Recolha',    prioridade: 'alta',    estado: 'pendente'  },
+      { titulo: 'Limpeza depósito ilegal — Vera Cruz',     local: 'R. Vera Cruz, 7',        tipo: 'Limpeza',    prioridade: 'normal',  estado: 'pendente'  },
+      { titulo: 'Manutenção sensor EP-004 — Glória',       local: 'R. da Glória, 45',       tipo: 'Manutenção', prioridade: 'normal',  estado: 'em_curso', atribuido: 'Sofia Lopes' },
+      { titulo: 'Recolha EP-006 — Vera Cruz',              local: 'R. Vera Cruz, 33',       tipo: 'Recolha',    prioridade: 'alta',    estado: 'pendente'  },
+      { titulo: 'Pintura ecoponto vandalizado — Beira-Mar',local: 'Av. Beira-Mar',          tipo: 'Manutenção', prioridade: 'baixa',   estado: 'pendente'  },
+      { titulo: 'Recolha EP-002 — Mercado',                local: 'R. do Mercado, 12',      tipo: 'Recolha',    prioridade: 'alta',    estado: 'resolvido', atribuido: 'Pedro Mendes' },
+    ],
+  });
+
+  // ─── Recolhas de Monos/Entulho ─────────────────────────────────────────────
+  const cidadaoUser = await prisma.user.findFirst({
+    where: { email: cidadaoEmail },
+    select: { id: true },
+  });
+  if (cidadaoUser) {
+    await prisma.recolha.createMany({
+      data: [
+        { tipo: 'Monos Volumosos', subtipo: 'Frigorífico e Máquina de Lavar', morada: 'Rua de Aveiro, 12, 3º Dto', status: 'agendado',  dataPrevista: '22/04/2026', obs: 'Deixar junto à porta do prédio.', userId: cidadaoUser.id },
+        { tipo: 'Entulho',         subtipo: 'Restos de obras (Tijolos)',      morada: 'Av. Dr. Lourenço Peixinho, 45', status: 'concluido', dataPrevista: '12/04/2026', obs: 'Sacos bem fechados.', userId: cidadaoUser.id },
+        { tipo: 'Monos Volumosos', subtipo: 'Sofá de 3 lugares',              morada: 'Rua Direita, 8',            status: 'pendente',  dataPrevista: null,         obs: 'Não cabe no elevador.', userId: cidadaoUser.id },
+      ],
+    });
+  }
+
+  // ─── Campanhas Institucionais ───────────────────────────────────────────────
+  await prisma.campanha.createMany({
+    data: [
+      {
+        titulo: 'Recolha especial de REEE — Janeiro 2026',
+        corpo: 'No dia 15 de Janeiro haverá uma recolha especial de resíduos elétricos e eletrónicos em todos os bairros do concelho. Deixe os seus equipamentos junto ao ecoponto habitual até às 9h.',
+        estado: 'publicada',
+        dataValidade: new Date('2026-01-16'),
+        autor: 'Câmara de Aveiro',
+      },
+      {
+        titulo: 'Campanha "Aveiro Recicla Mais" — Fevereiro',
+        corpo: 'Junte-se à campanha de reciclagem do mês de Fevereiro. Cada tonelada de papel reciclado poupa 17 árvores! Participe e ganhe pontos ecoBairro.',
+        estado: 'publicada',
+        dataValidade: new Date('2026-02-28'),
+        autor: 'Câmara de Aveiro',
+      },
+      {
+        titulo: 'Manutenção ecopontos Zona Norte — Aviso',
+        corpo: 'Informamos que os ecopontos da Zona Norte estarão temporariamente sem serviço nos dias 10 e 11 de Janeiro para manutenção programada.',
+        estado: 'expirada',
+        dataValidade: new Date('2026-01-11'),
+        autor: 'Câmara de Aveiro',
+      },
+      {
+        titulo: 'Novo horário de recolha — Bairro do Liceu',
+        corpo: 'A partir de Fevereiro, a recolha de resíduos no Bairro do Liceu passa para as terças e sextas-feiras, entre as 22h e as 2h.',
+        estado: 'rascunho',
+        dataValidade: new Date('2026-02-28'),
+        autor: 'Câmara de Aveiro',
+      },
+      {
+        titulo: 'Obras na Av. Central — Alteração de ecopontos',
+        corpo: 'Devido às obras em curso na Av. Central, os ecopontos foram temporariamente relocalizados para a Rua de Viseu, em frente ao nº 45.',
+        estado: 'publicada',
+        dataValidade: new Date('2026-03-20'),
+        autor: 'Câmara de Aveiro',
+      },
+    ],
+  });
+
+  // ─── Audit Logs ────────────────────────────────────────────────────────────
+  await prisma.auditLog.createMany({
+    data: [
+      { utilizador: 'admin@ecobairro.pt',      papel: 'admin',             acao: 'config', descricao: 'Alterou configurações globais do sistema',          ip: '192.168.1.10' },
+      { utilizador: 'joao.silva@cm-aveiro.pt', papel: 'tecnico_autarquia', acao: 'create', descricao: 'Criou mensagem institucional #12',                  ip: '192.168.1.45' },
+      { utilizador: 'ana.costa@cm-aveiro.pt',  papel: 'tecnico_autarquia', acao: 'update', descricao: 'Editou zona geográfica "Zona Norte"',               ip: '192.168.1.52' },
+      { utilizador: 'op01@ecobairro.pt',       papel: 'operador',          acao: 'login',  descricao: 'Sessão iniciada',                                   ip: '10.0.0.23'    },
+      { utilizador: 'admin@ecobairro.pt',      papel: 'admin',             acao: 'delete', descricao: 'Eliminou utilizador id:47 (conta desativada)',       ip: '192.168.1.10' },
+      { utilizador: 'rui.faria@cm-aveiro.pt',  papel: 'tecnico_ccdr',      acao: 'login',  descricao: 'Sessão iniciada',                                   ip: '172.16.0.8'   },
+      { utilizador: 'op02@ecobairro.pt',       papel: 'operador',          acao: 'update', descricao: 'Atualizou estado do ecoponto EP-204 para "Cheio"',  ip: '10.0.0.31'    },
+      { utilizador: 'joao.silva@cm-aveiro.pt', papel: 'tecnico_autarquia', acao: 'create', descricao: 'Criou zona geográfica "Bairro do Liceu"',           ip: '192.168.1.45' },
+      { utilizador: 'admin@ecobairro.pt',      papel: 'admin',             acao: 'update', descricao: 'Alterou papel de utilizador id:23 para "operador"', ip: '192.168.1.10' },
+      { utilizador: 'op01@ecobairro.pt',       papel: 'operador',          acao: 'logout', descricao: 'Sessão terminada',                                  ip: '10.0.0.23'    },
+      { utilizador: 'ana.costa@cm-aveiro.pt',  papel: 'tecnico_autarquia', acao: 'delete', descricao: 'Arquivou mensagem institucional #8',                ip: '192.168.1.52' },
+      { utilizador: 'rui.faria@cm-aveiro.pt',  papel: 'tecnico_ccdr',      acao: 'logout', descricao: 'Sessão terminada',                                  ip: '172.16.0.8'   },
+    ],
+  });
+
+  // ─── Rotas de Recolha ──────────────────────────────────────────────────────
+  await prisma.rota.createMany({
+    data: [
+      {
+        nome: 'Rota Norte — Manhã',
+        operador: 'Pedro Mendes',
+        estado: 'ativa',
+        ecopontos: 6,
+        distancia: '8.2 km',
+        duracao: '1h 45min',
+        waypoints: [[40.646, -8.644], [40.6445, -8.648], [40.6433, -8.648], [40.642, -8.649], [40.6409, -8.6537], [40.639, -8.651]],
+        cor: '#22c55e',
+      },
+      {
+        nome: 'Rota Sul — Tarde',
+        operador: 'Sofia Lopes',
+        estado: 'pendente',
+        ecopontos: 5,
+        distancia: '6.5 km',
+        duracao: '1h 20min',
+        waypoints: [[40.639, -8.651], [40.637, -8.6555], [40.635, -8.66], [40.6315, -8.6574], [40.637, -8.66]],
+        cor: '#fb923c',
+      },
+      {
+        nome: 'Rota Beira-Mar',
+        operador: 'Carlos Lima',
+        estado: 'concluida',
+        ecopontos: 4,
+        distancia: '5.1 km',
+        duracao: '1h 05min',
+        waypoints: [[40.642, -8.661], [40.643, -8.658], [40.6445, -8.655], [40.643, -8.649]],
+        cor: '#60a5fa',
       },
     ],
   });

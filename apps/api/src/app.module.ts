@@ -13,6 +13,11 @@ import { PartilhasModule } from './partilhas/partilhas.module';
 import { NoticiasModule } from './noticias/noticias.module';
 import { UsersModule } from './users/users.module';
 import { AnalyticsModule } from './analytics/analytics.module';
+import { FilaModule } from './fila/fila.module';
+import { RecolhasModule } from './recolhas/recolhas.module';
+import { CampanhasModule } from './campanhas/campanhas.module';
+import { AuditModule } from './audit/audit.module';
+import { RotasModule } from './rotas/rotas.module';
 
 @Module({
   imports: [
@@ -28,6 +33,11 @@ import { AnalyticsModule } from './analytics/analytics.module';
     NoticiasModule,
     UsersModule,
     AnalyticsModule,
+    FilaModule,
+    RecolhasModule,
+    CampanhasModule,
+    AuditModule,
+    RotasModule,
   ],
   controllers: [HealthController],
   providers: [HealthService],

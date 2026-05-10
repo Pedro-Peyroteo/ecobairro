@@ -162,7 +162,23 @@ function DashboardPage() {
                 <option value="resolvido">Resolvido</option>
                 <option value="rejeitado">Rejeitado</option>
               </select>
-              <button className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl border border-border bg-card text-foreground hover:bg-accent transition-colors">
+              <button
+                onClick={() => {
+                  const header = 'ID,Local,Tipo,Estado,Data'
+                  const rows = reportesFiltrados.map(r =>
+                    [r.id.slice(0, 8), `"${r.local.replace(/"/g, '""')}"`, r.tipo, r.status, r.data].join(',')
+                  )
+                  const csv = [header, ...rows].join('\n')
+                  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+                  const url = URL.createObjectURL(blob)
+                  const a = document.createElement('a')
+                  a.href = url
+                  a.download = `reportes-${new Date().toISOString().slice(0, 10)}.csv`
+                  a.click()
+                  URL.revokeObjectURL(url)
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl border border-border bg-card text-foreground hover:bg-accent transition-colors"
+              >
                 <Download className="w-3.5 h-3.5" /> CSV
               </button>
             </div>

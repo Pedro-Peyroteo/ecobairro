@@ -160,7 +160,7 @@ export interface UpdateReportStatusResponse {
 
 /** Ecoponto completo (mapa + backoffice). */
 export type EcopontoNivel = 'baixo' | 'medio' | 'alto' | 'cheio'
-export type EcopontoSensor = 'online' | 'offline'
+export type EcopontoSensor = 'online' | 'offline' | 'alerta'
 
 export interface EcopontoRecord {
   id: string
@@ -177,6 +177,8 @@ export interface EcopontoRecord {
   ultima_atualizacao: string | null
   lat: number
   lng: number
+  bateria: number | null
+  temperatura: number | null
   ativo: boolean
   ordem: number
 }
@@ -404,6 +406,158 @@ export interface HomeFeedResponse {
   gamification: HomeGamification;
   impacto: HomeImpacto;
   reports: HomeReportsResumo;
+}
+
+/** Fila de prioridades (tarefas operacionais). */
+export type TarefaPrioridade = 'critica' | 'alta' | 'normal' | 'baixa'
+export type TarefaEstado = 'pendente' | 'em_curso' | 'resolvido'
+
+export interface TarefaRecord {
+  id: string;
+  titulo: string;
+  local: string;
+  tipo: string;
+  prioridade: TarefaPrioridade;
+  estado: TarefaEstado;
+  atribuido: string | null;
+  criado_em: string;
+}
+
+export interface ListFilaResponse {
+  tarefas: TarefaRecord[];
+  total: number;
+}
+
+export interface UpdateTarefaRequest {
+  prioridade?: TarefaPrioridade;
+  estado?: TarefaEstado;
+  atribuido?: string | null;
+}
+
+/** Pedidos de recolha de monos/entulho. */
+export type RecolhaStatus = 'pendente' | 'agendado' | 'concluido'
+
+export interface RecolhaRecord {
+  id: string;
+  tipo: string;
+  subtipo: string;
+  morada: string;
+  status: RecolhaStatus;
+  obs: string | null;
+  data_pedido: string;
+  data_prevista: string | null;
+  user_id: string | null;
+}
+
+export interface ListRecolhasResponse {
+  recolhas: RecolhaRecord[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface CreateRecolhaRequest {
+  tipo: string;
+  subtipo: string;
+  morada: string;
+  obs?: string;
+}
+
+export interface CreateRecolhaResponse {
+  recolha: RecolhaRecord;
+}
+
+/** Campanhas / mensagens institucionais. */
+export type CampanhaEstado = 'rascunho' | 'publicada' | 'expirada'
+
+export interface CampanhaRecord {
+  id: string;
+  titulo: string;
+  corpo: string;
+  estado: CampanhaEstado;
+  data_criacao: string;
+  data_validade: string;
+  autor: string;
+}
+
+export interface ListCampanhasResponse {
+  campanhas: CampanhaRecord[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface CreateCampanhaRequest {
+  titulo: string;
+  corpo: string;
+  dataValidade: string;
+}
+
+export interface UpdateCampanhaRequest {
+  titulo?: string;
+  corpo?: string;
+  estado?: CampanhaEstado;
+  data_validade?: string;
+}
+
+export interface ListCampanhasQuery {
+  estado?: CampanhaEstado;
+  q?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+/** Audit logs. */
+export type AuditAcao = 'login' | 'logout' | 'create' | 'update' | 'delete' | 'config'
+
+export interface AuditLogRecord {
+  id: string;
+  utilizador: string;
+  papel: string;
+  acao: AuditAcao;
+  descricao: string;
+  ip: string;
+  data: string;
+  hora: string;
+}
+
+export interface ListAuditLogsResponse {
+  logs: AuditLogRecord[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface ListAuditLogsQuery {
+  acao?: AuditAcao | 'login_logout';
+  q?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+/** Rotas de recolha. */
+export type RotaEstado = 'ativa' | 'concluida' | 'pendente'
+
+export interface RotaRecord {
+  id: string;
+  nome: string;
+  operador: string;
+  estado: RotaEstado;
+  ecopontos: number;
+  distancia: string;
+  duracao: string;
+  waypoints: [number, number][];
+  cor: string;
+}
+
+export interface ListRotasResponse {
+  rotas: RotaRecord[];
+  total: number;
+}
+
+export interface UpdateRotaRequest {
+  estado?: RotaEstado;
+  operador?: string;
 }
 
 /** Resposta para a página /quiz (Desafio da Semana) baseada em dados do utilizador. */
