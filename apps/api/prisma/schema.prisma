@@ -108,6 +108,8 @@ model Partilha {
   titulo     String
   autorNome  String   @map("autor_nome")
   zona       String
+  categoria  String   @default("moveis")
+  imagemUrl  String?  @map("imagem_url")
   userId     String?  @map("user_id") @db.Uuid
   criadoEm   DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
 
@@ -122,6 +124,8 @@ model Noticia {
   titulo           String
   resumo           String
   imagemUrl        String   @map("imagem_url")
+  tag              String   @default("Geral")
+  destaque         Boolean  @default(false)
   publishedAt      DateTime @map("published_at") @db.Timestamptz(6)
   tempoLeituraMin  Int      @default(3) @map("tempo_leitura_min")
 

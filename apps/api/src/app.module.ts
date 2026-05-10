@@ -9,6 +9,10 @@ import { ReportsModule } from './reports/reports.module';
 import { HomeModule } from './home/home.module';
 import { EcopontosModule } from './ecopontos/ecopontos.module';
 import { GamificationModule } from './gamification/gamification.module';
+import { PartilhasModule } from './partilhas/partilhas.module';
+import { NoticiasModule } from './noticias/noticias.module';
+import { UsersModule } from './users/users.module';
+import { AnalyticsModule } from './analytics/analytics.module';
 
 @Module({
   imports: [
@@ -20,6 +24,10 @@ import { GamificationModule } from './gamification/gamification.module';
     HomeModule,
     EcopontosModule,
     GamificationModule,
+    PartilhasModule,
+    NoticiasModule,
+    UsersModule,
+    AnalyticsModule,
   ],
   controllers: [HealthController],
   providers: [HealthService],

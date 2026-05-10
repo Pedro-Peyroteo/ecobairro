@@ -230,11 +230,62 @@ async function main(): Promise<void> {
   });
 
   const partilhaTemplates = [
-    { titulo: 'Frigorífico em bom estado', autorNome: 'Ana M.', zona: 'Rossio' },
-    { titulo: 'Cadeiras de jardim (x4)', autorNome: 'Carlos V.', zona: 'Vera Cruz' },
-    { titulo: 'Livros técnicos', autorNome: 'Sofia R.', zona: 'Glória' },
-    { titulo: 'Bicicleta usada', autorNome: 'Miguel P.', zona: 'Centro' },
-    { titulo: 'Conjunto de lâmpadas', autorNome: 'Raquel S.', zona: 'Este' },
+    {
+      titulo: 'Frigorífico Smeg em bom estado',
+      autorNome: 'Ana Miranda',
+      zona: 'Rossio',
+      categoria: 'eletro',
+      imagemUrl: 'https://images.unsplash.com/photo-1571175443880-49e1d25b2bc5?q=80&w=600&auto=format&fit=crop',
+    },
+    {
+      titulo: 'Sofá de 2 lugares (Cinza)',
+      autorNome: 'Carlos Vale',
+      zona: 'Glória',
+      categoria: 'moveis',
+      imagemUrl: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?q=80&w=600&auto=format&fit=crop',
+    },
+    {
+      titulo: 'Coleção de livros técnicos',
+      autorNome: 'Sofia Roberto',
+      zona: 'Vera Cruz',
+      categoria: 'livros',
+      imagemUrl: 'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?q=80&w=600&auto=format&fit=crop',
+    },
+    {
+      titulo: 'Candeeiro de pé industrial',
+      autorNome: 'Ricardo Pinho',
+      zona: 'Beira-Mar',
+      categoria: 'eletro',
+      imagemUrl: 'https://images.unsplash.com/photo-1507473885765-e6ed057f782c?q=80&w=600&auto=format&fit=crop',
+    },
+    {
+      titulo: 'Mesa de centro em carvalho',
+      autorNome: 'Marta Silva',
+      zona: 'Rossio',
+      categoria: 'moveis',
+      imagemUrl: 'https://images.unsplash.com/photo-1533090161767-e6ffed986c88?q=80&w=600&auto=format&fit=crop',
+    },
+    {
+      titulo: 'Casaco de inverno (M)',
+      autorNome: 'Joana Ferreira',
+      zona: 'Santiago',
+      categoria: 'roupa',
+      imagemUrl: 'https://images.unsplash.com/photo-1539533018447-63fcce2678e3?q=80&w=600&auto=format&fit=crop',
+    },
+    {
+      titulo: 'Cadeiras de jardim (x4)',
+      autorNome: 'Bruno Lopes',
+      zona: 'Vera Cruz',
+      categoria: 'moveis',
+      imagemUrl: 'https://images.unsplash.com/photo-1506439773649-6e0eb8cfb237?q=80&w=600&auto=format&fit=crop',
+    },
+    {
+      titulo: 'Conjunto de lâmpadas LED',
+      autorNome: 'Raquel Santos',
+      zona: 'Este',
+      categoria: 'eletro',
+      imagemUrl: 'https://images.unsplash.com/photo-1565814329452-e1efa11c5b89?q=80&w=600&auto=format&fit=crop',
+    },
   ];
 
   const reportTipos = [
@@ -290,11 +341,13 @@ async function main(): Promise<void> {
       const createdAt = new Date(Date.UTC(year, monthIndex, 1 + ((idx + p) % 28), 10, 0, 0));
       await prisma.partilha.create({
         data: {
-          titulo: t.titulo,
+          titulo:    t.titulo,
           autorNome: profileName,
-          zona: t.zona,
-          userId: c.id,
-          criadoEm: createdAt,
+          zona:      t.zona,
+          categoria: t.categoria,
+          imagemUrl: t.imagemUrl,
+          userId:    c.id,
+          criadoEm:  createdAt,
         },
       });
     }
@@ -337,31 +390,48 @@ async function main(): Promise<void> {
   await prisma.noticia.createMany({
     data: [
       {
-        titulo: 'Campanha de Limpeza do Rio',
+        titulo: 'Campanha de Limpeza do Rio Vouga',
         resumo:
-          'Próxima reunião marcada para sexta-feira às 15h. Venha ajudar a limpar as margens do Rio Vouga.',
+          'O município de Aveiro convida todos os cidadãos a participar na grande campanha de limpeza das margens do Rio Vouga. Serão fornecidos equipamentos e os voluntários receberão eco-pontos extra na plataforma ecoBairro.',
         imagemUrl:
-          'https://images.unsplash.com/photo-1618477461853-cf6ed80faba5?q=80&w=600&auto=format&fit=crop',
+          'https://images.unsplash.com/photo-1618477461853-cf6ed80faba5?q=80&w=900&auto=format&fit=crop',
+        tag: 'Ambiente',
+        destaque: true,
         publishedAt: new Date('2025-12-20T12:00:00.000Z'),
         tempoLeituraMin: 3,
       },
       {
-        titulo: 'Novos Ecopontos Inteligentes',
+        titulo: 'Novos Ecopontos Inteligentes Instalados',
         resumo:
-          '15 novos equipamentos com sensores IoT e compactação solar instalados no centro de Aveiro.',
+          '15 novos equipamentos com sensores IoT e compactação solar foram instalados no centro de Aveiro, melhorando a capacidade de monitorização.',
         imagemUrl:
           'https://images.unsplash.com/photo-1604187351574-c75ca79f5807?q=80&w=600&auto=format&fit=crop',
+        tag: 'Infraestrutura',
+        destaque: false,
         publishedAt: new Date('2025-12-18T12:00:00.000Z'),
         tempoLeituraMin: 2,
       },
       {
-        titulo: 'Compostagem Urbana no Parque',
+        titulo: 'Compostagem Urbana Chega a 5 Parques',
         resumo:
-          'O município lança o programa de compostagem coletiva em 5 parques da cidade. Inscrições abertas.',
+          'O programa de compostagem coletiva expande-se a mais cinco parques da cidade. As inscrições estão abertas para residentes.',
         imagemUrl:
           'https://images.unsplash.com/photo-1416879595882-3373a0480b5b?q=80&w=600&auto=format&fit=crop',
+        tag: 'Sustentabilidade',
+        destaque: false,
         publishedAt: new Date('2025-12-15T12:00:00.000Z'),
         tempoLeituraMin: 4,
+      },
+      {
+        titulo: 'Aveiro Bate Recorde de Reciclagem em 2025',
+        resumo:
+          'Com mais de 4.200 toneladas separadas, o município atinge o melhor resultado de sempre em taxa de valorização de resíduos.',
+        imagemUrl:
+          'https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?q=80&w=600&auto=format&fit=crop',
+        tag: 'Relatório',
+        destaque: false,
+        publishedAt: new Date('2025-12-10T12:00:00.000Z'),
+        tempoLeituraMin: 3,
       },
     ],
   });

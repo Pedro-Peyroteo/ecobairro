@@ -214,6 +214,130 @@ export interface UpdateEcopontoRequest {
   ordem?: number
 }
 
+/** Notícias e eventos da plataforma. */
+export interface NoticiaRecord {
+  id: string;
+  titulo: string;
+  resumo: string;
+  imagem_url: string;
+  tag: string;
+  destaque: boolean;
+  data: string;
+  tempo_leitura_min: number;
+}
+
+export interface ListNoticiasResponse {
+  noticias: NoticiaRecord[];
+  page: number;
+  pageSize: number;
+  total: number;
+}
+
+export interface ListNoticiasQuery {
+  q?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+/** Utilizadores (admin). */
+export interface UserRecord {
+  id: string;
+  email: string;
+  role: string;
+  nome: string | null;
+  ativo: boolean;
+  criado_em: string;
+}
+
+export interface ListUsersResponse {
+  users: UserRecord[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface ListUsersQuery {
+  role?: string;
+  q?: string;
+  ativo?: boolean;
+  page?: number;
+  pageSize?: number;
+}
+
+/** Analytics agregados. */
+export interface AnalyticsMonthly {
+  label: string;
+  value: number;
+}
+
+export interface AnalyticsTipo {
+  tipo: string;
+  total: number;
+  pct: number;
+}
+
+export interface AnalyticsZona {
+  zona: string;
+  ecopontos: number;
+  reportes: number;
+  resolvidos: number;
+}
+
+export interface AnalyticsKpis {
+  reports_total: number;
+  reports_mes: number;
+  taxa_resolucao: number;
+  ecopontos_ativos: number;
+  users_total: number;
+}
+
+export interface AnalyticsResponse {
+  kpis: AnalyticsKpis;
+  reports_mensais: AnalyticsMonthly[];
+  resolucao_mensais: AnalyticsMonthly[];
+  tipos: AnalyticsTipo[];
+  zonas: AnalyticsZona[];
+}
+
+/** Partilhas locais (troca de objetos na comunidade). */
+export type PartilhaCategoria = 'moveis' | 'eletro' | 'livros' | 'roupa';
+
+export interface PartilhaRecord {
+  id: string;
+  titulo: string;
+  autorNome: string;
+  zona: string;
+  categoria: PartilhaCategoria;
+  imagem_url: string | null;
+  data: string;
+  user_id: string | null;
+}
+
+export interface ListPartilhasResponse {
+  partilhas: PartilhaRecord[];
+  page: number;
+  pageSize: number;
+  total: number;
+}
+
+export interface CreatePartilhaRequest {
+  titulo: string;
+  zona: string;
+  categoria: PartilhaCategoria;
+  imagem_url?: string;
+}
+
+export interface CreatePartilhaResponse {
+  partilha: PartilhaRecord;
+}
+
+export interface ListPartilhasQuery {
+  categoria?: PartilhaCategoria;
+  q?: string;
+  page?: number;
+  pageSize?: number;
+}
+
 /** Feed agregado da página home (ecopontos, partilhas, notícias + métricas do cidadão). */
 export interface HomeEcoponto {
   id: string;
