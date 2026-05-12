@@ -316,6 +316,35 @@ export const reportsServiceTests: TestCase[] = [
       );
     },
   },
+  {
+    name: 'operational user can cycle report status through analise, rejeitado and resolvido',
+    run: async () => {
+      const id = '00000000-0000-0000-0000-000000000010';
+      const service = new ReportsService(
+        new FakePrismaService([
+          buildReport({
+            id,
+            status: ReportStatus.PENDENTE,
+          }),
+        ]) as never,
+      );
+
+      const s1 = await service.updateReportStatus('OPERADOR_VEOLIA', id, {
+        status: 'analise',
+      });
+      assert.equal(s1.report.status, 'analise');
+
+      const s2 = await service.updateReportStatus('OPERADOR_VEOLIA', id, {
+        status: 'rejeitado',
+      });
+      assert.equal(s2.report.status, 'rejeitado');
+
+      const s3 = await service.updateReportStatus('ADMIN', id, {
+        status: 'resolvido',
+      });
+      assert.equal(s3.report.status, 'resolvido');
+    },
+  },
 ];
 
 function buildReport(
