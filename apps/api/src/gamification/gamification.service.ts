@@ -1,5 +1,5 @@
 import { ForbiddenException, Inject, Injectable } from '@nestjs/common';
-import { Prisma, ReportStatus, UserRole } from '@prisma/client';
+import { ReportStatus, UserRole } from '@prisma/client';
 import type {
   QuizAchievement,
   QuizAchievementKey,
@@ -31,9 +31,8 @@ function computeStreakFromResolvedDates(resolvedDates: Date[]): number {
   if (resolvedDates.length === 0) return 0;
   const unique = new Set(resolvedDates.map(toDateKeyUTC));
   const latest = resolvedDates[0]!;
-  let cursor = new Date(toDateKeyUTC(latest) + 'T00:00:00.000Z'); // start at latest date
+  const cursor = new Date(toDateKeyUTC(latest) + 'T00:00:00.000Z'); // start at latest date
   let streak = 0;
-  // eslint-disable-next-line no-constant-condition
   while (true) {
     const key = toDateKeyUTC(cursor);
     if (!unique.has(key)) break;
