@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { Link, createFileRoute } from '@tanstack/react-router'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
@@ -113,15 +113,37 @@ function HomePage() {
           <div className="grid grid-cols-3 gap-3">
         {atalhos.map((a) => {
           const Icon = a.icon
-          return (
-            <button
-              key={a.label}
-              className="flex flex-col items-center gap-2.5 p-4 rounded-xl bg-card border border-border hover:border-[var(--primary)]/40 hover:shadow-sm transition-all active:scale-[0.97] cursor-pointer"
-            >
+          const href = a.label === 'Criar Reporte' ? '/reportes#novo-reporte' : undefined
+          const className = "flex flex-col items-center gap-2.5 p-4 rounded-xl bg-card border border-border hover:border-[var(--primary)]/40 hover:shadow-sm transition-all active:scale-[0.97] cursor-pointer"
+          const content = (
+            <>
               <div className="w-10 h-10 flex items-center justify-center rounded-xl bg-[var(--primary)]/10">
                 <Icon className="w-5 h-5 text-[var(--primary)]" />
               </div>
               <span className="text-xs font-medium text-foreground leading-tight text-center">{a.label}</span>
+            </>
+          )
+
+          if (href) {
+            return (
+              <Link
+                key={a.label}
+                to="/reportes"
+                hash="novo-reporte"
+                className={className}
+              >
+                {content}
+              </Link>
+            )
+          }
+
+          return (
+            <button
+              key={a.label}
+              type="button"
+              className="flex flex-col items-center gap-2.5 p-4 rounded-xl bg-card border border-border hover:border-[var(--primary)]/40 hover:shadow-sm transition-all active:scale-[0.97] cursor-pointer"
+            >
+              {content}
             </button>
           )
         })}

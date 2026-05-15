@@ -139,11 +139,11 @@ function RecolhasPage() {
                 </div>
               </div>
             </div>
-            <div className="p-4 rounded-xl bg-amber-500/5 border border-amber-500/10 flex gap-3">
-              <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0" />
+            <div className="p-4 rounded-xl bg-amber-400/15 border border-amber-400/45 flex gap-3 shadow-sm shadow-amber-950/10">
+              <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0" />
               <div>
-                <p className="text-xs font-semibold text-amber-900">Importante</p>
-                <p className="text-[11px] text-amber-800 leading-relaxed mt-0.5">
+                <p className="text-xs font-semibold text-amber-700 dark:text-amber-200">Importante</p>
+                <p className="text-[11px] text-amber-800 dark:text-amber-100/90 leading-relaxed mt-0.5">
                   Não coloque monos na rua sem agendamento prévio. A recolha é gratuita e ajuda a manter o bairro limpo.
                 </p>
               </div>

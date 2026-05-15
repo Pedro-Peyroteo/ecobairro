@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import {
   MapPin, Calendar, ChevronRight, PlusCircle, Search,
   Clock, CheckCircle, XCircle, AlertCircle, Loader, Package,
-  Upload, X, ImageIcon
+  X, Camera, ImageIcon, ArrowLeft, Send
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
@@ -63,7 +63,7 @@ const tiposReporte = ['Ecoponto Cheio', 'Deposição Ilegal', 'Dano em Equipamen
 const novoReporteSchema = z.object({
   titulo:   z.string().min(3, 'Título obrigatório (mín. 3 caracteres)'),
   tipo:     z.enum(tiposReporte, { message: 'Selecione um tipo' }),
-  descricao: z.string().min(10, 'Descrição obrigatória (mín. 10 caracteres)'),
+  descricao: z.string().optional(),
   local:    z.string().min(3, 'Local obrigatório'),
   imagem:   z.custom<FileList>()
     .refine(fl => !fl || fl.length === 0 || fl[0].size <= 5 * 1024 * 1024, 'Tamanho máximo: 5 MB')
@@ -84,8 +84,10 @@ function ReportesPage() {
   const [reportes, setReportes] = useState<Reporte[]>(mockReportes)
   const [modalAberto, setModalAberto] = useState(false)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [passoReporte, setPassoReporte] = useState(1)
+  const [enviado, setEnviado] = useState(false)
 
-  const { register, handleSubmit, watch, reset, formState: { errors } } = useForm<NovoReporteForm>({
+  const { register, handleSubmit, watch, reset, trigger, getValues, setValue, formState: { errors } } = useForm<NovoReporteForm>({
     resolver: zodResolver(novoReporteSchema),
   })
 
@@ -120,13 +122,35 @@ function ReportesPage() {
   function abrirModal() {
     reset()
     setPreviewUrl(null)
+    setPassoReporte(1)
+    setEnviado(false)
     setModalAberto(true)
   }
+
+  useEffect(() => {
+    if (window.location.hash !== '#novo-reporte') return
+    abrirModal()
+    window.history.replaceState(null, '', window.location.pathname + window.location.search)
+  }, [])
 
   function fecharModal() {
     setModalAberto(false)
     setPreviewUrl(null)
+    setPassoReporte(1)
+    setEnviado(false)
     reset()
+  }
+
+  async function avancarPasso() {
+    if (passoReporte === 1) {
+      const valido = await trigger(['local', 'titulo'])
+      if (!valido) return
+    }
+    if (passoReporte === 2) {
+      const valido = await trigger(['tipo', 'imagem'])
+      if (!valido) return
+    }
+    setPassoReporte((passo) => Math.min(passo + 1, 3))
   }
 
   function onSubmitReporte(data: NovoReporteForm) {
@@ -134,15 +158,18 @@ function ReportesPage() {
       id: Date.now(),
       titulo: data.titulo,
       tipo: data.tipo,
-      descricao: data.descricao,
+      descricao: data.descricao?.trim() || 'Sem descrição adicional.',
       local: data.local,
       data: new Date().toLocaleDateString('pt-PT', { day: '2-digit', month: 'short', year: 'numeric' }),
       status: 'pendente',
       imagem: previewUrl ?? undefined,
     }
     setReportes(prev => [novo, ...prev])
-    fecharModal()
+    setEnviado(true)
   }
+
+  const valoresReporte = getValues()
+  const progressoReporte = enviado ? 100 : (passoReporte / 3) * 100
 
   return (
     <div className="flex flex-col gap-10 pb-12">
@@ -299,76 +326,185 @@ function ReportesPage() {
       {modalAberto && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40" onClick={fecharModal} />
-          <div className="relative z-10 w-full max-w-lg bg-card rounded-2xl shadow-2xl border border-border p-6 flex flex-col gap-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-bold text-foreground">Novo Reporte</h2>
-              <button onClick={fecharModal} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
+          <div className="relative z-10 w-full max-w-md bg-card rounded-2xl shadow-2xl border border-border overflow-hidden max-h-[92vh] flex flex-col">
+            <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+              <button onClick={fecharModal} className="w-8 h-8 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+              <h2 className="text-base font-bold text-foreground">{enviado ? 'Enviado' : 'Reportar'}</h2>
+              <div className="w-8" />
             </div>
-            <form onSubmit={handleSubmit(onSubmitReporte)} className="flex flex-col gap-3">
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">Título</label>
-                <input type="text" {...register('titulo')} placeholder="Descreva brevemente o problema..."
-                  className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30" />
-                {errors.titulo && <p className="text-xs text-destructive mt-1">{errors.titulo.message}</p>}
-              </div>
 
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">Tipo de ocorrência</label>
-                <select {...register('tipo')}
-                  className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30">
-                  <option value="">Selecione...</option>
-                  {tiposReporte.map(t => <option key={t} value={t}>{t}</option>)}
-                </select>
-                {errors.tipo && <p className="text-xs text-destructive mt-1">{errors.tipo.message}</p>}
+            {!enviado && (
+              <div className="px-5 pt-4">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-medium text-foreground">Passo {passoReporte} de 3</span>
+                  <span className="text-muted-foreground">
+                    {passoReporte === 1 ? 'Descreva o Problema' : passoReporte === 2 ? 'Categoria e Foto' : 'Resumo do Report'}
+                  </span>
+                </div>
+                <div className="h-1.5 rounded-full bg-muted overflow-hidden mt-2">
+                  <div className="h-full bg-[var(--primary)] rounded-full transition-all" style={{ width: `${progressoReporte}%` }} />
+                </div>
               </div>
+            )}
 
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">Local</label>
-                <input type="text" {...register('local')} placeholder="Rua, Praça, Bairro..."
-                  className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30" />
-                {errors.local && <p className="text-xs text-destructive mt-1">{errors.local.message}</p>}
-              </div>
-
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">Descrição</label>
-                <textarea {...register('descricao')} rows={3} placeholder="Descreva o problema com mais detalhe..."
-                  className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30 resize-none" />
-                {errors.descricao && <p className="text-xs text-destructive mt-1">{errors.descricao.message}</p>}
-              </div>
-
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">Fotografia <span className="text-muted-foreground/60 font-normal">(opcional)</span></label>
-                {previewUrl ? (
-                  <div className="relative rounded-xl overflow-hidden border border-border">
-                    <img src={previewUrl} alt="Preview" className="w-full h-40 object-cover" />
-                    <button
-                      type="button"
-                      onClick={() => { reset({ ...watch(), imagem: undefined as any }); setPreviewUrl(null) }}
-                      className="absolute top-2 right-2 w-7 h-7 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-colors"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                    <div className="absolute bottom-2 left-2 bg-black/50 text-white text-[10px] px-2 py-0.5 rounded-full font-medium">
-                      {imagemFile?.name}
-                    </div>
+            <form onSubmit={handleSubmit(onSubmitReporte)} className="flex-1 overflow-y-auto px-5 py-4">
+              {enviado ? (
+                <div className="min-h-[460px] flex flex-col items-center justify-center text-center gap-5">
+                  <div>
+                    <h3 className="text-xl font-bold text-foreground">Obrigado!</h3>
+                    <p className="text-sm text-muted-foreground leading-relaxed mt-2 max-w-xs">
+                      O seu feedback é especial para nós, ajuda-nos a evoluir e tornar os nossos serviços mais eficientes e eficazes para a população.
+                    </p>
                   </div>
-                ) : (
-                  <label className="flex flex-col items-center justify-center h-32 border-2 border-dashed border-border rounded-xl cursor-pointer hover:border-[var(--primary)]/50 hover:bg-muted/30 transition-all">
-                    <Upload className="w-7 h-7 text-muted-foreground/40" />
-                    <p className="text-xs font-medium text-muted-foreground mt-2">Clique para selecionar imagem</p>
-                    <p className="text-[10px] text-muted-foreground/60 mt-0.5">JPG, PNG ou WebP · Máx. 5 MB</p>
-                    <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" {...register('imagem')} />
-                  </label>
-                )}
-                {errors.imagem && <p className="text-xs text-destructive mt-1">{errors.imagem.message as string}</p>}
-              </div>
+                  <div className="w-36 h-36 rounded-full border-[10px] border-[var(--primary)]/85 flex items-center justify-center text-[var(--primary)]">
+                    <CheckCircle className="w-24 h-24" strokeWidth={1.8} />
+                  </div>
+                </div>
+              ) : (
+                <div className="min-h-[460px]">
+                  {passoReporte === 1 && (
+                    <div className="space-y-4">
+                      <div>
+                        <label className="text-sm font-semibold text-foreground mb-1.5 block">Localização</label>
+                        <div className="relative">
+                          <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                          <input type="text" {...register('local')} placeholder="Pesquisar por rua ou código postal..."
+                            className="w-full pl-9 pr-3 py-2.5 text-sm rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30" />
+                        </div>
+                        {errors.local && <p className="text-xs text-destructive mt-1">{errors.local.message}</p>}
+                      </div>
 
-              <div className="flex gap-2 justify-end pt-1">
-                <Button type="button" variant="outline" size="sm" onClick={fecharModal}>Cancelar</Button>
-                <Button type="submit" size="sm" className="bg-[var(--primary)] hover:opacity-90 transition-opacity">
-                  <ImageIcon className="w-3.5 h-3.5 mr-1.5" />
-                  Submeter Reporte
-                </Button>
+                      <div>
+                        <label className="text-sm font-semibold text-foreground mb-1.5 block">Título</label>
+                        <input type="text" {...register('titulo')} placeholder="Ex: Contentor cheio no Rossio"
+                          className="w-full px-3 py-2.5 text-sm rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30" />
+                        {errors.titulo && <p className="text-xs text-destructive mt-1">{errors.titulo.message}</p>}
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-semibold text-foreground mb-1.5 block">Descrição <span className="text-muted-foreground font-normal">(Opcional)</span></label>
+                        <textarea {...register('descricao')} rows={6} placeholder="Adicione mais detalhes sobre o problema aqui..."
+                          className="w-full px-3 py-2.5 text-sm rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30 resize-none" />
+                      </div>
+                    </div>
+                  )}
+
+                  {passoReporte === 2 && (
+                    <div className="space-y-4">
+                      <div>
+                        <label className="text-sm font-semibold text-foreground mb-1.5 block">Categoria do Report</label>
+                        <select {...register('tipo')}
+                          className="w-full px-3 py-2.5 text-sm rounded-xl border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30">
+                          <option value="">Selecione uma categoria</option>
+                          {tiposReporte.map(t => <option key={t} value={t}>{t}</option>)}
+                        </select>
+                        {errors.tipo && <p className="text-xs text-destructive mt-1">{errors.tipo.message}</p>}
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-semibold text-foreground mb-1.5 block">Fotografia <span className="text-muted-foreground font-normal">(Opcional)</span></label>
+                        <p className="text-xs text-muted-foreground leading-relaxed mb-3">Uma imagem vale mais que mil palavras. Ajude-nos a identificar o problema com uma foto.</p>
+                        {previewUrl ? (
+                          <div className="relative rounded-xl overflow-hidden border border-border">
+                            <img src={previewUrl} alt="Preview" className="w-full h-48 object-cover" />
+                            <button
+                              type="button"
+                              onClick={() => { setValue('imagem', undefined as unknown as FileList); setPreviewUrl(null) }}
+                              className="absolute top-2 right-2 w-8 h-8 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-colors"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                            <div className="absolute bottom-2 left-2 bg-black/50 text-white text-[10px] px-2 py-0.5 rounded-full font-medium">
+                              {imagemFile?.name}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="grid gap-2">
+                            <label className="h-11 rounded-full bg-muted hover:bg-muted/80 border border-border cursor-pointer flex items-center justify-center gap-2 text-sm font-medium text-foreground transition-colors">
+                              <Camera className="w-4 h-4" />
+                              Tirar uma foto
+                              <input type="file" accept="image/jpeg,image/png,image/webp" capture="environment" className="hidden" {...register('imagem')} />
+                            </label>
+                            <label className="h-11 rounded-full bg-muted hover:bg-muted/80 border border-border cursor-pointer flex items-center justify-center gap-2 text-sm font-medium text-foreground transition-colors">
+                              <ImageIcon className="w-4 h-4" />
+                              Escolher da galeria
+                              <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" {...register('imagem')} />
+                            </label>
+                          </div>
+                        )}
+                        {errors.imagem && <p className="text-xs text-destructive mt-1">{errors.imagem.message as string}</p>}
+                      </div>
+                    </div>
+                  )}
+
+                  {passoReporte === 3 && (
+                    <div className="space-y-5">
+                      <div>
+                        <h3 className="text-sm font-semibold text-foreground mb-2">Localização</h3>
+                        <div className="rounded-xl border border-border bg-background min-h-32 p-3 flex items-end">
+                          <p className="text-xs text-foreground">{valoresReporte.local}</p>
+                        </div>
+                      </div>
+
+                      <div>
+                        <h3 className="text-sm font-semibold text-foreground mb-3">Resumo do Report</h3>
+                        <div className="space-y-3 text-sm">
+                          <div>
+                            <p className="font-semibold text-foreground">Título</p>
+                            <p className="text-muted-foreground mt-1">{valoresReporte.titulo}</p>
+                          </div>
+                          <div>
+                            <p className="font-semibold text-foreground">Categoria</p>
+                            <p className="text-muted-foreground mt-1">{valoresReporte.tipo}</p>
+                          </div>
+                          <div>
+                            <p className="font-semibold text-foreground">Descrição <span className="text-muted-foreground font-normal">(Opcional)</span></p>
+                            <p className="text-muted-foreground mt-1 leading-relaxed">{valoresReporte.descricao || 'Sem descrição adicional.'}</p>
+                          </div>
+                          <div>
+                            <p className="font-semibold text-foreground">Fotografia <span className="text-muted-foreground font-normal">(Opcional)</span></p>
+                            {previewUrl ? (
+                              <img src={previewUrl} alt="" className="mt-2 w-full h-28 object-cover rounded-xl border border-border" />
+                            ) : (
+                              <p className="text-muted-foreground mt-1">Sem fotografia anexada.</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="sticky bottom-0 -mx-5 px-5 pt-4 pb-1 bg-card">
+                {enviado ? (
+                  <Button type="button" onClick={fecharModal} className="w-full rounded-full bg-[var(--primary)] hover:opacity-90 transition-opacity">
+                    Concluir
+                  </Button>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2">
+                    {passoReporte > 1 ? (
+                      <Button type="button" variant="outline" onClick={() => setPassoReporte((passo) => Math.max(passo - 1, 1))} className="rounded-full">
+                        <ArrowLeft className="w-4 h-4" />
+                        Voltar
+                      </Button>
+                    ) : (
+                      <div />
+                    )}
+                    {passoReporte < 3 ? (
+                      <Button type="button" onClick={avancarPasso} className="rounded-full bg-[var(--primary)] hover:opacity-90 transition-opacity">
+                        Continuar
+                      </Button>
+                    ) : (
+                      <Button type="submit" className="rounded-full bg-[var(--primary)] hover:opacity-90 transition-opacity">
+                        <Send className="w-4 h-4" />
+                        Submeter
+                      </Button>
+                    )}
+                  </div>
+                )}
               </div>
             </form>
           </div>

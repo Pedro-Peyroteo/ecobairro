@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { Link, createFileRoute } from '@tanstack/react-router'
 import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet'
 import { divIcon } from 'leaflet'
 import { renderToStaticMarkup } from 'react-dom/server'
@@ -236,9 +236,13 @@ function MapaPage() {
                     <button className="flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-semibold text-white bg-[var(--primary)] hover:opacity-90 rounded-lg transition-opacity">
                       <Navigation className="w-3.5 h-3.5" /> Como chegar
                     </button>
-                    <button className="flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-semibold border border-destructive/60 text-destructive hover:bg-destructive/5 rounded-lg transition-colors">
+                    <Link
+                      to="/reportes"
+                      hash="novo-reporte"
+                      className="flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-semibold border border-destructive/60 text-destructive hover:bg-destructive/5 rounded-lg transition-colors"
+                    >
                       <AlertTriangle className="w-3.5 h-3.5" /> Reportar
-                    </button>
+                    </Link>
                   </div>
                 </CardContent>
               </Card>
