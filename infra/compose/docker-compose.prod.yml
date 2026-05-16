@@ -75,6 +75,8 @@ services:
   nginx:
     image: nginx:1.27-alpine
     restart: always
+    environment:
+      - FORCE_RESTART=1
     depends_on:
       web:
         condition: service_started
