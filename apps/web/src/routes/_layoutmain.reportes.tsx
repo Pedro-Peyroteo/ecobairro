@@ -15,6 +15,7 @@ import { fetchJson } from '@/lib/http/fetch-json'
 import { getApiErrorMessage } from '@/lib/http/api-error'
 import { clientEnv } from '@/lib/env'
 import { getAccessToken } from '@/lib/auth'
+import { fileToDataUrl } from '@/lib/image-upload'
 import type {
   CreateReportRequest,
   ListReportsResponse,
@@ -213,11 +214,13 @@ function ReportesPage() {
     setSubmitting(true)
     setSubmitError(null)
     try {
+      const file = data.imagem?.[0]
       const body: CreateReportRequest = {
         titulo: data.titulo,
         tipo: data.tipo,
         descricao: data.descricao,
         local: data.local,
+        ...(file ? { imagem: await fileToDataUrl(file) } : {}),
       }
       await fetchJson('/v1/reports', {
         baseUrl: clientEnv.apiBaseUrl,

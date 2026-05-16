@@ -15,6 +15,7 @@ import { PaginationBar } from '@/components/ui/pagination-bar'
 import { fetchJson } from '@/lib/http/fetch-json'
 import { clientEnv } from '@/lib/env'
 import { getAccessToken } from '@/lib/auth'
+import { fileToDataUrl } from '@/lib/image-upload'
 import type {
   CreatePartilhaRequest,
   ListPartilhasResponse,
@@ -113,10 +114,12 @@ function PartilhasPage() {
   async function onSubmitPartilha(data: NovaPartilhaForm) {
     setSubmitting(true)
     try {
+      const file = data.imagem?.[0]
       const body: CreatePartilhaRequest = {
         titulo:    data.titulo,
         zona:      data.zona,
         categoria: data.categoria,
+        ...(file ? { imagem_url: await fileToDataUrl(file) } : {}),
       }
       await fetchJson('/v1/partilhas', {
         baseUrl: clientEnv.apiBaseUrl,

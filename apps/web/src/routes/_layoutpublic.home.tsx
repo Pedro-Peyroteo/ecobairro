@@ -334,9 +334,9 @@ function HomePage() {
           })}
         </div>
         <div className="bg-card border border-border/70 shadow-sm rounded-xl p-4 space-y-2">
-          <Progress value={reportStats.progresso} className="h-2 [&>div]:bg-[var(--primary)]" />
+          <Progress value={progressoGamificacao} className="h-2 [&>div]:bg-[var(--primary)]" />
           <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>{reportStats.progresso}% para subir de nível</span>
+            <span>{progressoGamificacao}% para subir de nível ({gamification.pontos}/{gamification.pontos_proximo} pts)</span>
             <span>Próximo nível: <span className="font-medium text-foreground">{reportStats.proximoNivel}</span></span>
           </div>
         </div>
@@ -358,7 +358,11 @@ function HomePage() {
         </div>
         <div className="flex flex-col rounded-xl border border-border/70 bg-card overflow-hidden divide-y divide-border">
           {partilhas.map((p) => (
-            <div key={p.id} className="flex items-center gap-3 px-4 py-3 hover:bg-muted/30 transition-colors cursor-pointer">
+            <Link
+              key={p.id}
+              to="/partilhas"
+              className="flex items-center gap-3 px-4 py-3 hover:bg-muted/30 transition-colors cursor-pointer"
+            >
               <div className="w-8 h-8 rounded-lg bg-[var(--primary)]/10 flex items-center justify-center shrink-0">
                 <Package className="w-4 h-4 text-[var(--primary)]" />
               </div>
@@ -367,17 +371,20 @@ function HomePage() {
                 <p className="text-xs text-muted-foreground">{p.utilizador} · {p.zona}</p>
               </div>
               <ChevronRight className="w-4 h-4 text-muted-foreground/40 shrink-0" />
-            </div>
+            </Link>
           ))}
           {/* CTA Drag-feel para nova partilha */}
-          <button className="flex items-center justify-center gap-2 px-4 py-3.5 hover:bg-muted/30 transition-colors cursor-pointer group">
+          <Link
+            to="/partilhas"
+            className="flex items-center justify-center gap-2 px-4 py-3.5 hover:bg-muted/30 transition-colors cursor-pointer group"
+          >
             <div className="w-8 h-8 rounded-lg border-2 border-dashed border-border group-hover:border-[var(--primary)]/50 flex items-center justify-center transition-colors shrink-0">
               <Gift className="w-4 h-4 text-muted-foreground group-hover:text-[var(--primary)] transition-colors" />
             </div>
             <span className="text-sm text-muted-foreground group-hover:text-[var(--primary)] transition-colors font-medium">
               Partilhar algo da minha casa
             </span>
-          </button>
+          </Link>
         </div>
       </section>
       </>
