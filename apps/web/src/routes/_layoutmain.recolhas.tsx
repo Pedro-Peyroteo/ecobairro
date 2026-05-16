@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useSearch } from '@tanstack/react-router'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -6,14 +6,20 @@ import {
   Truck, PlusCircle, Clock, Calendar, CheckCircle,
   ChevronRight, Info, MapPin, Package, AlertTriangle, Loader2, X
 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { PaginationBar } from '@/components/ui/pagination-bar'
 import { fetchJson } from '@/lib/http/fetch-json'
 import { clientEnv } from '@/lib/env'
 import { getAccessToken } from '@/lib/auth'
 import type { ListRecolhasResponse, RecolhaRecord, CreateRecolhaRequest, CreateRecolhaResponse } from '@ecobairro/contracts'
 
+interface RecolhasSearch {
+  novo?: '1'
+}
+
 export const Route = createFileRoute('/_layoutmain/recolhas')({
+  validateSearch: (raw: Record<string, unknown>): RecolhasSearch =>
+    raw.novo === '1' ? { novo: '1' } : {},
   component: RecolhasPage,
 })
 
@@ -26,6 +32,7 @@ const statusConfig: Record<string, { label: string; icon: React.ElementType; col
 const POR_PAGINA = 5
 
 function RecolhasPage() {
+  const search = useSearch({ from: '/_layoutmain/recolhas' })
   const [expandido, setExpandido] = useState<string | null>(null)
   const [pagina, setPagina] = useState(1)
   const [recolhas, setRecolhas] = useState<RecolhaRecord[]>([])
@@ -52,6 +59,14 @@ function RecolhasPage() {
   }
 
   useEffect(() => { void load() }, [pagina])
+
+  const autoOpenedRef = useRef(false)
+  useEffect(() => {
+    if (autoOpenedRef.current) return
+    if (search.novo !== '1') return
+    autoOpenedRef.current = true
+    setModalAberto(true)
+  }, [search.novo])
 
   async function onAgendar(e: React.FormEvent) {
     e.preventDefault()

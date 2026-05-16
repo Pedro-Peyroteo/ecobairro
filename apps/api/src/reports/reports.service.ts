@@ -11,6 +11,7 @@ import type {
   ListReportsQuery,
   ListReportsResponse,
   ReportRecord,
+  ReportStatsResponse,
   ReportStatus as ContractReportStatus,
   UserRole as ContractUserRole,
   UpdateReportStatusRequest,
@@ -111,6 +112,64 @@ export class ReportsService {
     };
   }
 
+  async getStats(
+    userId: string,
+    role: ContractUserRole,
+    scope: 'me' | 'global' | undefined,
+    recentLimit: number | undefined,
+  ): Promise<ReportStatsResponse> {
+    const resolvedScope: 'me' | 'global' = scope ?? defaultScopeForRole(role);
+
+    if (resolvedScope === 'me') {
+      assertCanReadOwn(role);
+    } else {
+      assertOperationalReader(role);
+    }
+
+    const where: Prisma.ReportWhereInput =
+      resolvedScope === 'me' ? { userId } : {};
+
+    const limit = clampRecentLimit(recentLimit);
+
+    const [total, statusGroups, recent, zonaGroups] = await this.prisma.$transaction([
+      this.prisma.report.count({ where }),
+      this.prisma.report.groupBy({
+        by: ['status'],
+        where,
+        _count: { _all: true },
+      }),
+      this.prisma.report.findMany({
+        where,
+        orderBy: { criadoEm: 'desc' },
+        take: limit,
+      }),
+      this.prisma.report.groupBy({
+        by: ['local'],
+        where,
+        _count: { _all: true },
+        orderBy: { _count: { local: 'desc' } },
+        take: 8,
+      }),
+    ]);
+
+    const byStatus = { pendente: 0, analise: 0, resolvido: 0, rejeitado: 0 };
+    for (const group of statusGroups) {
+      const key = DB_STATUS_MAP[group.status];
+      byStatus[key] = group._count._all;
+    }
+
+    return {
+      total,
+      byStatus,
+      zonas: zonaGroups.map((row) => ({
+        zona: row.local,
+        total: row._count._all,
+      })),
+      recent: recent.map(mapReport),
+      scope: resolvedScope,
+    };
+  }
+
   private async listReportsInternal(
     scope: { userId?: string },
     query: ListReportsQuery,
@@ -181,6 +240,29 @@ function assertCitizen(role: ContractUserRole): asserts role is 'CIDADAO' {
   if (role !== UserRole.CIDADAO) {
     throw new ForbiddenException('Only citizens can access this route');
   }
+}
+
+function assertCanReadOwn(role: ContractUserRole): void {
+  if (
+    role !== UserRole.CIDADAO &&
+    role !== UserRole.OPERADOR_VEOLIA &&
+    role !== UserRole.ADMIN &&
+    role !== UserRole.TECNICO_AUTARQUIA &&
+    role !== UserRole.TECNICO_CCDR
+  ) {
+    throw new ForbiddenException('Role cannot read reports');
+  }
+}
+
+function defaultScopeForRole(role: ContractUserRole): 'me' | 'global' {
+  return role === UserRole.CIDADAO ? 'me' : 'global';
+}
+
+function clampRecentLimit(value: number | undefined): number {
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 0) {
+    return 10;
+  }
+  return Math.min(50, value);
 }
 
 function assertOperationalReader(role: ContractUserRole): void {

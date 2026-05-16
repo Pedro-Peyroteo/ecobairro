@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet'
 import { divIcon } from 'leaflet'
 import { renderToStaticMarkup } from 'react-dom/server'
@@ -232,9 +232,17 @@ function MapaPage() {
                     >
                       <Navigation className="w-3.5 h-3.5" /> Como chegar
                     </a>
-                    <button className="flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-semibold border border-destructive/60 text-destructive hover:bg-destructive/5 rounded-lg transition-colors">
+                    <Link
+                      to="/reportes"
+                      search={{
+                        novo: '1' as const,
+                        local: selected.morada || selected.nome,
+                        tipo: 'Ecoponto Cheio' as const,
+                      }}
+                      className="flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-semibold border border-destructive/60 text-destructive hover:bg-destructive/5 rounded-lg transition-colors"
+                    >
                       <AlertTriangle className="w-3.5 h-3.5" /> Reportar
-                    </button>
+                    </Link>
                   </div>
                 </CardContent>
               </Card>

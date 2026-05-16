@@ -158,6 +158,31 @@ export interface UpdateReportStatusResponse {
   report: ReportRecord;
 }
 
+export interface ReportStatsByStatus {
+  pendente: number;
+  analise: number;
+  resolvido: number;
+  rejeitado: number;
+}
+
+export interface ReportZonaStat {
+  zona: string;
+  total: number;
+}
+
+export interface ReportStatsResponse {
+  total: number;
+  byStatus: ReportStatsByStatus;
+  zonas: ReportZonaStat[];
+  recent: ReportRecord[];
+  scope: 'me' | 'global';
+}
+
+export interface ReportStatsQuery {
+  recentLimit?: number;
+  scope?: 'me' | 'global';
+}
+
 /** Ecoponto completo (mapa + backoffice). */
 export type EcopontoNivel = 'baixo' | 'medio' | 'alto' | 'cheio'
 export type EcopontoSensor = 'online' | 'offline' | 'alerta'

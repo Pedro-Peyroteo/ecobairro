@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
@@ -49,9 +49,9 @@ function Counter({ to }: { to: number }) {
 }
 
 const atalhos = [
-  { label: 'Criar Reporte', icon: PlusCircle },
-  { label: 'Pedir Recolha', icon: Truck },
-  { label: 'Quiz Semanal', icon: Trophy },
+  { label: 'Criar Reporte', icon: PlusCircle, to: '/reportes', search: { novo: '1' } as const },
+  { label: 'Pedir Recolha', icon: Truck,       to: '/recolhas', search: { novo: '1' } as const },
+  { label: 'Quiz Semanal',  icon: Trophy,      to: '/quiz',     search: undefined },
 ] as const
 
 function ecoState(pct: number) {
@@ -174,15 +174,17 @@ function HomePage() {
         {atalhos.map((a) => {
           const Icon = a.icon
           return (
-            <button
+            <Link
               key={a.label}
+              to={a.to}
+              search={a.search}
               className="flex flex-col items-center gap-2.5 p-4 rounded-xl bg-card border border-border hover:border-[var(--primary)]/40 hover:shadow-sm transition-all active:scale-[0.97] cursor-pointer"
             >
               <div className="w-10 h-10 flex items-center justify-center rounded-xl bg-[var(--primary)]/10">
                 <Icon className="w-5 h-5 text-[var(--primary)]" />
               </div>
               <span className="text-xs font-medium text-foreground leading-tight text-center">{a.label}</span>
-            </button>
+            </Link>
           )
         })}
       </div>

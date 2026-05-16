@@ -13,6 +13,7 @@ import {
 import type {
   CreateReportResponse,
   ListReportsResponse,
+  ReportStatsResponse,
   UpdateReportStatusResponse,
 } from '@ecobairro/contracts';
 import { CurrentUser } from '../auth/current-user.decorator';
@@ -20,6 +21,7 @@ import type { AuthenticatedUser } from '../auth/auth.types';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CreateReportDto } from './dto/create-report.dto';
 import { ListReportsDto } from './dto/list-reports.dto';
+import { ReportStatsDto } from './dto/report-stats.dto';
 import { UpdateReportStatusDto } from './dto/update-report-status.dto';
 import { ReportsService } from './reports.service';
 
@@ -46,6 +48,19 @@ export class ReportsController {
     @Query() query: ListReportsDto,
   ): Promise<ListReportsResponse> {
     return this.reportsService.listMyReports(user.userId, user.role, query);
+  }
+
+  @Get('stats')
+  stats(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query() query: ReportStatsDto,
+  ): Promise<ReportStatsResponse> {
+    return this.reportsService.getStats(
+      user.userId,
+      user.role,
+      query.scope,
+      query.recentLimit,
+    );
   }
 
   @Get()

@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useSearch } from '@tanstack/react-router'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import {
@@ -6,22 +6,44 @@ import {
   Clock, CheckCircle, XCircle, AlertCircle, Loader, Package,
   Upload, X, ImageIcon
 } from 'lucide-react'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { PaginationBar } from '@/components/ui/pagination-bar'
 import { fetchJson } from '@/lib/http/fetch-json'
+import { getApiErrorMessage } from '@/lib/http/api-error'
 import { clientEnv } from '@/lib/env'
 import { getAccessToken } from '@/lib/auth'
 import type {
   CreateReportRequest,
   ListReportsResponse,
   ReportRecord,
+  ReportStatsResponse,
   ReportStatus,
 } from '@ecobairro/contracts'
 
+interface ReportesSearch {
+  novo?: '1'
+  local?: string
+  tipo?: (typeof tiposReporte)[number]
+}
+
 export const Route = createFileRoute('/_layoutmain/reportes')({
+  validateSearch: (raw: Record<string, unknown>): ReportesSearch => {
+    const out: ReportesSearch = {}
+    if (raw.novo === '1') out.novo = '1'
+    if (typeof raw.local === 'string' && raw.local.trim().length > 0) {
+      out.local = raw.local
+    }
+    if (
+      typeof raw.tipo === 'string' &&
+      (tiposReporte as readonly string[]).includes(raw.tipo)
+    ) {
+      out.tipo = raw.tipo as ReportesSearch['tipo']
+    }
+    return out
+  },
   component: ReportesPage,
 })
 
@@ -73,6 +95,7 @@ function formatDate(iso: string) {
 
 /* ─── Página ─── */
 function ReportesPage() {
+  const search = useSearch({ from: '/_layoutmain/reportes' })
   const [filtro, setFiltro]     = useState<Status | 'todos'>('todos')
   const [pesquisa, setPesquisa] = useState('')
   const [expandido, setExpandido] = useState<string | null>(null)
@@ -80,7 +103,9 @@ function ReportesPage() {
   const [total, setTotal]       = useState(0)
   const [reportes, setReportes] = useState<ReportRecord[]>([])
   const [loading, setLoading]   = useState(true)
+  const [listError, setListError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
   const [modalAberto, setModalAberto] = useState(false)
   const [previewUrl, setPreviewUrl]   = useState<string | null>(null)
 
@@ -100,7 +125,13 @@ function ReportesPage() {
 
   /* ─ Carregamento da lista (paginação no servidor) ─ */
   const load = useCallback(async () => {
+    if (!getAccessToken()) {
+      setListError('Sessão inválida. Faça login novamente.')
+      setLoading(false)
+      return
+    }
     setLoading(true)
+    setListError(null)
     try {
       const params: Record<string, string | number> = {
         page: pagina,
@@ -116,9 +147,10 @@ function ReportesPage() {
       })
       setReportes(resp.reports)
       setTotal(resp.total)
-    } catch {
+    } catch (err) {
       setReportes([])
       setTotal(0)
+      setListError(getApiErrorMessage(err, 'Não foi possível carregar os reportes.'))
     } finally {
       setLoading(false)
     }
@@ -131,31 +163,55 @@ function ReportesPage() {
 
   const pageCount = Math.ceil(total / POR_PAGINA)
 
-  /* KPIs — carregados uma vez sem filtros */
+  /* KPIs — carregados uma vez via endpoint agregado */
   const [contagens, setContagens] = useState({ pendente: 0, analise: 0, resolvido: 0, rejeitado: 0 })
+  const [totalGeral, setTotalGeral] = useState(0)
 
   const loadKpis = useCallback(async () => {
+    if (!getAccessToken()) return
     try {
-      const [p, a, r, rej] = await Promise.all([
-        fetchJson<ListReportsResponse>('/v1/reports/me?page=1&pageSize=1&status=pendente', { baseUrl: clientEnv.apiBaseUrl, headers: authHeaders() }),
-        fetchJson<ListReportsResponse>('/v1/reports/me?page=1&pageSize=1&status=analise',  { baseUrl: clientEnv.apiBaseUrl, headers: authHeaders() }),
-        fetchJson<ListReportsResponse>('/v1/reports/me?page=1&pageSize=1&status=resolvido',{ baseUrl: clientEnv.apiBaseUrl, headers: authHeaders() }),
-        fetchJson<ListReportsResponse>('/v1/reports/me?page=1&pageSize=1&status=rejeitado',{ baseUrl: clientEnv.apiBaseUrl, headers: authHeaders() }),
-      ])
-      setContagens({ pendente: p.total, analise: a.total, resolvido: r.total, rejeitado: rej.total })
-    } catch { /* mantém zeros */ }
+      const stats = await fetchJson<ReportStatsResponse>('/v1/reports/stats', {
+        baseUrl: clientEnv.apiBaseUrl,
+        headers: authHeaders(),
+        params: { scope: 'me', recentLimit: 0 },
+      })
+      setContagens(stats.byStatus)
+      setTotalGeral(stats.total)
+    } catch { /* mantém zeros — banner de erro da lista já cobre o caso geral */ }
   }, [])
 
   useEffect(() => { void loadKpis() }, [loadKpis])
 
-  const totalGeral = contagens.pendente + contagens.analise + contagens.resolvido + contagens.rejeitado
-
   /* ─ Modal ─ */
-  function abrirModal() { reset(); setPreviewUrl(null); setModalAberto(true) }
-  function fecharModal() { setModalAberto(false); setPreviewUrl(null); reset() }
+  function abrirModal(prefill?: Partial<NovoReporteForm>) {
+    reset({
+      titulo: prefill?.titulo ?? '',
+      tipo: prefill?.tipo,
+      descricao: prefill?.descricao ?? '',
+      local: prefill?.local ?? '',
+    })
+    setPreviewUrl(null)
+    setSubmitError(null)
+    setModalAberto(true)
+  }
+  function fecharModal() { setModalAberto(false); setPreviewUrl(null); setSubmitError(null); reset() }
+
+  /* ─ Auto-open via ?novo=1 (deep link da home ou do mapa) ─ */
+  const autoOpenedRef = useRef(false)
+  useEffect(() => {
+    if (autoOpenedRef.current) return
+    if (search.novo !== '1') return
+    autoOpenedRef.current = true
+    abrirModal({
+      local: search.local,
+      tipo: search.tipo,
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search.novo, search.local, search.tipo])
 
   async function onSubmitReporte(data: NovoReporteForm) {
     setSubmitting(true)
+    setSubmitError(null)
     try {
       const body: CreateReportRequest = {
         titulo: data.titulo,
@@ -171,8 +227,9 @@ function ReportesPage() {
       })
       fecharModal()
       await Promise.all([load(), loadKpis()])
-    } catch { /* mantém modal aberto para retentar */ }
-    finally { setSubmitting(false) }
+    } catch (err) {
+      setSubmitError(getApiErrorMessage(err, 'Não foi possível submeter o reporte. Tente novamente.'))
+    } finally { setSubmitting(false) }
   }
 
   return (
@@ -186,7 +243,7 @@ function ReportesPage() {
             {loading ? '…' : `${totalGeral} report${totalGeral !== 1 ? 'es' : ''} submetido${totalGeral !== 1 ? 's' : ''}`}
           </p>
         </div>
-        <Button className="gap-2 bg-[var(--primary)] hover:opacity-90 transition-opacity self-start sm:self-auto rounded-xl" onClick={abrirModal}>
+        <Button className="gap-2 bg-[var(--primary)] hover:opacity-90 transition-opacity self-start sm:self-auto rounded-xl" onClick={() => abrirModal()}>
           <PlusCircle className="w-4 h-4" />
           Novo Reporte
         </Button>
@@ -251,6 +308,16 @@ function ReportesPage() {
           />
         </div>
       </div>
+
+      {/* ── Erro ── */}
+      {listError && !loading && (
+        <div className="rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive flex items-center justify-between gap-3">
+          <span>{listError}</span>
+          <button onClick={() => void load()} className="text-xs font-medium underline-offset-2 hover:underline">
+            Tentar novamente
+          </button>
+        </div>
+      )}
 
       {/* ── Lista ── */}
       {loading ? (
@@ -404,6 +471,12 @@ function ReportesPage() {
                 )}
                 {errors.imagem && <p className="text-xs text-destructive mt-1">{errors.imagem.message as string}</p>}
               </div>
+
+              {submitError && (
+                <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                  {submitError}
+                </div>
+              )}
 
               <div className="flex gap-2 justify-end pt-1">
                 <Button type="button" variant="outline" size="sm" onClick={fecharModal} disabled={submitting}>Cancelar</Button>
