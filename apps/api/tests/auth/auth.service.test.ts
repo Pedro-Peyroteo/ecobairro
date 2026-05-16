@@ -4,9 +4,9 @@ import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { UserRole } from '@prisma/client';
 import bcrypt from 'bcrypt';
-import { AuthService } from './auth.service';
-import type { TestCase } from '../test/test-helpers';
-import { RegisterDto } from './dto/register.dto';
+import { AuthService } from '../../src/auth/auth.service';
+import type { TestCase } from '../test-helpers';
+import { RegisterDto } from '../../src/auth/dto/register.dto';
 
 class FakeMailService {
   readonly sent: Array<{ template: string; to: string }> = [];

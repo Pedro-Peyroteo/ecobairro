@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
-import { EcopontosService } from './ecopontos.service';
-import type { TestCase } from '../test/test-helpers';
+import { EcopontosService } from '../../src/ecopontos/ecopontos.service';
+import type { TestCase } from '../test-helpers';
 
 interface FakeEcopontoRow {
   id: string;

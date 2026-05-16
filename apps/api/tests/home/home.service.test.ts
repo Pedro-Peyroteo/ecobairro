@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { ReportStatus, UserRole } from '@prisma/client';
-import { HomeService } from './home.service';
-import type { TestCase } from '../test/test-helpers';
+import { HomeService } from '../../src/home/home.service';
+import type { TestCase } from '../test-helpers';
 
 const ecoRow = {
   id: 'e1',
