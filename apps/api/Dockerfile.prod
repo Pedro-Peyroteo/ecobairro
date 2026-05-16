@@ -12,19 +12,22 @@ COPY apps/api/package.json ./apps/api/
 # Install all dependencies
 RUN pnpm install --frozen-lockfile
 
-# Copy app source and prisma schema
+# Copy app source
 COPY apps/api/ ./apps/api/
+
+# Build @ecobairro/config
+RUN pnpm --filter @ecobairro/config build
 
 # Generate Prisma Client
 RUN pnpm --filter @ecobairro/api exec prisma generate
 
-# Build app
+# Build API
 RUN pnpm --filter @ecobairro/api build
 
-# Deploy stage: cria pasta self-contained sem symlinks do pnpm
+# Deploy: creates self-contained folder without symlinks
 RUN pnpm --filter @ecobairro/api deploy --prod --legacy /deploy
 
-# Copy built dist (deploy only copies prod deps, not the build output)
+# Copy built dist
 RUN cp -r /workspace/apps/api/dist /deploy/dist
 
 # Production Stage
