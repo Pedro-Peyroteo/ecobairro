@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useSearch } from '@tanstack/react-router'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import {
@@ -6,31 +6,50 @@ import {
   Clock, CheckCircle, XCircle, AlertCircle, Loader, Package,
   Upload, X, ImageIcon
 } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { PaginationBar } from '@/components/ui/pagination-bar'
+import { fetchJson } from '@/lib/http/fetch-json'
+import { getApiErrorMessage } from '@/lib/http/api-error'
+import { clientEnv } from '@/lib/env'
+import { getAccessToken } from '@/lib/auth'
+import type {
+  CreateReportRequest,
+  ListReportsResponse,
+  ReportRecord,
+  ReportStatsResponse,
+  ReportStatus,
+} from '@ecobairro/contracts'
+
+interface ReportesSearch {
+  novo?: '1'
+  local?: string
+  tipo?: (typeof tiposReporte)[number]
+}
 
 export const Route = createFileRoute('/_layoutmain/reportes')({
+  validateSearch: (raw: Record<string, unknown>): ReportesSearch => {
+    const out: ReportesSearch = {}
+    if (raw.novo === '1') out.novo = '1'
+    if (typeof raw.local === 'string' && raw.local.trim().length > 0) {
+      out.local = raw.local
+    }
+    if (
+      typeof raw.tipo === 'string' &&
+      (tiposReporte as readonly string[]).includes(raw.tipo)
+    ) {
+      out.tipo = raw.tipo as ReportesSearch['tipo']
+    }
+    return out
+  },
   component: ReportesPage,
 })
 
-/* ─── Tipos ─── */
-type Status = 'pendente' | 'analise' | 'resolvido' | 'rejeitado'
-
-interface Reporte {
-  id: number
-  titulo: string
-  tipo: string
-  descricao: string
-  local: string
-  data: string
-  status: Status
-  imagem?: string
-}
-
 /* ─── Config de status ─── */
+type Status = ReportStatus
+
 const statusConfig: Record<Status, { label: string; color: string; bg: string; icon: React.ElementType }> = {
   pendente:  { label: 'Pendente',   color: '#fb923c',              bg: 'bg-orange-50 dark:bg-orange-950/30',  icon: Clock       },
   analise:   { label: 'Em Análise', color: '#60a5fa',              bg: 'bg-blue-50 dark:bg-blue-950/30',      icon: Loader      },
@@ -38,19 +57,7 @@ const statusConfig: Record<Status, { label: string; color: string; bg: string; i
   rejeitado: { label: 'Rejeitado',  color: '#f87171',              bg: 'bg-red-50 dark:bg-red-950/30',        icon: XCircle     },
 }
 
-/* ─── Dados mock ─── */
-const mockReportes: Reporte[] = [
-  { id: 1, titulo: 'Ecoponto cheio — vidro a transbordar', tipo: 'Ecoponto Cheio', descricao: 'O contentor de vidro do Ecoponto Rossio está completamente cheio há 3 dias e já está a transbordar para o passeio.', local: 'Praça do Rossio, Aveiro', data: '18 Dez 2025', status: 'resolvido', imagem: 'https://images.unsplash.com/photo-1604187351574-c75ca79f5807?q=80&w=200&auto=format&fit=crop' },
-  { id: 2, titulo: 'Resíduos depositados fora do ecoponto', tipo: 'Deposição Ilegal', descricao: 'Sacos de lixo doméstico foram depositados na via pública junto ao Mercado, fora dos contentores.', local: 'R. do Mercado, Aveiro', data: '20 Dez 2025', status: 'analise', imagem: 'https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?q=80&w=200&auto=format&fit=crop' },
-  { id: 3, titulo: 'Tampa do ecoponto danificada', tipo: 'Dano em Equipamento', descricao: 'A tampa do contentor amarelo (plásticos) da Universidade está partida, expondo os resíduos à chuva.', local: 'Campus Universitário, Aveiro', data: '19 Dez 2025', status: 'pendente' },
-  { id: 4, titulo: 'Odores intensos junto ao ecoponto', tipo: 'Odores', descricao: 'Odores muito intensos junto ao ecoponto da Glória. Possível resíduo orgânico no contentor errado.', local: 'R. da Glória, Aveiro', data: '15 Dez 2025', status: 'resolvido' },
-  { id: 5, titulo: 'Ecoponto vandalizado', tipo: 'Vandalismo', descricao: 'O ecoponto da Beira-Mar foi vandalizado com graffiti e um dos contentores está virado ao lado.', local: 'Av. Beira-Mar, Aveiro', data: '12 Dez 2025', status: 'rejeitado', imagem: 'https://images.unsplash.com/photo-1569336415962-a4bd9f69cd83?q=80&w=200&auto=format&fit=crop' },
-  { id: 6, titulo: 'Contentor de papel cheio', tipo: 'Ecoponto Cheio', descricao: 'Contentor azul do Vera Cruz a transbordar. Muitas caixas de cartão depositadas fora.', local: 'R. Vera Cruz, Aveiro', data: '21 Dez 2025', status: 'pendente' },
-  { id: 7, titulo: 'Resíduos de construção despejados', tipo: 'Deposição Ilegal', descricao: 'Entulho e resíduos de obra foram despejados num terreno baldio perto da escola.', local: 'R. das Flores, Aveiro', data: '10 Dez 2025', status: 'resolvido' },
-  { id: 8, titulo: 'Ecoponto com porta bloqueada', tipo: 'Dano em Equipamento', descricao: 'A abertura do contentor de metal está bloqueada, impossibilitando a deposição de resíduos.', local: 'Av. Dr. Lourenço Peixinho, Aveiro', data: '08 Dez 2025', status: 'analise' },
-]
-
-const filtros: { label: string; value: Status | 'todos' }[] = [
+const filtrosDef: { label: string; value: Status | 'todos' }[] = [
   { label: 'Todos',      value: 'todos'    },
   { label: 'Pendente',   value: 'pendente' },
   { label: 'Em Análise', value: 'analise'  },
@@ -61,11 +68,11 @@ const filtros: { label: string; value: Status | 'todos' }[] = [
 const tiposReporte = ['Ecoponto Cheio', 'Deposição Ilegal', 'Dano em Equipamento', 'Odores', 'Vandalismo'] as const
 
 const novoReporteSchema = z.object({
-  titulo:   z.string().min(3, 'Título obrigatório (mín. 3 caracteres)'),
-  tipo:     z.enum(tiposReporte, { message: 'Selecione um tipo' }),
+  titulo:    z.string().min(3, 'Título obrigatório (mín. 3 caracteres)'),
+  tipo:      z.enum(tiposReporte, { message: 'Selecione um tipo' }),
   descricao: z.string().min(10, 'Descrição obrigatória (mín. 10 caracteres)'),
-  local:    z.string().min(3, 'Local obrigatório'),
-  imagem:   z.custom<FileList>()
+  local:     z.string().min(3, 'Local obrigatório'),
+  imagem:    z.custom<FileList>()
     .refine(fl => !fl || fl.length === 0 || fl[0].size <= 5 * 1024 * 1024, 'Tamanho máximo: 5 MB')
     .refine(fl => !fl || fl.length === 0 || ['image/jpeg', 'image/png', 'image/webp'].includes(fl[0].type), 'Formato não suportado (JPG, PNG ou WebP)')
     .optional(),
@@ -75,22 +82,39 @@ type NovoReporteForm = z.infer<typeof novoReporteSchema>
 
 const POR_PAGINA = 5
 
+function authHeaders(): Record<string, string> {
+  const tok = getAccessToken()
+  return tok ? { Authorization: `Bearer ${tok}` } : {}
+}
+
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString('pt-PT', {
+    day: '2-digit', month: 'short', year: 'numeric',
+  })
+}
+
 /* ─── Página ─── */
 function ReportesPage() {
-  const [filtro, setFiltro] = useState<Status | 'todos'>('todos')
+  const search = useSearch({ from: '/_layoutmain/reportes' })
+  const [filtro, setFiltro]     = useState<Status | 'todos'>('todos')
   const [pesquisa, setPesquisa] = useState('')
-  const [expandido, setExpandido] = useState<number | null>(null)
-  const [pagina, setPagina] = useState(1)
-  const [reportes, setReportes] = useState<Reporte[]>(mockReportes)
+  const [expandido, setExpandido] = useState<string | null>(null)
+  const [pagina, setPagina]     = useState(1)
+  const [total, setTotal]       = useState(0)
+  const [reportes, setReportes] = useState<ReportRecord[]>([])
+  const [loading, setLoading]   = useState(true)
+  const [listError, setListError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
   const [modalAberto, setModalAberto] = useState(false)
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [previewUrl, setPreviewUrl]   = useState<string | null>(null)
 
   const { register, handleSubmit, watch, reset, formState: { errors } } = useForm<NovoReporteForm>({
     resolver: zodResolver(novoReporteSchema),
   })
 
   const imagemWatch = watch('imagem')
-  const imagemFile = imagemWatch?.[0]
+  const imagemFile  = imagemWatch?.[0]
 
   useEffect(() => {
     if (!imagemFile) { setPreviewUrl(null); return }
@@ -99,49 +123,113 @@ function ReportesPage() {
     return () => URL.revokeObjectURL(url)
   }, [imagemFile])
 
-  const lista = reportes.filter((r) => {
-    const matchFiltro = filtro === 'todos' || r.status === filtro
-    const matchSearch = pesquisa === '' || r.titulo.toLowerCase().includes(pesquisa.toLowerCase()) || r.local.toLowerCase().includes(pesquisa.toLowerCase())
-    return matchFiltro && matchSearch
-  })
+  /* ─ Carregamento da lista (paginação no servidor) ─ */
+  const load = useCallback(async () => {
+    if (!getAccessToken()) {
+      setListError('Sessão inválida. Faça login novamente.')
+      setLoading(false)
+      return
+    }
+    setLoading(true)
+    setListError(null)
+    try {
+      const params: Record<string, string | number> = {
+        page: pagina,
+        pageSize: POR_PAGINA,
+      }
+      if (filtro !== 'todos') params.status = filtro
+      if (pesquisa.trim())    params.q      = pesquisa.trim()
 
+      const resp = await fetchJson<ListReportsResponse>('/v1/reports/me', {
+        baseUrl: clientEnv.apiBaseUrl,
+        headers: authHeaders(),
+        params,
+      })
+      setReportes(resp.reports)
+      setTotal(resp.total)
+    } catch (err) {
+      setReportes([])
+      setTotal(0)
+      setListError(getApiErrorMessage(err, 'Não foi possível carregar os reportes.'))
+    } finally {
+      setLoading(false)
+    }
+  }, [pagina, filtro, pesquisa])
+
+  useEffect(() => { void load() }, [load])
+
+  /* Reset página quando filtro/pesquisa mudam */
   useEffect(() => { setPagina(1) }, [filtro, pesquisa])
 
-  const pageCount = Math.ceil(lista.length / POR_PAGINA)
-  const paginados = lista.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA)
+  const pageCount = Math.ceil(total / POR_PAGINA)
 
-  const contagens = {
-    pendente:  reportes.filter(r => r.status === 'pendente').length,
-    analise:   reportes.filter(r => r.status === 'analise').length,
-    resolvido: reportes.filter(r => r.status === 'resolvido').length,
-    rejeitado: reportes.filter(r => r.status === 'rejeitado').length,
-  }
+  /* KPIs — carregados uma vez via endpoint agregado */
+  const [contagens, setContagens] = useState({ pendente: 0, analise: 0, resolvido: 0, rejeitado: 0 })
+  const [totalGeral, setTotalGeral] = useState(0)
 
-  function abrirModal() {
-    reset()
+  const loadKpis = useCallback(async () => {
+    if (!getAccessToken()) return
+    try {
+      const stats = await fetchJson<ReportStatsResponse>('/v1/reports/stats', {
+        baseUrl: clientEnv.apiBaseUrl,
+        headers: authHeaders(),
+        params: { scope: 'me', recentLimit: 0 },
+      })
+      setContagens(stats.byStatus)
+      setTotalGeral(stats.total)
+    } catch { /* mantém zeros — banner de erro da lista já cobre o caso geral */ }
+  }, [])
+
+  useEffect(() => { void loadKpis() }, [loadKpis])
+
+  /* ─ Modal ─ */
+  function abrirModal(prefill?: Partial<NovoReporteForm>) {
+    reset({
+      titulo: prefill?.titulo ?? '',
+      tipo: prefill?.tipo,
+      descricao: prefill?.descricao ?? '',
+      local: prefill?.local ?? '',
+    })
     setPreviewUrl(null)
+    setSubmitError(null)
     setModalAberto(true)
   }
+  function fecharModal() { setModalAberto(false); setPreviewUrl(null); setSubmitError(null); reset() }
 
-  function fecharModal() {
-    setModalAberto(false)
-    setPreviewUrl(null)
-    reset()
-  }
+  /* ─ Auto-open via ?novo=1 (deep link da home ou do mapa) ─ */
+  const autoOpenedRef = useRef(false)
+  useEffect(() => {
+    if (autoOpenedRef.current) return
+    if (search.novo !== '1') return
+    autoOpenedRef.current = true
+    abrirModal({
+      local: search.local,
+      tipo: search.tipo,
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search.novo, search.local, search.tipo])
 
-  function onSubmitReporte(data: NovoReporteForm) {
-    const novo: Reporte = {
-      id: Date.now(),
-      titulo: data.titulo,
-      tipo: data.tipo,
-      descricao: data.descricao,
-      local: data.local,
-      data: new Date().toLocaleDateString('pt-PT', { day: '2-digit', month: 'short', year: 'numeric' }),
-      status: 'pendente',
-      imagem: previewUrl ?? undefined,
-    }
-    setReportes(prev => [novo, ...prev])
-    fecharModal()
+  async function onSubmitReporte(data: NovoReporteForm) {
+    setSubmitting(true)
+    setSubmitError(null)
+    try {
+      const body: CreateReportRequest = {
+        titulo: data.titulo,
+        tipo: data.tipo,
+        descricao: data.descricao,
+        local: data.local,
+      }
+      await fetchJson('/v1/reports', {
+        baseUrl: clientEnv.apiBaseUrl,
+        method: 'POST',
+        body: JSON.stringify(body),
+        headers: authHeaders(),
+      })
+      fecharModal()
+      await Promise.all([load(), loadKpis()])
+    } catch (err) {
+      setSubmitError(getApiErrorMessage(err, 'Não foi possível submeter o reporte. Tente novamente.'))
+    } finally { setSubmitting(false) }
   }
 
   return (
@@ -151,15 +239,17 @@ function ReportesPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-bold text-foreground">Os Meus Reportes</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">{reportes.length} reportes submetidos</p>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {loading ? '…' : `${totalGeral} report${totalGeral !== 1 ? 'es' : ''} submetido${totalGeral !== 1 ? 's' : ''}`}
+          </p>
         </div>
-        <Button className="gap-2 bg-[var(--primary)] hover:opacity-90 transition-opacity self-start sm:self-auto rounded-xl" onClick={abrirModal}>
+        <Button className="gap-2 bg-[var(--primary)] hover:opacity-90 transition-opacity self-start sm:self-auto rounded-xl" onClick={() => abrirModal()}>
           <PlusCircle className="w-4 h-4" />
           Novo Reporte
         </Button>
       </div>
 
-      {/* ── Resumo ── */}
+      {/* ── Resumo KPIs ── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { label: 'Pendentes',  value: contagens.pendente,  icon: Clock,       color: '#fb923c',              desc: 'aguardando triagem'    },
@@ -188,7 +278,7 @@ function ReportesPage() {
       {/* ── Filtros + Pesquisa ── */}
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
         <div className="flex gap-2 flex-wrap">
-          {filtros.map((f) => (
+          {filtrosDef.map((f) => (
             <button
               key={f.value}
               onClick={() => setFiltro(f.value)}
@@ -219,24 +309,47 @@ function ReportesPage() {
         </div>
       </div>
 
+      {/* ── Erro ── */}
+      {listError && !loading && (
+        <div className="rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive flex items-center justify-between gap-3">
+          <span>{listError}</span>
+          <button onClick={() => void load()} className="text-xs font-medium underline-offset-2 hover:underline">
+            Tentar novamente
+          </button>
+        </div>
+      )}
+
       {/* ── Lista ── */}
-      {lista.length === 0 ? (
+      {loading ? (
+        <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
+          <Loader className="w-6 h-6 text-muted-foreground animate-spin" />
+          <p className="text-sm text-muted-foreground">A carregar reportes…</p>
+        </div>
+      ) : reportes.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
           <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
             <Package className="w-5 h-5 text-muted-foreground" />
           </div>
           <p className="font-semibold text-foreground">Sem reportes</p>
-          <p className="text-sm text-muted-foreground max-w-xs">Não encontrámos reportes para os filtros selecionados.</p>
+          <p className="text-sm text-muted-foreground max-w-xs">
+            {filtro !== 'todos' || pesquisa
+              ? 'Não encontrámos reportes para os filtros selecionados.'
+              : 'Ainda não submeteu nenhum reporte. Clique em "Novo Reporte" para começar.'}
+          </p>
         </div>
       ) : (
         <>
           <div className="flex flex-col gap-2">
-            {paginados.map((r) => {
+            {reportes.map((r) => {
               const cfg = statusConfig[r.status]
               const Icon = cfg.icon
               const isOpen = expandido === r.id
               return (
-                <Card key={r.id} className="border border-border/70 shadow-sm rounded-xl hover:shadow-md transition-all cursor-pointer" onClick={() => setExpandido(isOpen ? null : r.id)}>
+                <Card
+                  key={r.id}
+                  className="border border-border/70 shadow-sm rounded-xl hover:shadow-md transition-all cursor-pointer"
+                  onClick={() => setExpandido(isOpen ? null : r.id)}
+                >
                   <CardContent className="p-0">
                     <div className="flex items-start gap-4 p-4">
                       {r.imagem ? (
@@ -255,7 +368,10 @@ function ReportesPage() {
                             <p className="text-[11px] text-muted-foreground mt-0.5">{r.tipo}</p>
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
-                            <div className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium" style={{ color: cfg.color, backgroundColor: `color-mix(in srgb, ${cfg.color} 10%, transparent)` }}>
+                            <div
+                              className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium"
+                              style={{ color: cfg.color, backgroundColor: `color-mix(in srgb, ${cfg.color} 10%, transparent)` }}
+                            >
                               <Icon className="w-3 h-3" />
                               {cfg.label}
                             </div>
@@ -264,22 +380,13 @@ function ReportesPage() {
                         </div>
                         <div className="flex items-center gap-3 mt-2 text-[11px] text-muted-foreground">
                           <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{r.local}</span>
-                          <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{r.data}</span>
+                          <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{formatDate(r.data)}</span>
                         </div>
                       </div>
                     </div>
                     {isOpen && (
                       <div className={`px-4 pb-4 border-t border-border pt-3 ${cfg.bg}`}>
                         <p className="text-sm text-foreground/80 leading-relaxed">{r.descricao}</p>
-                        <div className="flex gap-2 mt-3">
-                          <button className="text-xs font-medium text-[var(--primary)] hover:underline">Ver detalhes completos</button>
-                          {r.status === 'pendente' && (
-                            <>
-                              <span className="text-muted-foreground/50">·</span>
-                              <button className="text-xs font-medium text-destructive hover:underline">Cancelar reporte</button>
-                            </>
-                          )}
-                        </div>
                       </div>
                     )}
                   </CardContent>
@@ -288,7 +395,7 @@ function ReportesPage() {
             })}
           </div>
           <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>{lista.length} resultado{lista.length !== 1 ? 's' : ''}</span>
+            <span>{total} resultado{total !== 1 ? 's' : ''}</span>
             <span>Página {pagina} de {pageCount}</span>
           </div>
           <PaginationBar page={pagina} pageCount={pageCount} onPage={setPagina} />
@@ -337,13 +444,15 @@ function ReportesPage() {
               </div>
 
               <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">Fotografia <span className="text-muted-foreground/60 font-normal">(opcional)</span></label>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">
+                  Fotografia <span className="text-muted-foreground/60 font-normal">(opcional)</span>
+                </label>
                 {previewUrl ? (
                   <div className="relative rounded-xl overflow-hidden border border-border">
                     <img src={previewUrl} alt="Preview" className="w-full h-40 object-cover" />
                     <button
                       type="button"
-                      onClick={() => { reset({ ...watch(), imagem: undefined as any }); setPreviewUrl(null) }}
+                      onClick={() => { reset({ ...watch(), imagem: undefined as never }); setPreviewUrl(null) }}
                       className="absolute top-2 right-2 w-7 h-7 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-colors"
                     >
                       <X className="w-3.5 h-3.5" />
@@ -363,11 +472,17 @@ function ReportesPage() {
                 {errors.imagem && <p className="text-xs text-destructive mt-1">{errors.imagem.message as string}</p>}
               </div>
 
+              {submitError && (
+                <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                  {submitError}
+                </div>
+              )}
+
               <div className="flex gap-2 justify-end pt-1">
-                <Button type="button" variant="outline" size="sm" onClick={fecharModal}>Cancelar</Button>
-                <Button type="submit" size="sm" className="bg-[var(--primary)] hover:opacity-90 transition-opacity">
+                <Button type="button" variant="outline" size="sm" onClick={fecharModal} disabled={submitting}>Cancelar</Button>
+                <Button type="submit" size="sm" disabled={submitting} className="bg-[var(--primary)] hover:opacity-90 transition-opacity">
                   <ImageIcon className="w-3.5 h-3.5 mr-1.5" />
-                  Submeter Reporte
+                  {submitting ? 'A submeter…' : 'Submeter Reporte'}
                 </Button>
               </div>
             </form>

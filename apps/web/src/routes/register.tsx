@@ -3,10 +3,19 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Eye, EyeOff, Leaf, Recycle, MapPin, BarChart3 } from 'lucide-react'
+import { Eye, EyeOff, Leaf, Recycle, MapPin, BarChart3, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { setAuthSession } from '@/lib/auth'
+import {
+  getMe,
+  loginRequest,
+  registerRequest,
+  toUiRole,
+  updateCitizenProfile,
+} from '@/lib/api/auth'
+import { HttpError } from '@/lib/http/fetch-json'
 import { cn } from '@/lib/utils'
 
 export const Route = createFileRoute('/register')({
@@ -28,6 +37,7 @@ function RegisterPage() {
   const navigate = useNavigate()
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   const {
     register,
@@ -38,12 +48,62 @@ function RegisterPage() {
   })
 
   const onSubmit = async (data: FormData) => {
-    setLoading(true)
-    await new Promise((r) => setTimeout(r, 800))
-    // Simulate successful registration and auto-login
-    sessionStorage.setItem('user', JSON.stringify({ id: '2', name: data.name, email: data.email, role: 'cidadao' }))
-    setLoading(false)
-    navigate({ to: '/dashboard' })
+    try {
+      setSubmitError(null)
+      setLoading(true)
+
+      await registerRequest({
+        email: data.email,
+        password: data.password,
+        rgpd_accepted: data.terms,
+      })
+
+      const login = await loginRequest({
+        email: data.email,
+        password: data.password,
+      })
+
+      const me = await getMe(login.access_token)
+      const role = toUiRole(me.role)
+      let displayName = data.name
+
+      if (role === 'cidadao') {
+        const profile = await updateCitizenProfile(login.access_token, {
+          nome_completo: data.name.trim(),
+        })
+        if (profile.nome_completo?.trim()) {
+          displayName = profile.nome_completo
+        }
+      }
+
+      setAuthSession({
+        user: {
+          id: me.id,
+          name: displayName,
+          email: me.email,
+          role,
+        },
+        accessToken: login.access_token,
+        refreshToken: login.refresh_token,
+      })
+
+      navigate({ to: '/home' })
+    } catch (error) {
+      if (error instanceof HttpError && typeof error.body === 'object' && error.body !== null && 'message' in error.body) {
+        const message = error.body.message
+        if (typeof message === 'string') {
+          setSubmitError(message)
+        } else if (Array.isArray(message) && message.length > 0) {
+          setSubmitError(String(message[0]))
+        } else {
+          setSubmitError('Falha ao criar conta. Tente novamente.')
+        }
+      } else {
+        setSubmitError('Falha ao criar conta. Tente novamente.')
+      }
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -91,6 +151,16 @@ function RegisterPage() {
           </div>
           <span className="font-bold text-base tracking-tight">ecoBairro</span>
         </div>
+
+        {/* Close — voltar à home */}
+        <button
+          type="button"
+          onClick={() => navigate({ to: '/home' })}
+          aria-label="Voltar à home"
+          className="absolute top-6 right-6 flex items-center justify-center w-9 h-9 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+        >
+          <X className="w-5 h-5" />
+        </button>
 
         <div className="flex flex-col gap-5 w-full max-w-sm mx-auto">
           <div>
@@ -181,6 +251,9 @@ function RegisterPage() {
             <Button type="submit" className="w-full mt-2" disabled={loading}>
               {loading ? 'A criar...' : 'Criar conta'}
             </Button>
+            {submitError && (
+              <p className="text-xs text-destructive text-center">{submitError}</p>
+            )}
 
             <p className="text-center text-sm text-muted-foreground mt-2">
               Já tens conta?{' '}

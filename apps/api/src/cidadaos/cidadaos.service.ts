@@ -17,30 +17,7 @@ export class CidadaosService {
 
   async getMe(userId: string, role: ContractUserRole): Promise<CitizenSelfProfileResponse> {
     assertCitizen(role);
-
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      include: {
-        cidadaoPerfil: true,
-      },
-    });
-
-    if (!user || user.eliminadoEm || !user.cidadaoPerfil) {
-      throw new NotFoundException('Citizen profile not found');
-    }
-
-    return {
-      id: user.id,
-      email: user.email,
-      phone: user.phone,
-      role: 'CIDADAO',
-      email_verified: user.emailVerified,
-      nome_completo: user.cidadaoPerfil.nomeCompleto,
-      gamification_opt_in: user.cidadaoPerfil.gamificationOptIn,
-      notificacao_prefs: asJsonObject(user.cidadaoPerfil.notificacaoPrefs),
-      dashboard_widgets: asJsonObject(user.cidadaoPerfil.dashboardWidgets),
-      criado_em: user.criadoEm.toISOString(),
-    };
+    return this.fetchProfile(userId);
   }
 
   async updateMe(
@@ -73,7 +50,31 @@ export class CidadaosService {
       });
     });
 
-    return this.getMe(userId, role);
+    return this.fetchProfile(userId);
+  }
+
+  private async fetchProfile(userId: string): Promise<CitizenSelfProfileResponse> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { cidadaoPerfil: true },
+    });
+
+    if (!user || user.eliminadoEm || !user.cidadaoPerfil) {
+      throw new NotFoundException('Citizen profile not found');
+    }
+
+    return {
+      id: user.id,
+      email: user.email,
+      phone: user.phone,
+      role: 'CIDADAO',
+      email_verified: user.emailVerified,
+      nome_completo: user.cidadaoPerfil.nomeCompleto,
+      gamification_opt_in: user.cidadaoPerfil.gamificationOptIn,
+      notificacao_prefs: asJsonObject(user.cidadaoPerfil.notificacaoPrefs),
+      dashboard_widgets: asJsonObject(user.cidadaoPerfil.dashboardWidgets),
+      criado_em: user.criadoEm.toISOString(),
+    };
   }
 }
 
