@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { forgotPasswordRequest } from '@/lib/api/auth'
-import { HttpError } from '@/lib/http/fetch-json'
+import { getApiErrorMessage } from '@/lib/http/api-error'
 import { cn } from '@/lib/utils'
 
 export const Route = createFileRoute('/forgot-password')({
@@ -49,12 +49,7 @@ function ForgotPasswordPage() {
       }
       setSubmitted(true)
     } catch (error) {
-      if (error instanceof HttpError && typeof error.body === 'object' && error.body !== null && 'message' in error.body) {
-        const message = error.body.message
-        setSubmitError(typeof message === 'string' ? message : 'Falha ao solicitar recuperação.')
-      } else {
-        setSubmitError('Falha ao solicitar recuperação.')
-      }
+      setSubmitError(getApiErrorMessage(error, 'Falha ao solicitar recuperação.'))
     } finally {
       setLoading(false)
     }

@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { setAuthSession } from '@/lib/auth'
 import { getCitizenProfile, getMe, loginRequest, toUiRole } from '@/lib/api/auth'
-import { HttpError } from '@/lib/http/fetch-json'
+import { getApiErrorMessage } from '@/lib/http/api-error'
 import { cn } from '@/lib/utils'
 
 import { clientEnv } from '@/lib/env'
@@ -107,12 +107,7 @@ function LoginPage() {
 
       navigate({ to: role === 'cidadao' ? '/home' : '/dashboard' })
     } catch (error) {
-      if (error instanceof HttpError && typeof error.body === 'object' && error.body !== null && 'message' in error.body) {
-        const message = error.body.message
-        setSubmitError(typeof message === 'string' ? message : 'Falha ao autenticar. Tente novamente.')
-      } else {
-        setSubmitError('Falha ao autenticar. Tente novamente.')
-      }
+      setSubmitError(getApiErrorMessage(error, 'Falha ao autenticar. Tente novamente.'))
     } finally {
       setLoading(false)
     }
