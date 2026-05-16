@@ -1,95 +1,40 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useSearch } from '@tanstack/react-router'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
   Truck, PlusCircle, Clock, Calendar, CheckCircle,
   ChevronRight, Info, MapPin, Package, AlertTriangle,
-  X, Camera, ImageIcon, ArrowLeft, Send
+  Loader2, X, Camera, ImageIcon, ArrowLeft, Send
 } from 'lucide-react'
-import { useEffect, useState } from 'react'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
+import { useEffect, useRef, useState } from 'react'
 import { PaginationBar } from '@/components/ui/pagination-bar'
+import { fetchJson } from '@/lib/http/fetch-json'
+import { clientEnv } from '@/lib/env'
+import { getAccessToken } from '@/lib/auth'
+import type { ListRecolhasResponse, RecolhaRecord, CreateRecolhaRequest, CreateRecolhaResponse } from '@ecobairro/contracts'
+
+interface RecolhasSearch {
+  novo?: '1'
+}
 
 export const Route = createFileRoute('/_layoutmain/recolhas')({
+  validateSearch: (raw: Record<string, unknown>): RecolhasSearch =>
+    raw.novo === '1' ? { novo: '1' } : {},
   component: RecolhasPage,
 })
 
-/* ─── Dados Mock ─── */
-type StatusPedido = 'pendente' | 'agendado' | 'concluido'
-
-interface PedidoRecolha {
-  id: string
-  tipo: string
-  subtipo: string
-  morada: string
-  dataPedido: string
-  dataPrevista: string
-  status: StatusPedido
-  obs: string
-}
-
-const pedidosMock: PedidoRecolha[] = [
-  {
-    id: '#REC-021',
-    tipo: 'Monos Volumosos',
-    subtipo: 'Frigorífico e Máquina de Lavar',
-    morada: 'Rua de Aveiro, 12, 3º Dto',
-    dataPedido: '18/04/2026',
-    dataPrevista: '22/04/2026',
-    status: 'agendado',
-    obs: 'Deixar junto à porta do prédio.'
-  },
-  {
-    id: '#REC-018',
-    tipo: 'Entulho',
-    subtipo: 'Restos de obras (Tijolos)',
-    morada: 'Av. Dr. Lourenço Peixinho, 45',
-    dataPedido: '10/04/2026',
-    dataPrevista: '12/04/2026',
-    status: 'concluido',
-    obs: 'Sacos bem fechados.'
-  },
-  {
-    id: '#REC-025',
-    tipo: 'Monos Volumosos',
-    subtipo: 'Sofá de 3 lugares',
-    morada: 'Rua Direita, 8',
-    dataPedido: '20/04/2026',
-    dataPrevista: 'Pendente',
-    status: 'pendente',
-    obs: 'Não cabe no elevador.'
-  }
-]
-
-const statusConfig: Record<StatusPedido, { label: string; icon: React.ElementType; color: string; bg: string }> = {
+const statusConfig: Record<string, { label: string; icon: React.ElementType; color: string; bg: string }> = {
   pendente:  { label: 'Pendente',  icon: Clock,        color: '#fb923c',              bg: 'bg-orange-500/10' },
   agendado:  { label: 'Agendado',  icon: Calendar,     color: '#60a5fa',              bg: 'bg-blue-500/10'   },
   concluido: { label: 'Concluído', icon: CheckCircle,  color: 'oklch(0.55 0.18 150)', bg: 'bg-green-500/10'  },
 }
 
-const tiposRecolha = ['Monos Volumosos', 'Entulho de Obras'] as const
-
-const agendamentoSchema = z.object({
-  tipo: z.enum(tiposRecolha, { message: 'Selecione o tipo de recolha' }),
-  titulo: z.string().min(3, 'Título obrigatório (mín. 3 caracteres)'),
-  local: z.string().min(3, 'Localização obrigatória'),
-  data: z.string().min(1, 'Escolha uma data'),
-  descricao: z.string().optional(),
-  imagem: z.custom<FileList>()
-    .refine(fl => !fl || fl.length === 0 || fl[0].size <= 5 * 1024 * 1024, 'Tamanho máximo: 5 MB')
-    .refine(fl => !fl || fl.length === 0 || ['image/jpeg', 'image/png', 'image/webp'].includes(fl[0].type), 'Formato não suportado (JPG, PNG ou WebP)')
-    .optional(),
-})
-
-type AgendamentoForm = z.infer<typeof agendamentoSchema>
-
+const tiposRecolha = ['Monos Volumosos', 'Entulho'] as const
 const POR_PAGINA = 5
 
 function formatarData(date: string) {
-  if (!date) return 'Pendente'
+  if (!date) return 'A definir'
   return new Date(`${date}T00:00:00`).toLocaleDateString('pt-PT', {
     day: '2-digit',
     month: '2-digit',
@@ -98,23 +43,43 @@ function formatarData(date: string) {
 }
 
 function RecolhasPage() {
+  const search = useSearch({ from: '/_layoutmain/recolhas' })
   const [expandido, setExpandido] = useState<string | null>(null)
   const [pagina, setPagina] = useState(1)
-  const [pedidos, setPedidos] = useState<PedidoRecolha[]>(pedidosMock)
+  const [recolhas, setRecolhas] = useState<RecolhaRecord[]>([])
+  const [total, setTotal] = useState(0)
+  const [loading, setLoading] = useState(true)
   const [modalAberto, setModalAberto] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
   const [passoAgendamento, setPassoAgendamento] = useState(1)
   const [enviado, setEnviado] = useState(false)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
-
-  const { register, handleSubmit, watch, reset, trigger, getValues, setValue, formState: { errors } } = useForm<AgendamentoForm>({
-    resolver: zodResolver(agendamentoSchema),
-    defaultValues: {
-      tipo: 'Monos Volumosos',
-    },
+  const [imagemFile, setImagemFile] = useState<File | null>(null)
+  const [form, setForm] = useState({
+    tipo: 'Monos Volumosos',
+    subtipo: '',
+    morada: '',
+    data: '',
+    obs: '',
   })
 
-  const imagemWatch = watch('imagem')
-  const imagemFile = imagemWatch?.[0]
+  const headers = { Authorization: `Bearer ${getAccessToken() ?? ''}` }
+
+  async function load(pg = pagina) {
+    setLoading(true)
+    try {
+      const res = await fetchJson<ListRecolhasResponse>(
+        `/v1/recolhas?page=${pg}&pageSize=${POR_PAGINA}`,
+        { baseUrl: clientEnv.apiBaseUrl, headers }
+      )
+      setRecolhas(res.recolhas)
+      setTotal(res.total)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => { void load() }, [pagina])
 
   useEffect(() => {
     if (!imagemFile) { setPreviewUrl(null); return }
@@ -123,71 +88,75 @@ function RecolhasPage() {
     return () => URL.revokeObjectURL(url)
   }, [imagemFile])
 
-  const contagens = {
-    pendente:  pedidos.filter(p => p.status === 'pendente').length,
-    agendado:  pedidos.filter(p => p.status === 'agendado').length,
-    concluido: pedidos.filter(p => p.status === 'concluido').length,
-  }
-
-  const pageCount = Math.ceil(pedidos.length / POR_PAGINA)
-  const paginados = pedidos.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA)
-  const valoresAgendamento = getValues()
-  const progressoAgendamento = enviado ? 100 : (passoAgendamento / 3) * 100
-
-  function abrirModal() {
-    reset({ tipo: 'Monos Volumosos' })
-    setPreviewUrl(null)
+  function resetAgendamento() {
+    setForm({ tipo: 'Monos Volumosos', subtipo: '', morada: '', data: '', obs: '' })
     setPassoAgendamento(1)
     setEnviado(false)
+    setImagemFile(null)
+    setPreviewUrl(null)
+    setSubmitting(false)
+  }
+
+  function abrirModal() {
+    resetAgendamento()
     setModalAberto(true)
   }
 
-  useEffect(() => {
-    if (window.location.hash !== '#novo-agendamento') return
-    abrirModal()
-    window.history.replaceState(null, '', window.location.pathname + window.location.search)
-  }, [])
-
   function fecharModal() {
     setModalAberto(false)
-    setPreviewUrl(null)
-    setPassoAgendamento(1)
-    setEnviado(false)
-    reset({ tipo: 'Monos Volumosos' })
+    resetAgendamento()
   }
 
-  async function avancarPasso() {
-    if (passoAgendamento === 1) {
-      const valido = await trigger(['tipo', 'local', 'titulo', 'data'])
-      if (!valido) return
-    }
-    if (passoAgendamento === 2) {
-      const valido = await trigger(['imagem'])
-      if (!valido) return
-    }
+  const autoOpenedRef = useRef(false)
+  useEffect(() => {
+    if (autoOpenedRef.current) return
+    if (search.novo !== '1') return
+    autoOpenedRef.current = true
+    abrirModal()
+  }, [search.novo])
+
+  function avancarPasso() {
+    if (passoAgendamento === 1 && (!form.subtipo.trim() || !form.morada.trim() || !form.data)) return
     setPassoAgendamento((passo) => Math.min(passo + 1, 3))
   }
 
-  function onSubmitAgendamento(data: AgendamentoForm) {
-    const novoPedido: PedidoRecolha = {
-      id: `#REC-${Date.now().toString().slice(-3)}`,
-      tipo: data.tipo,
-      subtipo: data.titulo,
-      morada: data.local,
-      dataPedido: new Date().toLocaleDateString('pt-PT'),
-      dataPrevista: formatarData(data.data),
-      status: 'agendado',
-      obs: data.descricao?.trim() || 'Sem observações adicionais.',
+  async function onAgendar(e: React.FormEvent) {
+    e.preventDefault()
+    if (!form.subtipo.trim() || !form.morada.trim()) return
+    setSubmitting(true)
+    try {
+      const body: CreateRecolhaRequest = {
+        tipo: form.tipo,
+        subtipo: form.subtipo,
+        morada: form.morada,
+        obs: form.obs || undefined,
+      }
+      await fetchJson<CreateRecolhaResponse>('/v1/recolhas', {
+        baseUrl: clientEnv.apiBaseUrl,
+        headers,
+        method: 'POST',
+        body: JSON.stringify(body),
+      })
+      await load(1)
+      setPagina(1)
+      setEnviado(true)
+    } finally {
+      setSubmitting(false)
     }
-    setPedidos(prev => [novoPedido, ...prev])
-    setPagina(1)
-    setEnviado(true)
+  }
+
+  const pageCount = Math.ceil(total / POR_PAGINA)
+  const progressoAgendamento = enviado ? 100 : (passoAgendamento / 3) * 100
+
+  const contagens = {
+    pendente:  recolhas.filter(p => p.status === 'pendente').length,
+    agendado:  recolhas.filter(p => p.status === 'agendado').length,
+    concluido: recolhas.filter(p => p.status === 'concluido').length,
   }
 
   return (
     <div className="flex flex-col gap-10 pb-12">
 
-      {/* ── Cabeçalho ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
         <div>
           <div className="flex items-center gap-2 mb-1">
@@ -196,13 +165,15 @@ function RecolhasPage() {
           </div>
           <p className="text-sm text-muted-foreground">Agende e acompanhe a recolha de objetos volumosos e entulho.</p>
         </div>
-        <Button className="gap-2 bg-[var(--primary)] hover:opacity-90 transition-opacity self-start sm:self-auto rounded-xl" onClick={abrirModal}>
+        <Button
+          className="gap-2 bg-[var(--primary)] hover:opacity-90 transition-opacity self-start sm:self-auto rounded-xl"
+          onClick={abrirModal}
+        >
           <PlusCircle className="w-4 h-4" />
           Agendar Recolha
         </Button>
       </div>
 
-      {/* ── Resumo ── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {[
           { label: 'Pedidos Pendentes',  value: contagens.pendente,  icon: Clock,        color: '#fb923c',              desc: 'Aguardando agendamento' },
@@ -219,7 +190,7 @@ function RecolhasPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-foreground">{stat.value}</div>
+                <div className="text-2xl font-bold text-foreground">{loading ? '-' : stat.value}</div>
                 <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{stat.desc}</p>
               </CardContent>
             </Card>
@@ -227,7 +198,6 @@ function RecolhasPage() {
         })}
       </div>
 
-      {/* ── Seção de Dicas/Info ── */}
       <section className="space-y-4">
         <div className="flex items-center gap-2">
           <Info className="w-4 h-4 text-[var(--primary)]" />
@@ -268,75 +238,85 @@ function RecolhasPage() {
         </Card>
       </section>
 
-      {/* ── Lista de Pedidos ── */}
       <section className="space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Package className="w-4 h-4 text-[var(--primary)]" />
             <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">Os Meus Pedidos</h2>
           </div>
-          <span className="text-xs text-muted-foreground">{pedidos.length} pedido{pedidos.length !== 1 ? 's' : ''}</span>
+          <span className="text-xs text-muted-foreground">{total} pedido{total !== 1 ? 's' : ''}</span>
         </div>
 
-        <div className="flex flex-col gap-3">
-          {paginados.map((p) => {
-            const cfg = statusConfig[p.status]
-            const SIcon = cfg.icon
-            const isOpen = expandido === p.id
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-5 h-5 animate-spin text-[var(--primary)]" />
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {recolhas.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 gap-2 text-center">
+                <Truck className="w-8 h-8 text-muted-foreground/40" />
+                <p className="text-sm font-medium text-muted-foreground">Sem pedidos de recolha</p>
+                <p className="text-xs text-muted-foreground">Clique em "Agendar Recolha" para criar o primeiro pedido.</p>
+              </div>
+            ) : recolhas.map((p) => {
+              const cfg = statusConfig[p.status] ?? statusConfig['pendente']!
+              const SIcon = cfg.icon
+              const isOpen = expandido === p.id
 
-            return (
-              <Card
-                key={p.id}
-                className="border border-border/70 shadow-sm rounded-xl hover:shadow-md transition-all cursor-pointer overflow-hidden"
-                onClick={() => setExpandido(isOpen ? null : p.id)}
-              >
-                <CardContent className="p-0">
-                  <div className="p-4 flex items-center gap-4">
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${cfg.bg}`}>
-                      <SIcon className="w-6 h-6" style={{ color: cfg.color }} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="text-sm font-bold text-foreground truncate">{p.tipo}</p>
-                        <Badge variant="outline" className="text-[10px] font-bold uppercase tracking-tight h-5 shrink-0" style={{ color: cfg.color, borderColor: `${cfg.color}40` }}>
-                          {cfg.label}
-                        </Badge>
+              return (
+                <Card
+                  key={p.id}
+                  className="border border-border/70 shadow-sm rounded-xl hover:shadow-md transition-all cursor-pointer overflow-hidden"
+                  onClick={() => setExpandido(isOpen ? null : p.id)}
+                >
+                  <CardContent className="p-0">
+                    <div className="p-4 flex items-center gap-4">
+                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${cfg.bg}`}>
+                        <SIcon className="w-6 h-6" style={{ color: cfg.color }} />
                       </div>
-                      <p className="text-xs text-muted-foreground mt-0.5 truncate">{p.subtipo}</p>
-                      <div className="flex items-center gap-4 mt-2 text-[10px] text-muted-foreground font-medium">
-                        <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {p.morada}</span>
-                        <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {p.dataPedido}</span>
-                      </div>
-                    </div>
-                    <ChevronRight className={`w-5 h-5 text-muted-foreground/30 transition-transform ${isOpen ? 'rotate-90' : ''}`} />
-                  </div>
-
-                  {isOpen && (
-                    <div className="px-4 pb-4 pt-2 border-t border-border/50 bg-muted/20">
-                      <div className="grid grid-cols-2 gap-4 text-xs">
-                        <div className="space-y-1">
-                          <p className="text-muted-foreground font-medium">Data Prevista</p>
-                          <p className="text-foreground font-semibold">{p.dataPrevista}</p>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-sm font-bold text-foreground truncate">{p.tipo}</p>
+                          <Badge variant="outline" className="text-[10px] font-bold uppercase tracking-tight h-5 shrink-0" style={{ color: cfg.color, borderColor: `${cfg.color}40` }}>
+                            {cfg.label}
+                          </Badge>
                         </div>
-                        <div className="space-y-1">
-                          <p className="text-muted-foreground font-medium">Observações</p>
-                          <p className="text-foreground italic">"{p.obs}"</p>
+                        <p className="text-xs text-muted-foreground mt-0.5 truncate">{p.subtipo}</p>
+                        <div className="flex items-center gap-4 mt-2 text-[10px] text-muted-foreground font-medium">
+                          <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {p.morada}</span>
+                          <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {p.data_pedido}</span>
                         </div>
                       </div>
-                      <div className="mt-4 flex gap-3">
-                        <button className="text-[11px] font-bold text-[var(--primary)] hover:underline uppercase tracking-wider">Ver detalhes</button>
+                      <ChevronRight className={`w-5 h-5 text-muted-foreground/30 transition-transform ${isOpen ? 'rotate-90' : ''}`} />
+                    </div>
+
+                    {isOpen && (
+                      <div className="px-4 pb-4 pt-2 border-t border-border/50 bg-muted/20">
+                        <div className="grid grid-cols-2 gap-4 text-xs">
+                          <div className="space-y-1">
+                            <p className="text-muted-foreground font-medium">Data Prevista</p>
+                            <p className="text-foreground font-semibold">{p.data_prevista ?? 'Pendente'}</p>
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-muted-foreground font-medium">Observações</p>
+                            <p className="text-foreground italic">"{p.obs ?? 'Sem observações'}"</p>
+                          </div>
+                        </div>
                         {p.status === 'pendente' && (
-                          <button className="text-[11px] font-bold text-destructive hover:underline uppercase tracking-wider">Cancelar</button>
+                          <div className="mt-4">
+                            <button className="text-[11px] font-bold text-destructive hover:underline uppercase tracking-wider">Cancelar</button>
+                          </div>
                         )}
                       </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )
-          })}
-        </div>
-        <PaginationBar page={pagina} pageCount={pageCount} onPage={setPagina} />
+                    )}
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </div>
+        )}
+        <PaginationBar page={pagina} pageCount={pageCount} onPage={(p) => { setPagina(p); void load(p) }} />
       </section>
 
       {modalAberto && (
@@ -365,7 +345,7 @@ function RecolhasPage() {
               </div>
             )}
 
-            <form onSubmit={handleSubmit(onSubmitAgendamento)} className="flex-1 overflow-y-auto px-5 py-4">
+            <form onSubmit={onAgendar} className="flex-1 overflow-y-auto px-5 py-4">
               {enviado ? (
                 <div className="min-h-[460px] flex flex-col items-center justify-center text-center gap-5">
                   <div>
@@ -387,47 +367,68 @@ function RecolhasPage() {
                         <div className="grid grid-cols-2 gap-2">
                           {tiposRecolha.map((tipo) => (
                             <label key={tipo} className="cursor-pointer">
-                              <input type="radio" value={tipo} className="peer sr-only" {...register('tipo')} />
+                              <input
+                                type="radio"
+                                value={tipo}
+                                checked={form.tipo === tipo}
+                                onChange={e => setForm(f => ({ ...f, tipo: e.target.value }))}
+                                className="peer sr-only"
+                              />
                               <span className="flex h-10 items-center justify-center rounded-xl border border-border bg-background px-3 text-xs font-semibold text-muted-foreground transition-all peer-checked:border-[var(--primary)] peer-checked:bg-[var(--primary)]/10 peer-checked:text-[var(--primary)]">
                                 {tipo === 'Monos Volumosos' ? 'Monos' : 'Entulhos'}
                               </span>
                             </label>
                           ))}
                         </div>
-                        {errors.tipo && <p className="text-xs text-destructive mt-1">{errors.tipo.message}</p>}
                       </div>
 
                       <div>
                         <label className="text-sm font-semibold text-foreground mb-1.5 block">Localização</label>
                         <div className="relative">
                           <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                          <input type="text" {...register('local')} placeholder="Pesquisar por rua ou código postal..."
-                            className="w-full pl-9 pr-3 py-2.5 text-sm rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30" />
+                          <input
+                            type="text"
+                            value={form.morada}
+                            onChange={e => setForm(f => ({ ...f, morada: e.target.value }))}
+                            placeholder="Pesquisar por rua ou código postal..."
+                            className="w-full pl-9 pr-3 py-2.5 text-sm rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30"
+                          />
                         </div>
-                        {errors.local && <p className="text-xs text-destructive mt-1">{errors.local.message}</p>}
                       </div>
 
                       <div>
                         <label className="text-sm font-semibold text-foreground mb-1.5 block">Título</label>
-                        <input type="text" {...register('titulo')} placeholder="Ex: Sofá de 3 lugares"
-                          className="w-full px-3 py-2.5 text-sm rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30" />
-                        {errors.titulo && <p className="text-xs text-destructive mt-1">{errors.titulo.message}</p>}
+                        <input
+                          type="text"
+                          value={form.subtipo}
+                          onChange={e => setForm(f => ({ ...f, subtipo: e.target.value }))}
+                          placeholder="Ex: Sofá de 3 lugares"
+                          className="w-full px-3 py-2.5 text-sm rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30"
+                        />
                       </div>
 
                       <div>
                         <label className="text-sm font-semibold text-foreground mb-1.5 block">Descrição <span className="text-muted-foreground font-normal">(Opcional)</span></label>
-                        <textarea {...register('descricao')} rows={4} placeholder="Adicione mais detalhes sobre a recolha aqui..."
-                          className="w-full px-3 py-2.5 text-sm rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30 resize-none" />
+                        <textarea
+                          value={form.obs}
+                          onChange={e => setForm(f => ({ ...f, obs: e.target.value }))}
+                          rows={4}
+                          placeholder="Adicione mais detalhes sobre a recolha aqui..."
+                          className="w-full px-3 py-2.5 text-sm rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30 resize-none"
+                        />
                       </div>
 
                       <div>
                         <label className="text-sm font-semibold text-foreground mb-1.5 block">Data</label>
                         <div className="relative">
                           <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                          <input type="date" {...register('data')}
-                            className="w-full pl-9 pr-3 py-2.5 text-sm rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30" />
+                          <input
+                            type="date"
+                            value={form.data}
+                            onChange={e => setForm(f => ({ ...f, data: e.target.value }))}
+                            className="w-full pl-9 pr-3 py-2.5 text-sm rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30"
+                          />
                         </div>
-                        {errors.data && <p className="text-xs text-destructive mt-1">{errors.data.message}</p>}
                       </div>
                     </div>
                   )}
@@ -442,7 +443,7 @@ function RecolhasPage() {
                             <img src={previewUrl} alt="Preview" className="w-full h-48 object-cover" />
                             <button
                               type="button"
-                              onClick={() => { setValue('imagem', undefined as unknown as FileList); setPreviewUrl(null) }}
+                              onClick={() => { setImagemFile(null); setPreviewUrl(null) }}
                               className="absolute top-2 right-2 w-8 h-8 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-colors"
                             >
                               <X className="w-4 h-4" />
@@ -456,16 +457,15 @@ function RecolhasPage() {
                             <label className="h-11 rounded-full bg-muted hover:bg-muted/80 border border-border cursor-pointer flex items-center justify-center gap-2 text-sm font-medium text-foreground transition-colors">
                               <Camera className="w-4 h-4" />
                               Tirar uma foto
-                              <input type="file" accept="image/jpeg,image/png,image/webp" capture="environment" className="hidden" {...register('imagem')} />
+                              <input type="file" accept="image/jpeg,image/png,image/webp" capture="environment" className="hidden" onChange={e => setImagemFile(e.target.files?.[0] ?? null)} />
                             </label>
                             <label className="h-11 rounded-full bg-muted hover:bg-muted/80 border border-border cursor-pointer flex items-center justify-center gap-2 text-sm font-medium text-foreground transition-colors">
                               <ImageIcon className="w-4 h-4" />
                               Escolher da galeria
-                              <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" {...register('imagem')} />
+                              <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={e => setImagemFile(e.target.files?.[0] ?? null)} />
                             </label>
                           </div>
                         )}
-                        {errors.imagem && <p className="text-xs text-destructive mt-1">{errors.imagem.message as string}</p>}
                       </div>
                     </div>
                   )}
@@ -475,7 +475,7 @@ function RecolhasPage() {
                       <div>
                         <h3 className="text-sm font-semibold text-foreground mb-2">Localização</h3>
                         <div className="rounded-xl border border-border bg-background min-h-32 p-3 flex items-end">
-                          <p className="text-xs text-foreground">{valoresAgendamento.local}</p>
+                          <p className="text-xs text-foreground">{form.morada}</p>
                         </div>
                       </div>
 
@@ -484,19 +484,19 @@ function RecolhasPage() {
                         <div className="space-y-3 text-sm">
                           <div>
                             <p className="font-semibold text-foreground">Tipo</p>
-                            <p className="text-muted-foreground mt-1">{valoresAgendamento.tipo}</p>
+                            <p className="text-muted-foreground mt-1">{form.tipo}</p>
                           </div>
                           <div>
                             <p className="font-semibold text-foreground">Título</p>
-                            <p className="text-muted-foreground mt-1">{valoresAgendamento.titulo}</p>
+                            <p className="text-muted-foreground mt-1">{form.subtipo}</p>
                           </div>
                           <div>
                             <p className="font-semibold text-foreground">Data</p>
-                            <p className="text-muted-foreground mt-1">{formatarData(valoresAgendamento.data)}</p>
+                            <p className="text-muted-foreground mt-1">{formatarData(form.data)}</p>
                           </div>
                           <div>
                             <p className="font-semibold text-foreground">Descrição <span className="text-muted-foreground font-normal">(Opcional)</span></p>
-                            <p className="text-muted-foreground mt-1 leading-relaxed">{valoresAgendamento.descricao || 'Sem observações adicionais.'}</p>
+                            <p className="text-muted-foreground mt-1 leading-relaxed">{form.obs || 'Sem observações adicionais.'}</p>
                           </div>
                           <div>
                             <p className="font-semibold text-foreground">Fotografia <span className="text-muted-foreground font-normal">(Opcional)</span></p>
@@ -533,8 +533,8 @@ function RecolhasPage() {
                         Continuar
                       </Button>
                     ) : (
-                      <Button type="submit" className="rounded-full bg-[var(--primary)] hover:opacity-90 transition-opacity">
-                        <Send className="w-4 h-4" />
+                      <Button type="submit" className="rounded-full bg-[var(--primary)] hover:opacity-90 transition-opacity" disabled={submitting}>
+                        {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                         Submeter
                       </Button>
                     )}

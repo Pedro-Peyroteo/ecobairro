@@ -19,6 +19,13 @@ enum UserRole {
   ADMIN
 }
 
+enum ReportStatus {
+  PENDENTE
+  ANALISE
+  RESOLVIDO
+  REJEITADO
+}
+
 model User {
   id            String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   email         String         @unique
@@ -31,6 +38,9 @@ model User {
   eliminadoEm   DateTime?      @map("eliminado_em") @db.Timestamptz(6)
 
   cidadaoPerfil CidadaoPerfil?
+  reports       Report[]
+  partilhas     Partilha[]
+  recolhas      Recolha[]
 
   @@index([role])
   @@map("users")
@@ -50,4 +60,163 @@ model CidadaoPerfil {
   user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("cidadao_perfis")
+}
+
+model Report {
+  id          String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  titulo      String
+  tipo        String
+  descricao   String
+  local       String
+  imagemUrl   String?      @map("imagem_url")
+  status      ReportStatus @default(PENDENTE)
+  userId      String       @map("user_id") @db.Uuid
+  criadoEm    DateTime     @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm DateTime    @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([criadoEm])
+  @@index([userId])
+  @@map("reports")
+}
+
+model Ecoponto {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nome              String
+  codigo            String?
+  morada            String   @default("")
+  zona              String?
+  distanciaLabel    String   @default("") @map("distancia_label")
+  ocupacao          Int
+  tipos             Json     @default("[]")
+  sensorEstado      String   @default("online") @map("sensor_estado")
+  ultimaRecolha     String?  @map("ultima_recolha")
+  ultimaAtualizacao String?  @map("ultima_atualizacao")
+  lat               Float    @default(40.6409)
+  lng               Float    @default(-8.6537)
+  mapTileUrl        String?  @map("map_tile_url")
+  bateria           Int?
+  temperatura       Float?
+  ordem             Int      @default(0)
+  ativo             Boolean  @default(true)
+  criadoEm          DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  @@map("ecopontos")
+}
+
+model Tarefa {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  titulo     String
+  local      String
+  tipo       String
+  prioridade String   @default("normal")
+  estado     String   @default("pendente")
+  atribuido  String?
+  criadoEm   DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  @@index([estado])
+  @@map("tarefas")
+}
+
+model Recolha {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tipo         String
+  subtipo      String
+  morada       String
+  status       String   @default("pendente")
+  obs          String?
+  dataPrevista String?  @map("data_prevista")
+  userId       String?  @map("user_id") @db.Uuid
+  criadoEm     DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([criadoEm])
+  @@map("recolhas")
+}
+
+model Campanha {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  titulo       String
+  corpo        String
+  estado       String   @default("rascunho")
+  dataValidade DateTime @map("data_validade") @db.Timestamptz(6)
+  autor        String   @default("Câmara de Aveiro")
+  criadoEm     DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  @@index([estado])
+  @@map("campanhas")
+}
+
+model AuditLog {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  utilizador String
+  papel      String
+  acao       String
+  descricao  String
+  ip         String   @default("0.0.0.0")
+  criadoEm   DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  @@index([criadoEm])
+  @@map("audit_logs")
+}
+
+model Rota {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nome      String
+  operador  String
+  estado    String   @default("pendente")
+  ecopontos Int      @default(0)
+  distancia String   @default("")
+  duracao   String   @default("")
+  waypoints Json     @default("[]")
+  cor       String   @default("#60a5fa")
+  criadoEm  DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  @@map("rotas")
+}
+
+model Partilha {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  titulo     String
+  autorNome  String   @map("autor_nome")
+  zona       String
+  categoria  String   @default("moveis")
+  imagemUrl  String?  @map("imagem_url")
+  userId     String?  @map("user_id") @db.Uuid
+  criadoEm   DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([criadoEm])
+  @@map("partilhas")
+}
+
+model Noticia {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  titulo           String
+  resumo           String
+  imagemUrl        String   @map("imagem_url")
+  tag              String   @default("Geral")
+  destaque         Boolean  @default(false)
+  publishedAt      DateTime @map("published_at") @db.Timestamptz(6)
+  tempoLeituraMin  Int      @default(3) @map("tempo_leitura_min")
+
+  @@index([publishedAt])
+  @@map("noticias")
+}
+
+model QuizDesafio {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  titulo          String
+  bonusXp         Int      @map("bonus_xp")
+  tempoLimiteMin  Int      @map("tempo_limite_min")
+  ano             Int
+  ativo           Boolean  @default(true)
+  criadoEm        DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  @@map("quiz_desafios")
 }

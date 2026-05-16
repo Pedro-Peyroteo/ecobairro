@@ -5,9 +5,40 @@ import { DatabaseModule } from './database/database.module';
 import { RedisModule } from './redis/redis.module';
 import { AuthModule } from './auth/auth.module';
 import { CidadaosModule } from './cidadaos/cidadaos.module';
+import { ReportsModule } from './reports/reports.module';
+import { HomeModule } from './home/home.module';
+import { EcopontosModule } from './ecopontos/ecopontos.module';
+import { GamificationModule } from './gamification/gamification.module';
+import { PartilhasModule } from './partilhas/partilhas.module';
+import { NoticiasModule } from './noticias/noticias.module';
+import { UsersModule } from './users/users.module';
+import { AnalyticsModule } from './analytics/analytics.module';
+import { FilaModule } from './fila/fila.module';
+import { RecolhasModule } from './recolhas/recolhas.module';
+import { CampanhasModule } from './campanhas/campanhas.module';
+import { AuditModule } from './audit/audit.module';
+import { RotasModule } from './rotas/rotas.module';
 
 @Module({
-  imports: [DatabaseModule, RedisModule, AuthModule, CidadaosModule],
+  imports: [
+    DatabaseModule,
+    RedisModule,
+    AuthModule,
+    CidadaosModule,
+    ReportsModule,
+    HomeModule,
+    EcopontosModule,
+    GamificationModule,
+    PartilhasModule,
+    NoticiasModule,
+    UsersModule,
+    AnalyticsModule,
+    FilaModule,
+    RecolhasModule,
+    CampanhasModule,
+    AuditModule,
+    RotasModule,
+  ],
   controllers: [HealthController],
   providers: [HealthService],
 })

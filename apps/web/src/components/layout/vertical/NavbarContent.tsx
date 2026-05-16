@@ -3,6 +3,7 @@ import { useTheme } from 'next-themes'
 import { useNavigate } from '@tanstack/react-router'
 import { Sun, Moon, Monitor, Menu, User as UserIcon, Settings, LogOut } from 'lucide-react'
 import type { User } from '@/types'
+import { clearAuthSession } from '@/lib/auth'
 
 /* ── ModeDropdown ── */
 function ModeDropdown() {
@@ -56,7 +57,7 @@ function UserDropdown({ user }: { user: User }) {
   const initials = user.name.split(' ').slice(0, 2).map((n) => n[0]).join('').toUpperCase()
 
   const handleLogout = () => {
-    sessionStorage.removeItem('user')
+    clearAuthSession()
     navigate({ to: '/login' })
   }
 
@@ -93,10 +94,16 @@ function UserDropdown({ user }: { user: User }) {
               <>
                 <div className='h-px bg-[var(--border)]' />
                 <div className='py-1'>
-                  <button className='flex items-center gap-3 w-full px-4 py-2 text-sm text-[var(--foreground)] hover:bg-[var(--muted)] transition-colors'>
+                  <button
+                    onClick={() => { setOpen(false); navigate({ to: '/configuracoes' }) }}
+                    className='flex items-center gap-3 w-full px-4 py-2 text-sm text-[var(--foreground)] hover:bg-[var(--muted)] transition-colors'
+                  >
                     <UserIcon className='w-4 h-4' /> Perfil
                   </button>
-                  <button className='flex items-center gap-3 w-full px-4 py-2 text-sm text-[var(--foreground)] hover:bg-[var(--muted)] transition-colors'>
+                  <button
+                    onClick={() => { setOpen(false); navigate({ to: '/configuracoes' }) }}
+                    className='flex items-center gap-3 w-full px-4 py-2 text-sm text-[var(--foreground)] hover:bg-[var(--muted)] transition-colors'
+                  >
                     <Settings className='w-4 h-4' /> Definições
                   </button>
                 </div>

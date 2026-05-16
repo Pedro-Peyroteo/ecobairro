@@ -1,12 +1,14 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Leaf, Recycle, MapPin, BarChart3, ArrowLeft } from 'lucide-react'
+import { Leaf, Recycle, MapPin, BarChart3, ArrowLeft, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { forgotPasswordRequest } from '@/lib/api/auth'
+import { HttpError } from '@/lib/http/fetch-json'
 import { cn } from '@/lib/utils'
 
 export const Route = createFileRoute('/forgot-password')({
@@ -20,8 +22,10 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>
 
 function ForgotPasswordPage() {
+  const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   const {
     register,
@@ -31,12 +35,29 @@ function ForgotPasswordPage() {
     resolver: zodResolver(schema),
   })
 
-  const onSubmit = async () => {
-    setLoading(true)
-    await new Promise((r) => setTimeout(r, 800))
-    // Simulate sending email
-    setLoading(false)
-    setSubmitted(true)
+  const onSubmit = async (data: FormData) => {
+    try {
+      setSubmitError(null)
+      setLoading(true)
+      const response = await forgotPasswordRequest(data.email)
+      if (response.reset_token) {
+        navigate({
+          to: '/reset-password',
+          search: { token: response.reset_token },
+        })
+        return
+      }
+      setSubmitted(true)
+    } catch (error) {
+      if (error instanceof HttpError && typeof error.body === 'object' && error.body !== null && 'message' in error.body) {
+        const message = error.body.message
+        setSubmitError(typeof message === 'string' ? message : 'Falha ao solicitar recuperação.')
+      } else {
+        setSubmitError('Falha ao solicitar recuperação.')
+      }
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -85,6 +106,16 @@ function ForgotPasswordPage() {
           <span className="font-bold text-base tracking-tight">ecoBairro</span>
         </div>
 
+        {/* Close — voltar à home */}
+        <button
+          type="button"
+          onClick={() => navigate({ to: '/home' })}
+          aria-label="Voltar à home"
+          className="absolute top-6 right-6 flex items-center justify-center w-9 h-9 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+        >
+          <X className="w-5 h-5" />
+        </button>
+
         <div className="flex flex-col gap-6 w-full max-w-sm mx-auto">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Esqueceu-se da password? </h1>
@@ -121,6 +152,9 @@ function ForgotPasswordPage() {
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? 'A enviar...' : 'Enviar link de recuperação'}
               </Button>
+              {submitError && (
+                <p className="text-xs text-destructive text-center">{submitError}</p>
+              )}
             </form>
           )}
 

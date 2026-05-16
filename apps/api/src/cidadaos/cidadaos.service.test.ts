@@ -1,8 +1,11 @@
 import assert from 'node:assert/strict';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import { plainToInstance } from 'class-transformer';
+import { validate } from 'class-validator';
 import { UserRole } from '@prisma/client';
 import { CidadaosService } from './cidadaos.service';
 import type { TestCase } from '../test/test-helpers';
+import { UpdateCidadaoProfileDto } from './dto/update-cidadao-profile.dto';
 
 interface FakeCitizenUserRecord {
   id: string;
@@ -93,6 +96,27 @@ class FakePrismaService {
 }
 
 export const cidadaosServiceTests: TestCase[] = [
+  {
+    name: 'validates nome_completo and phone limits for citizen profile update dto',
+    run: async () => {
+      const invalidDto = plainToInstance(UpdateCidadaoProfileDto, {
+        nome_completo: 'A',
+        phone: '12',
+      });
+
+      const invalidErrors = await validate(invalidDto);
+      const invalidFields = invalidErrors.map((error) => error.property).sort();
+      assert.deepEqual(invalidFields, ['nome_completo', 'phone']);
+
+      const validDto = plainToInstance(UpdateCidadaoProfileDto, {
+        nome_completo: 'Ana Silva',
+        phone: '+351 912 345 678',
+      });
+
+      const validErrors = await validate(validDto);
+      assert.equal(validErrors.length, 0);
+    },
+  },
   {
     name: 'returns the authenticated citizen profile',
     run: async () => {
