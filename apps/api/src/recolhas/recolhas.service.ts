@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import type { RecolhaRecord } from '@ecobairro/contracts';
 import type { CreateRecolhaDto } from './dto/create-recolha.dto';
@@ -47,7 +47,11 @@ function coerce(v: number | string | undefined, def: number): number {
 
 @Injectable()
 export class RecolhasService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly prisma: PrismaService;
+
+  constructor(@Inject(PrismaService) prisma: PrismaService) {
+    this.prisma = prisma;
+  }
 
   async list(userId: string, query: ListRecolhasDto) {
     const page = coerce(query.page, 1);

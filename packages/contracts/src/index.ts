@@ -374,6 +374,14 @@ export interface HomeEcoponto {
   map_url: string;
 }
 
+export interface ListFavoritosResponse {
+  ecopontos: HomeEcoponto[];
+}
+
+export interface AddFavoritoRequest {
+  ecoponto_id: string;
+}
+
 export interface HomePartilha {
   id: string;
   titulo: string;

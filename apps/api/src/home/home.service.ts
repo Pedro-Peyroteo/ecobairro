@@ -29,10 +29,15 @@ export class HomeService {
           });
 
     const [ecopontos, partilhas, noticias, comunidadePax] = await Promise.all([
-      this.prisma.ecoponto.findMany({
-        where: { ativo: true },
-        orderBy: { ordem: 'asc' },
-      }),
+      isCitizen && user
+        ? this.prisma.cidadaoEcopontoFavorito
+            .findMany({
+              where: { userId: user.userId, ecoponto: { ativo: true } },
+              include: { ecoponto: true },
+              orderBy: { criadoEm: 'asc' },
+            })
+            .then((rows) => rows.map((row) => row.ecoponto))
+        : Promise.resolve([]),
       this.prisma.partilha.findMany({
         where:
           user == null

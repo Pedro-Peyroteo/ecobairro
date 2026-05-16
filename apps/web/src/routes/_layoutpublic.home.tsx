@@ -196,10 +196,28 @@ function HomePage() {
             <MapPin className="w-4 h-4 text-[var(--primary)]" />
             <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">Ecopontos Favoritos</h2>
           </div>
-          <button className="flex items-center gap-1 text-xs text-[var(--primary)] font-medium hover:underline">
+          <Link
+            to="/mapa"
+            className="flex items-center gap-1 text-xs text-[var(--primary)] font-medium hover:underline"
+          >
             Ver mapa <ChevronRight className="w-3.5 h-3.5" />
-          </button>
+          </Link>
         </div>
+        {ecopontos.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-border bg-card/50 px-4 py-8 text-center space-y-2">
+            <MapPin className="w-8 h-8 text-muted-foreground/40 mx-auto" />
+            <p className="text-sm font-medium text-foreground">Ainda sem ecopontos favoritos</p>
+            <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+              Abra o mapa e marque os ecopontos que usa com mais frequência para os ver aqui.
+            </p>
+            <Link
+              to="/mapa"
+              className="inline-flex items-center gap-1 text-xs text-[var(--primary)] font-medium hover:underline"
+            >
+              Explorar mapa <ChevronRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+        ) : (
         <div className="flex overflow-x-auto snap-x snap-mandatory hide-scrollbar gap-3 pb-1 -mx-4 px-4 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-2 lg:grid-cols-3">
           {ecopontos.map((eco) => {
             const state = ecoState(eco.ocupacao)
@@ -236,6 +254,7 @@ function HomePage() {
             )
           })}
         </div>
+        )}
       </section>
 
       {/* ── 4. Alerta ecoponto crítico (após ecopontos) ── */}

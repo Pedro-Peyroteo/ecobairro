@@ -49,8 +49,14 @@ class FakePrismaService {
     }),
   };
 
-  readonly ecoponto = {
-    findMany: async () => [ecoRow],
+  readonly cidadaoEcopontoFavorito = {
+    findMany: async (args: {
+      where: { userId: string };
+      include: { ecoponto: true };
+    }) => {
+      assert.equal(args.where.userId, 'u1');
+      return [{ ecoponto: ecoRow }];
+    },
   };
 
   readonly partilha = {

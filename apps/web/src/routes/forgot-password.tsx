@@ -120,10 +120,24 @@ function ForgotPasswordPage() {
           </div>
 
           {submitted ? (
-            <div className="rounded-lg bg-primary/10 p-4 text-center">
+            <div className="rounded-lg bg-primary/10 p-4 text-center space-y-2">
               <p className="text-sm font-medium text-foreground">
-                Email enviado com sucesso! Verifique a sua caixa de entrada.
+                Se existir uma conta com este email, enviámos as instruções de recuperação.
               </p>
+              {import.meta.env.DEV && (
+                <p className="text-xs text-muted-foreground">
+                  Em desenvolvimento local, abra o{' '}
+                  <a
+                    href="http://localhost:8025"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-primary underline underline-offset-2"
+                  >
+                    Mailpit (localhost:8025)
+                  </a>{' '}
+                  para ver os emails capturados.
+                </p>
+              )}
             </div>
           ) : (
             <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-5">
