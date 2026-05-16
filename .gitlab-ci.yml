@@ -7,8 +7,8 @@ deploy_production:
     - proxmox
   before_script:
     - mkdir -p ~/.ssh && chmod 700 ~/.ssh
-    - echo "$DEPLOY_SSH_KEY_B64" | tr -d '\r\n ' | base64 -d > ~/.ssh/id_rsa
-    - chmod 600 ~/.ssh/id_rsa
+    - echo "$DEPLOY_SSH_KEY_B64" | tr -d '\r\n ' | base64 -d > ~/.ssh/id_ed25519
+    - chmod 600 ~/.ssh/id_ed25519
     - echo "StrictHostKeyChecking no" > ~/.ssh/config
   script:
     # 1. Criar o arquivo .env localmente no Runner
@@ -21,11 +21,11 @@ deploy_production:
     - echo "CLOUDFLARE_TUNNEL_TOKEN=$CLOUDFLARE_TUNNEL_TOKEN" >> .env
     - echo "NODE_ENV=production" >> .env
 
-    # 2. Criar a pasta no CT2 (Prod) e sincronizar
-    - ssh "$SERVER_USER@$SERVER_IP" "mkdir -p ~/apps/ecobairro"
-    - rsync -av --delete --exclude='.git/' --exclude='node_modules/' ./ "$SERVER_USER@$SERVER_IP:~/apps/ecobairro/"
+    # 2. Criar a pasta no CT2 (Prod) e sincronizar usando a chave explicitamente
+    - ssh -i ~/.ssh/id_ed25519 "$SERVER_USER@$SERVER_IP" "mkdir -p ~/apps/ecobairro"
+    - rsync -av --delete -e "ssh -i ~/.ssh/id_ed25519" --exclude='.git/' --exclude='node_modules/' ./ "$SERVER_USER@$SERVER_IP:~/apps/ecobairro/"
 
-    # 3. Build e arranque no destino remoto
-    - ssh "$SERVER_USER@$SERVER_IP" "cd ~/apps/ecobairro/infra/compose && docker compose -f docker-compose.prod.yml --env-file ../../.env up -d --build && docker image prune -f"
+    # 3. Build e arranque no destino remoto usando a chave explicitamente
+    - ssh -i ~/.ssh/id_ed25519 "$SERVER_USER@$SERVER_IP" "cd ~/apps/ecobairro/infra/compose && docker compose -f docker-compose.prod.yml --env-file ../../.env up -d --build && docker image prune -f"
   only:
     - main
