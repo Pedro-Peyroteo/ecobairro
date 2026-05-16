@@ -37,4 +37,5 @@ COPY --from=builder /workspace/apps/api/prisma ./prisma
 ENV NODE_ENV=production
 EXPOSE 3000
 
-CMD ["pnpm", "start:prod"]
+CMD ["node", "dist/main.js"]
+
