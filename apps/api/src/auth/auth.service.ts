@@ -25,8 +25,7 @@ import type { ForgotPasswordDto } from './dto/forgot-password.dto';
 import type { RefreshDto } from './dto/refresh.dto';
 import type { RegisterDto } from './dto/register.dto';
 import type { ResetPasswordDto } from './dto/reset-password.dto';
-import nodemailer from 'nodemailer';
-import type { Transporter } from 'nodemailer';
+import { MailService } from '../mail/mail.service';
 
 interface StoredSession {
   refreshTokenHash: string;
@@ -42,25 +41,21 @@ export class AuthService {
   private readonly bcryptRounds = readNumberEnv('BCRYPT_ROUNDS', 12);
   private readonly resetPasswordTtlSeconds =
     readNumberEnv('PASSWORD_RESET_TTL_MINUTES', 30) * 60;
-  private readonly smtpHost = process.env.SMTP_HOST?.trim();
-  private readonly smtpPort = readNumberEnv('SMTP_PORT', 587);
-  private readonly smtpUser = process.env.SMTP_USER?.trim();
-  private readonly smtpPass = process.env.SMTP_PASS;
-  private readonly smtpFrom = process.env.SMTP_FROM?.trim();
-  private readonly smtpSecure = (process.env.SMTP_SECURE ?? 'false') === 'true';
   private readonly appBaseUrl = (process.env.APP_BASE_URL ?? 'http://localhost:8080').replace(/\/$/, '');
   private readonly returnResetToken =
     (process.env.PASSWORD_RESET_RETURN_TOKEN ?? 'false') === 'true';
-  private mailer: Transporter | null = null;
+  private readonly mailService: MailService;
 
   constructor(
     @Inject(PrismaService) prisma: PrismaService,
     @Inject(RedisService) redisService: RedisService,
     @Inject(JwtService) jwtService: JwtService,
+    @Inject(MailService) mailService: MailService,
   ) {
     this.prisma = prisma;
     this.redisService = redisService;
     this.jwtService = jwtService;
+    this.mailService = mailService;
   }
 
   async register(input: RegisterDto): Promise<RegisterResponse> {
@@ -283,48 +278,23 @@ export class AuthService {
   }
 
   private isPasswordEmailConfigured(): boolean {
-    return !!(this.smtpHost && this.smtpUser && this.smtpPass && this.smtpFrom);
+    return !!process.env.SMTP_HOST?.trim();
   }
 
-  private getMailer(): Transporter {
+  private async sendPasswordResetEmail(email: string, rawToken: string): Promise<void> {
     if (!this.isPasswordEmailConfigured()) {
       throw new ServiceUnavailableException(
         'Password recovery email service is not configured',
       );
     }
-
-    if (!this.mailer) {
-      this.mailer = nodemailer.createTransport({
-        host: this.smtpHost!,
-        port: this.smtpPort,
-        secure: this.smtpSecure,
-        auth: {
-          user: this.smtpUser!,
-          pass: this.smtpPass!,
-        },
-      });
-    }
-
-    return this.mailer;
-  }
-
-  private async sendPasswordResetEmail(email: string, rawToken: string): Promise<void> {
     const resetUrl = `${this.appBaseUrl}/reset-password?token=${encodeURIComponent(rawToken)}`;
-
-    await this.getMailer().sendMail({
-      from: this.smtpFrom!,
+    await this.mailService.send('password-reset', {
       to: email,
-      subject: 'ecoBairro - Recuperacao de password',
-      text: [
-        'Recebemos um pedido para redefinir a sua password.',
-        `Use este link para redefinir: ${resetUrl}`,
-        `Este link expira em ${Math.floor(this.resetPasswordTtlSeconds / 60)} minutos.`,
-      ].join('\n'),
-      html: [
-        '<p>Recebemos um pedido para redefinir a sua password.</p>',
-        `<p><a href="${resetUrl}">Clique aqui para redefinir a password</a></p>`,
-        `<p>Este link expira em ${Math.floor(this.resetPasswordTtlSeconds / 60)} minutos.</p>`,
-      ].join(''),
+      subject: 'ecoBairro — Recuperação de password',
+      variables: {
+        resetUrl,
+        expiresMinutes: Math.floor(this.resetPasswordTtlSeconds / 60),
+      },
     });
   }
 }
