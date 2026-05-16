@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { ArrowLeft, Eye, EyeOff, Leaf } from 'lucide-react'
+import { ArrowLeft, Eye, EyeOff, Leaf, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -75,7 +75,15 @@ function ResetPasswordPage() {
 
   return (
     <div className="flex min-h-svh items-center justify-center bg-background px-6 py-10">
-      <div className="w-full max-w-md rounded-2xl border bg-card p-6 shadow-sm">
+      <div className="relative w-full max-w-md rounded-2xl border bg-card p-6 shadow-sm">
+        <button
+          type="button"
+          onClick={() => navigate({ to: '/home' })}
+          aria-label="Voltar à home"
+          className="absolute top-4 right-4 flex items-center justify-center w-8 h-8 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+        >
+          <X className="w-4 h-4" />
+        </button>
         <div className="mb-6 flex items-center gap-2">
           <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10">
             <Leaf className="w-5 h-5 text-primary" />

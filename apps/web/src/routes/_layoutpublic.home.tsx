@@ -349,9 +349,12 @@ function HomePage() {
             <Package className="w-4 h-4 text-[var(--primary)]" />
             <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">Partilhas na sua zona</h2>
           </div>
-          <button className="flex items-center gap-1 text-xs text-[var(--primary)] font-medium hover:underline">
+          <Link
+            to="/partilhas"
+            className="flex items-center gap-1 text-xs text-[var(--primary)] font-medium hover:underline"
+          >
             Ver todas <ChevronRight className="w-3.5 h-3.5" />
-          </button>
+          </Link>
         </div>
         <div className="flex flex-col rounded-xl border border-border/70 bg-card overflow-hidden divide-y divide-border">
           {partilhas.map((p) => (
@@ -387,9 +390,12 @@ function HomePage() {
             <Newspaper className="w-4 h-4 text-[var(--primary)]" />
             <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">Notícias e Campanhas</h2>
           </div>
-          <button className="flex items-center gap-1 text-xs text-[var(--primary)] font-medium hover:underline">
+          <Link
+            to="/noticias"
+            className="flex items-center gap-1 text-xs text-[var(--primary)] font-medium hover:underline"
+          >
             Ver todas <ChevronRight className="w-3.5 h-3.5" />
-          </button>
+          </Link>
         </div>
         <div className="flex overflow-x-auto snap-x snap-mandatory hide-scrollbar gap-3 pb-1 -mx-4 px-4 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-2 lg:grid-cols-3">
           {noticias.map((n) => (

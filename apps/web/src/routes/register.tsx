@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Eye, EyeOff, Leaf, Recycle, MapPin, BarChart3 } from 'lucide-react'
+import { Eye, EyeOff, Leaf, Recycle, MapPin, BarChart3, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -151,6 +151,16 @@ function RegisterPage() {
           </div>
           <span className="font-bold text-base tracking-tight">ecoBairro</span>
         </div>
+
+        {/* Close — voltar à home */}
+        <button
+          type="button"
+          onClick={() => navigate({ to: '/home' })}
+          aria-label="Voltar à home"
+          className="absolute top-6 right-6 flex items-center justify-center w-9 h-9 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+        >
+          <X className="w-5 h-5" />
+        </button>
 
         <div className="flex flex-col gap-5 w-full max-w-sm mx-auto">
           <div>

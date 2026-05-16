@@ -102,9 +102,29 @@ function ZonasPage() {
     setModal(true)
   }
 
+  function abrirCriar() {
+    setEditando(null)
+    reset({ nome: '', descricao: '' })
+    setModal(true)
+  }
+
   function onSubmit(data: ZonaForm) {
     if (editando) {
       setZonas(prev => prev.map(z => z.nome === editando.nome ? { ...z, ...data } : z))
+    } else {
+      if (zonas.some(z => z.nome.toLowerCase() === data.nome.toLowerCase())) {
+        return
+      }
+      setZonas(prev => [
+        ...prev,
+        {
+          nome: data.nome,
+          descricao: data.descricao ?? '',
+          cor: DEFAULT_CONFIG.cor,
+          ecopontos: 0,
+          polygon: [],
+        },
+      ])
     }
     setModal(false)
   }
@@ -118,7 +138,7 @@ function ZonasPage() {
             {loading ? '…' : `${zonas.length} zonas geográficas com ecopontos`}
           </p>
         </div>
-        <Button size="sm" className="gap-2 bg-[var(--primary)] hover:opacity-90 transition-opacity self-start sm:self-auto" onClick={() => {}}>
+        <Button size="sm" className="gap-2 bg-[var(--primary)] hover:opacity-90 transition-opacity self-start sm:self-auto" onClick={abrirCriar}>
           <PlusCircle className="w-4 h-4" />
           Nova Zona
         </Button>
@@ -235,7 +255,7 @@ function ZonasPage() {
             <div className="flex items-center justify-between">
               <h2 className="text-base font-bold text-foreground flex items-center gap-2">
                 <MapIcon className="w-4 h-4 text-[var(--primary)]" />
-                Editar Zona
+                {editando ? 'Editar Zona' : 'Nova Zona'}
               </h2>
               <button onClick={() => setModal(false)} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
             </div>
