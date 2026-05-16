@@ -32,6 +32,8 @@ RUN cp -r /workspace/apps/api/dist /deploy/dist
 
 # Ensure prisma schema is in deploy and generate client inside production node_modules
 RUN cp -r /workspace/apps/api/prisma /deploy/prisma
+# Remove prisma.config.ts as it requires the prisma devDependency which isn't present in prod
+RUN rm -f /deploy/prisma.config.ts
 RUN cd /deploy && npx prisma generate
 
 # Production Stage
