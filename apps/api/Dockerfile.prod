@@ -30,6 +30,10 @@ RUN pnpm --filter @ecobairro/api deploy --prod --legacy /deploy
 # Copy built dist
 RUN cp -r /workspace/apps/api/dist /deploy/dist
 
+# Ensure prisma schema is in deploy and generate client inside production node_modules
+RUN cp -r /workspace/apps/api/prisma /deploy/prisma
+RUN cd /deploy && npx prisma generate
+
 # Production Stage
 FROM node:22-alpine
 
