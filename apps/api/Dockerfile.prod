@@ -12,8 +12,11 @@ COPY apps/api/package.json ./apps/api/
 # Install dependencies
 RUN pnpm install --frozen-lockfile
 
-# Copy app source
+# Copy app source and prisma schema
 COPY apps/api/ ./apps/api/
+
+# Generate Prisma Client (Crucial for TypeScript types)
+RUN cd apps/api && pnpm exec prisma generate
 
 # Build app
 RUN pnpm --filter @ecobairro/api build
