@@ -32,8 +32,17 @@ function mapRow(r: {
   };
 }
 
-function coerce(v: number | undefined, def: number): number {
-  return v && v > 0 ? v : def;
+function coerce(v: number | string | undefined, def: number): number {
+  if (typeof v === 'number' && Number.isInteger(v) && v > 0) {
+    return v;
+  }
+  if (typeof v === 'string') {
+    const parsed = Number.parseInt(v, 10);
+    if (Number.isInteger(parsed) && parsed > 0) {
+      return parsed;
+    }
+  }
+  return def;
 }
 
 @Injectable()
