@@ -13,7 +13,7 @@ export const Route = createFileRoute('/_layoutmain/analytics')({
   component: AnalyticsPage,
 })
 
-function authHeaders() {
+function authHeaders(): Record<string, string> {
   const tok = getAccessToken()
   return tok ? { Authorization: `Bearer ${tok}` } : {}
 }

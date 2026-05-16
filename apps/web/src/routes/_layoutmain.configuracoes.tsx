@@ -34,7 +34,7 @@ const DEFAULT_NOTIF: NotifState = {
   pushCampanhas: true,
 }
 
-function authHeaders() {
+function authHeaders(): Record<string, string> {
   const tok = getAccessToken()
   return tok ? { Authorization: `Bearer ${tok}` } : {}
 }
