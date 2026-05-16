@@ -1,0 +1,29 @@
+stages:
+  - deploy
+
+deploy_production:
+  stage: deploy
+  image: alpine:latest
+  before_script:
+    - apk add --no-cache openssh-client rsync
+    - eval $(ssh-agent -s)
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - ssh-keyscan $SERVER_IP >> ~/.ssh/known_hosts
+  script:
+    - ssh $SERVER_USER@$SERVER_IP "mkdir -p ~/apps/ecobairro"
+    - rsync -avz --delete --exclude='.git/' --exclude='node_modules/' ./ $SERVER_USER@$SERVER_IP:~/apps/ecobairro/
+    - |
+      ssh $SERVER_USER@$SERVER_IP "cd ~/apps/ecobairro/infra/compose && \
+      export POSTGRES_USER='${POSTGRES_USER}' && \
+      export POSTGRES_PASSWORD='${POSTGRES_PASSWORD}' && \
+      export POSTGRES_DB='${POSTGRES_DB}' && \
+      export JWT_ACCESS_SECRET='${JWT_ACCESS_SECRET}' && \
+      export JWT_REFRESH_SECRET='${JWT_REFRESH_SECRET}' && \
+      export APP_BASE_URL='${APP_BASE_URL}' && \
+      export CLOUDFLARE_TUNNEL_TOKEN='${CLOUDFLARE_TUNNEL_TOKEN}' && \
+      docker compose -f docker-compose.prod.yml up -d --build && \
+      docker image prune -f"
+  only:
+    - main
