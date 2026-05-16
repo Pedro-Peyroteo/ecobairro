@@ -22,7 +22,7 @@ RUN pnpm --filter @ecobairro/api exec prisma generate
 RUN pnpm --filter @ecobairro/api build
 
 # Deploy stage: cria pasta self-contained sem symlinks do pnpm
-RUN pnpm --filter @ecobairro/api deploy --prod /deploy
+RUN pnpm --filter @ecobairro/api deploy --prod --legacy /deploy
 
 # Copy built dist (deploy only copies prod deps, not the build output)
 RUN cp -r /workspace/apps/api/dist /deploy/dist
