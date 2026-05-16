@@ -25,7 +25,7 @@ const papelConfig: Record<string, { label: string; color: string }> = {
 
 const papeis: FrontRole[] = ['cidadao', 'operador', 'tecnico_autarquia', 'tecnico_ccdr', 'admin']
 
-function authHeaders() {
+function authHeaders(): Record<string, string> {
   const tok = getAccessToken()
   return tok ? { Authorization: `Bearer ${tok}` } : {}
 }
