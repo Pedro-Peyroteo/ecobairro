@@ -59,7 +59,7 @@ function EcopontosPage() {
   const [saving, setSaving] = useState(false)
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<EcopontoForm>({
-    resolver: zodResolver(ecopontoSchema),
+    resolver: zodResolver(ecopontoSchema) as any,
   })
 
   async function reload() {
