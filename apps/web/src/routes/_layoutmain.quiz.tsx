@@ -8,7 +8,7 @@ import {
   Zap, Sparkles, 
   Timer, Users, Brain, Award, Star
 } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { fetchJson } from '@/lib/http/fetch-json'
 import { clientEnv } from '@/lib/env'
 import { getAccessToken, requireRole } from '@/lib/auth'
@@ -21,7 +21,7 @@ export const Route = createFileRoute('/_layoutmain/quiz')({
 
 const achMeta: Record<
   QuizAchievementKey,
-  { bg: string; color: string; Icon: (props: { className?: string }) => JSX.Element }
+  { bg: string; color: string; Icon: (props: { className?: string }) => React.ReactNode }
 > = {
   eco_sabio: { bg: 'bg-purple-500/10', color: 'text-purple-500', Icon: Brain },
   olho_vivo: { bg: 'bg-amber-500/10', color: 'text-amber-500', Icon: Zap },
