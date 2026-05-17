@@ -1,13 +1,14 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import {
   MapPin, TrendingUp, ChevronRight, Star, AlertTriangle, Recycle, Users, Leaf,
   FileText, CheckCircle, Package, Gift, Newspaper, Calendar, Clock,
-  PlusCircle, Truck, Trophy,
+  PlusCircle, Truck, Trophy, LogIn, UserPlus,
 } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ElementType, type ReactNode } from 'react'
 import { fetchJson } from '@/lib/http/fetch-json'
 import { clientEnv } from '@/lib/env'
 import { getAccessToken } from '@/lib/auth'
@@ -60,6 +61,221 @@ function ecoState(pct: number) {
   return { label: 'Disponível', color: 'oklch(0.55 0.18 150)', barColor: 'oklch(0.55 0.18 150 / 0.85)' }
 }
 
+const COMMUNITY_STATS = {
+  cidadaos: 1200,
+  reports: 340,
+  resolvidos: 89, // percent — update manually as platform grows
+} as const
+
+/* ─── Guest hero ─── */
+function GuestHero({ cidadaos }: { cidadaos: number }) {
+  return (
+    <div
+      className="relative overflow-hidden rounded-2xl text-center px-6 py-16"
+      style={{
+        background:
+          'linear-gradient(170deg, color-mix(in srgb, var(--primary) 18%, #0f1a12) 0%, #1a1d2e 50%, #0d0f1a 100%)',
+      }}
+    >
+      {/* Radial glow — centered top */}
+      <div
+        className="absolute top-0 left-1/2 -translate-x-1/2 w-[520px] h-[220px] pointer-events-none"
+        style={{
+          background:
+            'radial-gradient(ellipse, color-mix(in srgb, var(--primary) 28%, transparent) 0%, transparent 70%)',
+        }}
+        aria-hidden="true"
+      />
+      {/* Bottom fade */}
+      <div
+        className="absolute bottom-0 left-0 right-0 h-16 pointer-events-none"
+        style={{ background: 'linear-gradient(transparent, #0d0f1a)' }}
+        aria-hidden="true"
+      />
+
+      <div className="relative z-10 flex flex-col items-center gap-6">
+        {/* Animated badge */}
+        <div className="inline-flex items-center gap-2 rounded-full border border-[var(--primary)]/30 bg-[var(--primary)]/10 px-4 py-1.5">
+          <span
+            className="w-1.5 h-1.5 rounded-full bg-[var(--primary)] animate-pulse motion-reduce:animate-none"
+            aria-hidden="true"
+          />
+          <span className="text-xs font-semibold tracking-wide text-[var(--primary)]">
+            Plataforma de Cidadania Ativa
+          </span>
+        </div>
+
+        {/* Headline */}
+        <div className="space-y-3">
+          <h1 className="text-4xl font-black leading-tight tracking-tight text-white">
+            O teu bairro<br />
+            mais <span className="text-[var(--primary)]">sustentável</span>
+          </h1>
+          <p className="text-sm text-white/55 max-w-xs mx-auto leading-relaxed">
+            Reporta problemas, partilha recursos e mede o impacto real da tua comunidade.
+          </p>
+        </div>
+
+        {/* CTAs */}
+        <div className="flex items-center gap-3 flex-wrap justify-center">
+          <Button
+            asChild
+            className="gap-2 bg-[var(--primary)] hover:bg-[var(--primary)]/90 text-white min-h-[44px] px-6 font-semibold"
+          >
+            <Link to="/login">
+              <LogIn className="w-4 h-4" />
+              Entrar na plataforma
+            </Link>
+          </Button>
+          <Button
+            asChild
+            variant="outline"
+            className="gap-2 min-h-[44px] px-6 border-white/20 text-white/80 hover:bg-white/10 hover:text-white bg-transparent font-semibold"
+          >
+            <Link to="/register">
+              <UserPlus className="w-4 h-4" />
+              Registar
+            </Link>
+          </Button>
+        </div>
+
+        {/* Stats pills */}
+        <div className="flex items-center gap-3 flex-wrap justify-center">
+          {[
+            { value: cidadaos.toLocaleString('pt-PT'), label: 'Cidadãos' },
+            { value: COMMUNITY_STATS.reports.toLocaleString('pt-PT'), label: 'Reports' },
+            { value: `${COMMUNITY_STATS.resolvidos}%`, label: 'Resolvidos' },
+          ].map((s) => (
+            <div
+              key={s.label}
+              className="flex flex-col items-center px-5 py-2.5 rounded-full bg-white/[0.06] border border-white/10"
+            >
+              <span className="text-lg font-black text-white leading-none">{s.value}</span>
+              <span className="text-[10px] text-white/40 mt-0.5 uppercase tracking-wide">{s.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+const GUEST_FEATURES = [
+  {
+    icon: FileText,
+    title: 'Reportes',
+    desc: 'Envia problemas com foto e localização diretamente para a câmara municipal.',
+  },
+  {
+    icon: MapPin,
+    title: 'Ecopontos',
+    desc: 'Mapa de pontos de reciclagem com disponibilidade em tempo real.',
+  },
+  {
+    icon: TrendingUp,
+    title: 'Impacto',
+    desc: 'Acompanha a tua contribuição ambiental e compara com os vizinhos.',
+  },
+] as const
+
+function GuestFeatures() {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      {GUEST_FEATURES.map((f) => {
+        const Icon = f.icon
+        return (
+          <div
+            key={f.title}
+            className="flex items-start gap-4 rounded-xl bg-card border border-border/70 p-5 shadow-sm"
+          >
+            <div className="w-10 h-10 rounded-xl bg-[var(--primary)]/10 flex items-center justify-center shrink-0">
+              <Icon className="w-5 h-5 text-[var(--primary)]" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-foreground">{f.title}</p>
+              <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{f.desc}</p>
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+const AVATAR_COLORS = [
+  'bg-[var(--primary)]/60',
+  'bg-[var(--primary)]/40',
+  'bg-blue-400/60',
+  'bg-purple-400/60',
+] as const
+
+function GuestTrustBar({ cidadaos }: { cidadaos: number }) {
+  return (
+    <div className="flex items-center gap-4 rounded-xl bg-card border border-border/70 px-5 py-4 shadow-sm">
+      {/* Stacked avatars */}
+      <div className="flex shrink-0" aria-hidden="true">
+        {AVATAR_COLORS.map((cls, i) => (
+          <div
+            key={i}
+            className={`w-8 h-8 rounded-full border-2 border-card shrink-0 ${cls}${i > 0 ? ' -ml-2' : ''}`}
+          />
+        ))}
+      </div>
+      {/* Text */}
+      <p className="text-sm text-muted-foreground flex-1 min-w-0">
+        Juntos com{' '}
+        <span className="font-bold text-foreground">
+          {cidadaos.toLocaleString('pt-PT')} vizinhos
+        </span>{' '}
+        ativos no ecoBairro
+      </p>
+      {/* Stars */}
+      <span
+        className="text-yellow-400 text-base shrink-0 select-none"
+        aria-label="Classificação 5 estrelas"
+      >
+        ★★★★★
+      </span>
+    </div>
+  )
+}
+
+/* ─── Section header helper ─── */
+function SectionHeader({
+  icon: Icon,
+  title,
+  action,
+}: {
+  icon: ElementType
+  title: string
+  action?: ReactNode
+}) {
+  return (
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-2.5">
+        <div className="w-7 h-7 rounded-lg bg-[var(--primary)]/10 flex items-center justify-center shrink-0">
+          <Icon className="w-3.5 h-3.5 text-[var(--primary)]" />
+        </div>
+        <h2 className="text-sm font-semibold text-foreground">{title}</h2>
+      </div>
+      {action}
+    </div>
+  )
+}
+
+/* ─── Organic blob hero decoration ─── */
+function HeroBlob() {
+  return (
+    <div className="absolute right-0 top-0 h-full w-52 pointer-events-none overflow-hidden" aria-hidden="true">
+      <svg viewBox="0 0 208 200" className="absolute right-0 top-0 h-full w-full text-[var(--primary)]" fill="none">
+        <path d="M170 -30 Q230 50 190 115 Q150 180 90 162 Q30 144 48 82 Q66 20 130 -5 Q155 -18 170 -30Z" fill="currentColor" opacity="0.08" />
+        <path d="M200 30 Q240 90 210 145 Q180 200 140 188 Q100 176 112 136 Q124 96 162 76 Q188 62 200 30Z" fill="currentColor" opacity="0.05" />
+        <circle cx="195" cy="22" r="50" fill="currentColor" opacity="0.04" />
+      </svg>
+    </div>
+  )
+}
+
 /* ─── Página ─── */
 function HomePage() {
   const token = getAccessToken()
@@ -95,10 +311,7 @@ function HomePage() {
     pontos: 0,
     pontos_proximo: 500,
   }
-  const pontosRestantes = Math.max(
-    0,
-    gamification.pontos_proximo - gamification.pontos,
-  )
+  const pontosRestantes = Math.max(0, gamification.pontos_proximo - gamification.pontos)
   const progressoGamificacao = Math.round(
     (gamification.pontos / Math.max(gamification.pontos_proximo, 1)) * 100,
   )
@@ -124,287 +337,309 @@ function HomePage() {
   const noticias = feed?.noticias ?? []
   const alertaCritico = feed?.alerta
   const impacto = feed?.impacto
+  const cidadaosCount = feed?.impacto?.comunidade_pax || COMMUNITY_STATS.cidadaos
 
   return (
-    <div className="flex flex-col gap-10 pb-12 max-w-2xl mx-auto lg:max-w-none">
+    <div className="flex flex-col gap-8 pb-12 max-w-2xl mx-auto lg:max-w-none">
 
-      {/* ── 1. Banner principal ── */}
-      <Card className="relative overflow-hidden border-none shadow-sm bg-[var(--card)]">
-        {/* Decoração direita: círculos sobrepostos como no Materialize */}
-        <div className="absolute right-0 top-0 h-full w-40 pointer-events-none overflow-hidden">
-          <div className="absolute -right-10 -top-10 w-40 h-40 rounded-full bg-[var(--primary)]/[0.07]" />
-          <div className="absolute -right-4 -bottom-14 w-52 h-52 rounded-full bg-[var(--primary)]/[0.05]" />
-        </div>
-
-        <CardContent className="p-6 relative z-10 flex flex-col sm:flex-row sm:items-center gap-5 justify-between">
-          <div className="space-y-1">
-            <p className="text-sm text-muted-foreground">{greeting} 👋</p>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">
-              {isGuest ? 'Bem-vindo ao ' : 'Bem-vindo de volta, '}
-              <span className="text-[var(--primary)]">{firstName}</span>!
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              {isGuest 
-                ? 'Acompanhe as últimas novidades e participe na nossa comunidade para um bairro mais sustentável.'
-                : 'Aqui tem o resumo da sua atividade no ecoBairro.'}
-            </p>
-          </div>
-          {!isGuest && (
-            <div className="flex flex-col gap-2 sm:items-end min-w-[190px]">
-              <div className="flex items-center justify-between w-full text-xs text-muted-foreground">
-                <span className="flex items-center gap-1">
-                  <Star className="w-3 h-3 text-[var(--primary)]" />
-                  {gamification.nivel}
-                </span>
-                <span><Counter to={gamification.pontos} /> / {gamification.pontos_proximo} pts</span>
-              </div>
-              <Progress value={progressoGamificacao} className="h-1.5 w-full [&>div]:bg-[var(--primary)]" />
-              <p className="text-[11px] text-muted-foreground">
-                Faltam <span className="font-semibold text-foreground">{pontosRestantes} pts</span> para {reportStats.proximoNivel}
+      {isGuest ? (
+        /* ── Guest: cinematic landing ── */
+        <>
+          <GuestHero cidadaos={cidadaosCount} />
+          <GuestFeatures />
+          <GuestTrustBar cidadaos={cidadaosCount} />
+        </>
+      ) : (
+        /* ── Auth: banner com gamificação ── */
+        <Card
+          className="relative overflow-hidden border-none shadow-sm"
+          style={{ background: 'linear-gradient(135deg, color-mix(in oklch, var(--primary) 10%, var(--card)) 0%, var(--card) 65%)' }}
+        >
+          <HeroBlob />
+          <CardContent className="p-6 relative z-10 flex flex-col sm:flex-row sm:items-center gap-5 justify-between">
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">{greeting} 👋</p>
+              <h1 className="text-2xl font-bold tracking-tight text-foreground">
+                Olá, <span className="text-[var(--primary)]">{firstName}</span>!
+              </h1>
+              <p className="text-sm text-muted-foreground max-w-sm leading-relaxed">
+                Aqui está o resumo da sua atividade no ecoBairro.
               </p>
             </div>
-          )}
-        </CardContent>
-      </Card>
+            <div className="flex flex-col gap-2 sm:items-end min-w-[200px]">
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 bg-[var(--primary)]/10 rounded-full px-2.5 py-1">
+                  <Star className="w-3 h-3 text-[var(--primary)]" fill="currentColor" />
+                  <span className="text-xs font-semibold text-[var(--primary)]">{gamification.nivel}</span>
+                </div>
+                <span className="text-xs text-muted-foreground">
+                  <Counter to={gamification.pontos} /> pts
+                </span>
+              </div>
+              <Progress value={progressoGamificacao} className="h-2 w-full [&>div]:bg-[var(--primary)]" />
+              <p className="text-[11px] text-muted-foreground">
+                Faltam <span className="font-semibold text-foreground">{pontosRestantes} pts</span> para{' '}
+                <span className="font-medium">{reportStats.proximoNivel}</span>
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {!isGuest && (
         <>
           {/* ── 2. Atalhos Rápidos ── */}
           <div className="grid grid-cols-3 gap-3">
-        {atalhos.map((a) => {
-          const Icon = a.icon
-          return (
-            <Link
-              key={a.label}
-              to={a.to}
-              search={a.search}
-              className="flex flex-col items-center gap-2.5 p-4 rounded-xl bg-card border border-border hover:border-[var(--primary)]/40 hover:shadow-sm transition-all active:scale-[0.97] cursor-pointer"
-            >
-              <div className="w-10 h-10 flex items-center justify-center rounded-xl bg-[var(--primary)]/10">
-                <Icon className="w-5 h-5 text-[var(--primary)]" />
-              </div>
-              <span className="text-xs font-medium text-foreground leading-tight text-center">{a.label}</span>
-            </Link>
-          )
-        })}
-      </div>
-
-      {/* ── 3. Ecopontos Favoritos ── */}
-      <section className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <MapPin className="w-4 h-4 text-[var(--primary)]" />
-            <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">Ecopontos Favoritos</h2>
+            {atalhos.map((a) => {
+              const Icon = a.icon
+              return (
+                <Link
+                  key={a.label}
+                  to={a.to}
+                  search={a.search}
+                  className="flex flex-col items-center gap-3 p-5 rounded-xl bg-card border border-border hover:border-[var(--primary)]/40 hover:shadow-md transition-all active:scale-[0.97] cursor-pointer"
+                >
+                  <div className="w-12 h-12 flex items-center justify-center rounded-2xl bg-[var(--primary)]/10">
+                    <Icon className="w-5 h-5 text-[var(--primary)]" />
+                  </div>
+                  <span className="text-xs font-semibold text-foreground leading-tight text-center">{a.label}</span>
+                </Link>
+              )
+            })}
           </div>
-          <button className="flex items-center gap-1 text-xs text-[var(--primary)] font-medium hover:underline">
-            Ver mapa <ChevronRight className="w-3.5 h-3.5" />
-          </button>
-        </div>
-        <div className="flex overflow-x-auto snap-x snap-mandatory hide-scrollbar gap-3 pb-1 -mx-4 px-4 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-2 lg:grid-cols-3">
-          {ecopontos.map((eco) => {
-            const state = ecoState(eco.ocupacao)
-            return (
-              <Card key={eco.id} className="min-w-[240px] sm:min-w-0 snap-start shrink-0 border border-border/70 shadow-sm rounded-xl hover:shadow-md transition-all cursor-pointer">
-                <CardContent className="p-4 space-y-3">
-                  <div className="flex justify-between items-start gap-3">
-                    <div className="min-w-0">
-                      <p className="font-semibold text-sm text-foreground truncate">{eco.nome}</p>
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
-                        <MapPin className="w-3 h-3 shrink-0" />
-                        <span>{eco.distancia}</span>
+
+          {/* ── 3. Ecopontos Favoritos ── */}
+          <section className="space-y-4">
+            <SectionHeader
+              icon={MapPin}
+              title="Ecopontos Favoritos"
+              action={
+                <button className="flex items-center gap-1 text-xs text-[var(--primary)] font-medium hover:underline cursor-pointer">
+                  Ver mapa <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              }
+            />
+            <div className="flex overflow-x-auto snap-x snap-mandatory hide-scrollbar gap-3 pb-1 -mx-4 px-4 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-2 lg:grid-cols-3">
+              {ecopontos.map((eco) => {
+                const state = ecoState(eco.ocupacao)
+                return (
+                  <Card key={eco.id} className="min-w-[240px] sm:min-w-0 snap-start shrink-0 border border-border/70 shadow-sm rounded-xl hover:shadow-md transition-all cursor-pointer">
+                    <CardContent className="p-4 space-y-3">
+                      <div className="flex justify-between items-start gap-3">
+                        <div className="min-w-0">
+                          <p className="font-semibold text-sm text-foreground truncate">{eco.nome}</p>
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+                            <MapPin className="w-3 h-3 shrink-0" />
+                            <span>{eco.distancia}</span>
+                          </div>
+                        </div>
+                        <div className="w-11 h-11 rounded-lg overflow-hidden shrink-0 ring-1 ring-border relative flex items-center justify-center">
+                          <img src={eco.map_url} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                          <MapPin className="relative z-10 w-3 h-3 fill-red-500 text-white drop-shadow" strokeWidth={1.5} />
+                        </div>
                       </div>
-                    </div>
-                    <div className="w-11 h-11 rounded-lg overflow-hidden shrink-0 ring-1 ring-border relative flex items-center justify-center">
-                      <img src={eco.map_url} alt="" className="absolute inset-0 w-full h-full object-cover" />
-                      <MapPin className="relative z-10 w-3 h-3 fill-red-500 text-white drop-shadow" strokeWidth={1.5} />
-                    </div>
-                  </div>
-                  <div className="space-y-1">
-                    <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                      <div className="space-y-1">
+                        <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all duration-500"
+                            style={{ width: `${eco.ocupacao}%`, backgroundColor: state.barColor }}
+                          />
+                        </div>
+                        <div className="flex justify-between text-[11px]">
+                          <span className="text-muted-foreground">{eco.ocupacao}% ocupado</span>
+                          <span className="font-medium" style={{ color: state.color }}>{state.label}</span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )
+              })}
+            </div>
+          </section>
+
+          {/* ── 4. Alerta ecoponto crítico ── */}
+          {alertaCritico && (
+            <div className="flex items-center gap-3 rounded-xl border border-amber-400/30 bg-amber-50 dark:bg-amber-950/20 px-4 py-3.5">
+              <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-4 h-4 text-amber-500" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-foreground">{alertaCritico.nome}</p>
+                <p className="text-xs text-muted-foreground">{alertaCritico.ocupacao}% ocupado — evite depositar resíduos por agora</p>
+              </div>
+              <Badge variant="outline" className="text-[10px] shrink-0 border-amber-400/50 text-amber-600 bg-amber-50 dark:bg-amber-900/20">
+                Atenção
+              </Badge>
+            </div>
+          )}
+
+          {/* ── 5. Impacto pessoal ── */}
+          <section className="space-y-4">
+            <SectionHeader icon={TrendingUp} title="O seu impacto este ano" />
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {[
+                {
+                  label: 'Reciclagem',
+                  value: impacto?.reciclagem_kg ?? 0,
+                  unit: 'kg',
+                  icon: Recycle,
+                  color: 'oklch(0.55 0.18 150)',
+                  desc: 'a partir dos seus reports resolvidos',
+                },
+                {
+                  label: 'Comunidade',
+                  value: impacto?.comunidade_pax ?? 0,
+                  unit: 'pax',
+                  icon: Users,
+                  color: '#60a5fa',
+                  desc: 'cidadãos registados na plataforma',
+                },
+                {
+                  label: 'Ecossistema',
+                  value: impacto?.arvores_equivalentes ?? 0,
+                  unit: 'árvores',
+                  icon: Leaf,
+                  color: 'oklch(0.55 0.18 150)',
+                  desc: 'equivalente da sua atividade',
+                },
+              ].map((item) => {
+                const Icon = item.icon
+                return (
+                  <Card key={item.label} className="border border-border/70 shadow-sm rounded-xl overflow-hidden">
+                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                      <CardTitle className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">{item.label}</CardTitle>
                       <div
-                        className="h-full rounded-full transition-all duration-500"
-                        style={{ width: `${eco.ocupacao}%`, backgroundColor: state.barColor }}
-                      />
-                    </div>
-                    <div className="flex justify-between text-[11px]">
-                      <span className="text-muted-foreground">{eco.ocupacao}% ocupado</span>
-                      <span className="font-medium" style={{ color: state.color }}>{state.label}</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )
-          })}
-        </div>
-      </section>
+                        className="flex items-center justify-center w-8 h-8 rounded-lg"
+                        style={{ backgroundColor: `color-mix(in srgb, ${item.color} 12%, transparent)` }}
+                      >
+                        <Icon className="w-4 h-4" style={{ color: item.color }} />
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold text-foreground">
+                        <Counter to={item.value} />{' '}
+                        <span className="text-sm font-medium text-muted-foreground">{item.unit}</span>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">{item.desc}</p>
+                    </CardContent>
+                  </Card>
+                )
+              })}
+            </div>
+          </section>
 
-      {/* ── 4. Alerta ecoponto crítico (após ecopontos) ── */}
-      {alertaCritico && (
-        <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3">
-          <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-foreground">{alertaCritico.nome}</p>
-            <p className="text-xs text-muted-foreground">{alertaCritico.ocupacao}% ocupado — evite depositar resíduos por agora</p>
-          </div>
-          <Badge variant="outline" className="text-[10px] shrink-0 border-amber-400/50 text-amber-600">Atenção</Badge>
-        </div>
+          {/* ── 6. Resumo Reports ── */}
+          <section className="space-y-4">
+            <SectionHeader icon={FileText} title="Histórico de Reports" />
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {[
+                { label: 'Ativos',     value: reportStats.ativos,     icon: TrendingUp,  color: '#fb923c' },
+                { label: 'Resolvidos', value: reportStats.resolvidos, icon: CheckCircle, color: 'oklch(0.55 0.18 150)' },
+                { label: 'Total',      value: reportStats.total,      icon: Package,     color: '#8A93A4' },
+              ].map((stat) => {
+                const Icon = stat.icon
+                return (
+                  <Card key={stat.label} className="border border-border/70 shadow-sm rounded-xl overflow-hidden">
+                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                      <CardTitle className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">{stat.label}</CardTitle>
+                      <div
+                        className="flex items-center justify-center w-8 h-8 rounded-lg"
+                        style={{ backgroundColor: `color-mix(in srgb, ${stat.color} 12%, transparent)` }}
+                      >
+                        <Icon className="w-4 h-4" style={{ color: stat.color }} />
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold text-foreground"><Counter to={stat.value} /></div>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">Reportes enviados</p>
+                    </CardContent>
+                  </Card>
+                )
+              })}
+            </div>
+            <div className="bg-card border border-border/70 shadow-sm rounded-xl p-4 space-y-2">
+              <Progress value={reportStats.progresso} className="h-2 [&>div]:bg-[var(--primary)]" />
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>{reportStats.progresso}% para subir de nível</span>
+                <span>
+                  Próximo nível:{' '}
+                  <span className="font-medium text-foreground">{reportStats.proximoNivel}</span>
+                </span>
+              </div>
+            </div>
+          </section>
+
+          {/* ── 7. Partilhas Locais ── */}
+          <section className="space-y-4">
+            <SectionHeader
+              icon={Package}
+              title="Partilhas na sua zona"
+              action={
+                <Link
+                  to="/partilhas"
+                  className="flex items-center gap-1 text-xs text-[var(--primary)] font-medium hover:underline"
+                >
+                  Ver todas <ChevronRight className="w-3.5 h-3.5" />
+                </Link>
+              }
+            />
+            <div className="flex flex-col rounded-xl border border-border/70 bg-card overflow-hidden divide-y divide-border">
+              {partilhas.map((p) => (
+                <div key={p.id} className="flex items-center gap-3 px-4 py-3 hover:bg-muted/30 transition-colors cursor-pointer">
+                  <div className="w-8 h-8 rounded-lg bg-[var(--primary)]/10 flex items-center justify-center shrink-0">
+                    <Package className="w-4 h-4 text-[var(--primary)]" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-foreground truncate">{p.titulo}</p>
+                    <p className="text-xs text-muted-foreground">{p.utilizador} · {p.zona}</p>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground/40 shrink-0" />
+                </div>
+              ))}
+              <button className="flex items-center justify-center gap-2 px-4 py-3.5 hover:bg-muted/30 transition-colors cursor-pointer group">
+                <div className="w-8 h-8 rounded-lg border-2 border-dashed border-border group-hover:border-[var(--primary)]/50 flex items-center justify-center transition-colors shrink-0">
+                  <Gift className="w-4 h-4 text-muted-foreground group-hover:text-[var(--primary)] transition-colors" />
+                </div>
+                <span className="text-sm text-muted-foreground group-hover:text-[var(--primary)] transition-colors font-medium">
+                  Partilhar algo da minha casa
+                </span>
+              </button>
+            </div>
+          </section>
+        </>
       )}
 
-      {/* ── 5. Impacto pessoal ── */}
+      {/* ── 8. Notícias e Campanhas ── */}
       <section className="space-y-4">
-        <div className="flex items-center gap-2">
-          <TrendingUp className="w-4 h-4 text-[var(--primary)]" />
-          <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">O seu impacto este ano</h2>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {[
-            {
-              label: 'Reciclagem',
-              value: impacto?.reciclagem_kg ?? 0,
-              unit: 'kg',
-              icon: Recycle,
-              color: 'oklch(0.55 0.18 150)',
-              desc: 'estimativa a partir dos seus reports resolvidos',
-            },
-            {
-              label: 'Comunidade',
-              value: impacto?.comunidade_pax ?? 0,
-              unit: 'pax',
-              icon: Users,
-              color: '#60a5fa',
-              desc: 'cidadãos registados na plataforma',
-            },
-            {
-              label: 'Ecossistema',
-              value: impacto?.arvores_equivalentes ?? 0,
-              unit: 'árvores',
-              icon: Leaf,
-              color: 'oklch(0.55 0.18 150)',
-              desc: 'equivalente a partir da sua atividade',
-            },
-          ].map((item) => {
-            const Icon = item.icon
-            return (
-              <Card key={item.label} className="border border-border/70 shadow-sm rounded-xl overflow-hidden">
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">{item.label}</CardTitle>
-                  <div className="flex items-center justify-center w-8 h-8 rounded-lg" style={{ backgroundColor: `color-mix(in srgb, ${item.color} 12%, transparent)` }}>
-                    <Icon className="w-4 h-4" style={{ color: item.color }} />
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-foreground">
-                    <Counter to={item.value} /> <span className="text-sm font-medium text-muted-foreground">{item.unit}</span>
-                  </div>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">{item.desc}</p>
-                </CardContent>
-              </Card>
-            )
-          })}
-        </div>
-      </section>
-
-      {/* ── 6. Resumo Reports ── */}
-      <section className="space-y-4">
-        <div className="flex items-center gap-2">
-          <FileText className="w-4 h-4 text-[var(--primary)]" />
-          <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">Histórico de Reports</h2>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {[
-            { label: 'Ativos', value: reportStats.ativos, icon: TrendingUp, color: '#fb923c' },
-            { label: 'Resolvidos', value: reportStats.resolvidos, icon: CheckCircle, color: 'oklch(0.55 0.18 150)' },
-            { label: 'Total', value: reportStats.total, icon: Package, color: '#8A93A4' },
-          ].map((stat) => {
-            const Icon = stat.icon
-            return (
-              <Card key={stat.label} className="border border-border/70 shadow-sm rounded-xl overflow-hidden">
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">{stat.label}</CardTitle>
-                  <div className="flex items-center justify-center w-8 h-8 rounded-lg" style={{ backgroundColor: `color-mix(in srgb, ${stat.color} 12%, transparent)` }}>
-                    <Icon className="w-4 h-4" style={{ color: stat.color }} />
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-foreground"><Counter to={stat.value} /></div>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">Reportes enviados</p>
-                </CardContent>
-              </Card>
-            )
-          })}
-        </div>
-        <div className="bg-card border border-border/70 shadow-sm rounded-xl p-4 space-y-2">
-          <Progress value={reportStats.progresso} className="h-2 [&>div]:bg-[var(--primary)]" />
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>{reportStats.progresso}% para subir de nível</span>
-            <span>Próximo nível: <span className="font-medium text-foreground">{reportStats.proximoNivel}</span></span>
-          </div>
-        </div>
-      </section>
-
-      {/* ── 7. Partilhas Locais ── */}
-      <section className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Package className="w-4 h-4 text-[var(--primary)]" />
-            <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">Partilhas na sua zona</h2>
-          </div>
-          <Link
-            to="/partilhas"
-            className="flex items-center gap-1 text-xs text-[var(--primary)] font-medium hover:underline"
-          >
-            Ver todas <ChevronRight className="w-3.5 h-3.5" />
-          </Link>
-        </div>
-        <div className="flex flex-col rounded-xl border border-border/70 bg-card overflow-hidden divide-y divide-border">
-          {partilhas.map((p) => (
-            <div key={p.id} className="flex items-center gap-3 px-4 py-3 hover:bg-muted/30 transition-colors cursor-pointer">
-              <div className="w-8 h-8 rounded-lg bg-[var(--primary)]/10 flex items-center justify-center shrink-0">
-                <Package className="w-4 h-4 text-[var(--primary)]" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-foreground truncate">{p.titulo}</p>
-                <p className="text-xs text-muted-foreground">{p.utilizador} · {p.zona}</p>
-              </div>
-              <ChevronRight className="w-4 h-4 text-muted-foreground/40 shrink-0" />
-            </div>
-          ))}
-          {/* CTA Drag-feel para nova partilha */}
-          <button className="flex items-center justify-center gap-2 px-4 py-3.5 hover:bg-muted/30 transition-colors cursor-pointer group">
-            <div className="w-8 h-8 rounded-lg border-2 border-dashed border-border group-hover:border-[var(--primary)]/50 flex items-center justify-center transition-colors shrink-0">
-              <Gift className="w-4 h-4 text-muted-foreground group-hover:text-[var(--primary)] transition-colors" />
-            </div>
-            <span className="text-sm text-muted-foreground group-hover:text-[var(--primary)] transition-colors font-medium">
-              Partilhar algo da minha casa
-            </span>
-          </button>
-        </div>
-      </section>
-      </>
-      )}
-
-      {/* ── 8. Notícias ── */}
-      <section className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Newspaper className="w-4 h-4 text-[var(--primary)]" />
-            <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">Notícias e Campanhas</h2>
-          </div>
-          <Link
-            to="/noticias"
-            className="flex items-center gap-1 text-xs text-[var(--primary)] font-medium hover:underline"
-          >
-            Ver todas <ChevronRight className="w-3.5 h-3.5" />
-          </Link>
-        </div>
+        <SectionHeader
+          icon={Newspaper}
+          title="Notícias e Campanhas"
+          action={
+            <Link
+              to="/noticias"
+              className="flex items-center gap-1 text-xs text-[var(--primary)] font-medium hover:underline"
+            >
+              Ver todas <ChevronRight className="w-3.5 h-3.5" />
+            </Link>
+          }
+        />
         <div className="flex overflow-x-auto snap-x snap-mandatory hide-scrollbar gap-3 pb-1 -mx-4 px-4 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-2 lg:grid-cols-3">
           {noticias.map((n) => (
-            <Card key={n.id} className="min-w-[272px] sm:min-w-0 snap-start shrink-0 overflow-hidden shadow-sm border border-border/70 hover:shadow-md transition-all cursor-pointer group rounded-xl">
+            <Card
+              key={n.id}
+              className="min-w-[272px] sm:min-w-0 snap-start shrink-0 overflow-hidden shadow-sm border border-border/70 hover:shadow-md transition-all cursor-pointer group rounded-xl"
+            >
               <div className="h-36 w-full overflow-hidden bg-muted">
-                <img src={n.imagem_url} alt={n.titulo} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                <img
+                  src={n.imagem_url}
+                  alt={n.titulo}
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                />
               </div>
               <CardContent className="p-4 space-y-1.5">
-                <p className="font-semibold text-sm text-foreground leading-snug group-hover:text-[var(--primary)] transition-colors">{n.titulo}</p>
+                <p className="font-semibold text-sm text-foreground leading-snug group-hover:text-[var(--primary)] transition-colors">
+                  {n.titulo}
+                </p>
                 <p className="text-xs text-muted-foreground line-clamp-2">{n.resumo}</p>
                 <div className="flex items-center gap-3 pt-1 text-[11px] text-muted-foreground">
                   <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{n.data}</span>
