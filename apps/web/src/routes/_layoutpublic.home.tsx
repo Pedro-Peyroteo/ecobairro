@@ -3,6 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
+import { SplineScene } from '@/components/ui/splite'
+import { Spotlight } from '@/components/ui/spotlight'
 import {
   MapPin, TrendingUp, ChevronRight, Star, AlertTriangle, Recycle, Users, Leaf,
   FileText, CheckCircle, Package, Gift, Newspaper, Calendar, Clock,
@@ -67,35 +69,110 @@ const COMMUNITY_STATS = {
   resolvidos: 89, // percent — update manually as platform grows
 } as const
 
-/* ─── Guest hero ─── */
+const MOCK_NOTICIAS = [
+  {
+    id: 'n1',
+    titulo: 'Campanha de Recolha de Resíduos Elétricos em Lisboa',
+    resumo: 'A câmara municipal lança nova iniciativa para recolha gratuita de equipamentos elétricos e eletrónicos em todos os bairros da cidade durante o mês de junho.',
+    imagem_url: 'https://picsum.photos/seed/ecobairro1/600/400',
+    data: '14 Mai 2026',
+    tempo_leitura: '3 min',
+  },
+  {
+    id: 'n2',
+    titulo: 'Novo Ecoponto Instalado na Rua da Palma — Porto',
+    resumo: 'Moradores do Bonfim celebram a instalação de três novos ecopontos com separação de vidro, papel e embalagens, fruto de 240 reports enviados pela plataforma ecoBairro.',
+    imagem_url: 'https://picsum.photos/seed/ecobairro2/600/400',
+    data: '10 Mai 2026',
+    tempo_leitura: '2 min',
+  },
+  {
+    id: 'n3',
+    titulo: 'Dia do Ambiente: Plantação de 500 Árvores nas Cidades',
+    resumo: 'No próximo dia 5 de junho, voluntários e cidadãos são convidados a participar na maior ação de plantação urbana dos últimos anos. Inscrição gratuita via ecoBairro.',
+    imagem_url: 'https://picsum.photos/seed/ecobairro3/600/400',
+    data: '5 Mai 2026',
+    tempo_leitura: '4 min',
+  },
+  {
+    id: 'n4',
+    titulo: 'Taxa de Reciclagem em Braga Sobe 34% em 2025',
+    resumo: 'Os dados do relatório anual confirmam que a participação cidadã em plataformas como o ecoBairro contribuiu diretamente para o aumento da taxa de reciclagem no município.',
+    imagem_url: 'https://picsum.photos/seed/ecobairro4/600/400',
+    data: '28 Abr 2026',
+    tempo_leitura: '5 min',
+  },
+]
+
+/* ─── Guest hero — full-screen split with Spline 3D ─── */
+const SPLINE_SCENE = 'https://prod.spline.design/kZDDjO5HlviOn7dI/scene.splinecode'
+
 function GuestHero({ cidadaos }: { cidadaos: number }) {
+  const videoRef = useRef<HTMLVideoElement>(null)
+  useEffect(() => {
+    if (videoRef.current) videoRef.current.playbackRate = 0.5
+  }, [])
+
   return (
     <div
-      className="relative overflow-hidden rounded-2xl text-center px-6 py-16"
-      style={{
-        background:
-          'linear-gradient(170deg, color-mix(in srgb, var(--primary) 18%, #0f1a12) 0%, #1a1d2e 50%, #0d0f1a 100%)',
-      }}
+      className="relative w-full h-svh overflow-hidden flex items-center"
+      style={{ background: 'linear-gradient(135deg, #0a0e0d 0%, #0d1117 40%, #0d0f1a 100%)' }}
     >
-      {/* Radial glow — centered top */}
+      {/* Background video */}
+      <video
+        ref={videoRef}
+        autoPlay
+        muted
+        loop
+        playsInline
+        aria-hidden="true"
+        className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+        style={{ opacity: 0.38, zIndex: 0 }}
+      >
+        <source src="/videopromocional.mp4" type="video/mp4" />
+      </video>
+
+      {/* Dark gradient overlay over video */}
       <div
-        className="absolute top-0 left-1/2 -translate-x-1/2 w-[520px] h-[220px] pointer-events-none"
+        className="absolute inset-0 pointer-events-none"
         style={{
-          background:
-            'radial-gradient(ellipse, color-mix(in srgb, var(--primary) 28%, transparent) 0%, transparent 70%)',
+          zIndex: 1,
+          background: 'linear-gradient(135deg, rgba(10,14,13,0.92) 0%, rgba(13,17,23,0.82) 40%, rgba(13,15,26,0.88) 100%)',
         }}
         aria-hidden="true"
       />
-      {/* Bottom fade */}
+
+      {/* ecoBairro brand — top-left anchor */}
+      <div className="absolute top-5 left-8 md:left-14 lg:left-20 xl:left-28 flex items-center gap-2 z-20" style={{ zIndex: 20 }}>
+        <div className="w-8 h-8 rounded-lg bg-[var(--primary)]/20 border border-[var(--primary)]/30 flex items-center justify-center">
+          <Leaf className="w-4 h-4 text-[var(--primary)]" />
+        </div>
+        <span className="text-white font-bold text-lg tracking-tight select-none">
+          eco<span className="text-[var(--primary)]">Bairro</span>
+        </span>
+      </div>
+
+      {/* Spotlight beam — green tinted */}
+      <Spotlight
+        className="-top-40 left-0 md:left-60 md:-top-20"
+        fill="oklch(0.65 0.18 150)"
+      />
+
+      {/* Ambient green glow — top-left corner */}
       <div
-        className="absolute bottom-0 left-0 right-0 h-16 pointer-events-none"
-        style={{ background: 'linear-gradient(transparent, #0d0f1a)' }}
+        className="absolute -top-40 -left-40 w-[700px] h-[700px] pointer-events-none"
+        style={{
+          zIndex: 2,
+          background:
+            'radial-gradient(circle, color-mix(in srgb, var(--primary) 10%, transparent) 0%, transparent 55%)',
+        }}
         aria-hidden="true"
       />
 
-      <div className="relative z-10 flex flex-col items-center gap-6">
+      {/* ── Left: text content ── */}
+      <div className="relative flex flex-col gap-7 flex-1 px-8 md:px-14 lg:px-20 xl:px-28" style={{ zIndex: 10 }}>
         {/* Animated badge */}
-        <div className="inline-flex items-center gap-2 rounded-full border border-[var(--primary)]/30 bg-[var(--primary)]/10 px-4 py-1.5">
+        <div className="inline-flex items-center gap-2 rounded-full border border-[var(--primary)]/30 bg-[var(--primary)]/10 px-4 py-1.5 w-fit">
           <span
             className="w-1.5 h-1.5 rounded-full bg-[var(--primary)] animate-pulse motion-reduce:animate-none"
             aria-hidden="true"
@@ -106,21 +183,28 @@ function GuestHero({ cidadaos }: { cidadaos: number }) {
         </div>
 
         {/* Headline */}
-        <div className="space-y-3">
-          <h1 className="text-4xl font-black leading-tight tracking-tight text-white">
+        <div className="space-y-4">
+          <h1 className="text-5xl md:text-6xl lg:text-7xl font-black leading-[1.04] tracking-tight text-white">
             O teu bairro<br />
-            mais <span className="text-[var(--primary)]">sustentável</span>
+            mais{' '}
+            <span
+              className="text-[var(--primary)]"
+              style={{ textShadow: '0 0 40px color-mix(in srgb, var(--primary) 50%, transparent)' }}
+            >
+              sustentável
+            </span>
           </h1>
-          <p className="text-sm text-white/55 max-w-xs mx-auto leading-relaxed">
+          <p className="text-base text-white/55 max-w-sm leading-relaxed">
             Reporta problemas, partilha recursos e mede o impacto real da tua comunidade.
           </p>
         </div>
 
         {/* CTAs */}
-        <div className="flex items-center gap-3 flex-wrap justify-center">
+        <div className="flex items-center gap-3 flex-wrap">
           <Button
             asChild
-            className="gap-2 bg-[var(--primary)] hover:bg-[var(--primary)]/90 text-white min-h-[44px] px-6 font-semibold"
+            className="gap-2 bg-[var(--primary)] hover:bg-[var(--primary)]/90 text-white min-h-[44px] px-7 font-semibold"
+            style={{ boxShadow: '0 0 28px color-mix(in srgb, var(--primary) 45%, transparent)' }}
           >
             <Link to="/login">
               <LogIn className="w-4 h-4" />
@@ -130,7 +214,7 @@ function GuestHero({ cidadaos }: { cidadaos: number }) {
           <Button
             asChild
             variant="outline"
-            className="gap-2 min-h-[44px] px-6 border-white/20 text-white/80 hover:bg-white/10 hover:text-white bg-transparent font-semibold"
+            className="gap-2 min-h-[44px] px-7 border-white/20 text-white/80 hover:bg-white/10 hover:text-white bg-transparent font-semibold"
           >
             <Link to="/register">
               <UserPlus className="w-4 h-4" />
@@ -140,7 +224,7 @@ function GuestHero({ cidadaos }: { cidadaos: number }) {
         </div>
 
         {/* Stats pills */}
-        <div className="flex items-center gap-3 flex-wrap justify-center">
+        <div className="flex items-center gap-3 flex-wrap">
           {[
             { value: cidadaos.toLocaleString('pt-PT'), label: 'Cidadãos' },
             { value: COMMUNITY_STATS.reports.toLocaleString('pt-PT'), label: 'Reports' },
@@ -156,6 +240,18 @@ function GuestHero({ cidadaos }: { cidadaos: number }) {
           ))}
         </div>
       </div>
+
+      {/* ── Right: Spline 3D scene ── */}
+      <div className="hidden md:block flex-1 h-full relative" style={{ zIndex: 10 }}>
+        <SplineScene scene={SPLINE_SCENE} className="w-full h-full" />
+      </div>
+
+      {/* Bottom fade into next section */}
+      <div
+        className="absolute bottom-0 left-0 right-0 h-28 pointer-events-none"
+        style={{ zIndex: 15, background: 'linear-gradient(transparent, var(--background))' }}
+        aria-hidden="true"
+      />
     </div>
   )
 }
@@ -334,61 +430,105 @@ function HomePage() {
 
   const ecopontos = feed?.ecopontos ?? []
   const partilhas = feed?.partilhas ?? []
-  const noticias = feed?.noticias ?? []
+  const noticias = (feed?.noticias && feed.noticias.length > 0) ? feed.noticias : MOCK_NOTICIAS
   const alertaCritico = feed?.alerta
   const impacto = feed?.impacto
   const cidadaosCount = feed?.impacto?.comunidade_pax || COMMUNITY_STATS.cidadaos
 
+  // Guest: full-bleed hero then contained sections
+  if (isGuest) {
+    return (
+      <>
+        <GuestHero cidadaos={cidadaosCount} />
+        <div className="w-full max-w-[1440px] mx-auto px-6 pb-16 flex flex-col gap-8">
+          <GuestFeatures />
+          <GuestTrustBar cidadaos={cidadaosCount} />
+          <section className="space-y-4">
+            <SectionHeader
+              icon={Newspaper}
+              title="Notícias e Campanhas"
+              action={
+                <Link
+                  to="/noticias"
+                  className="flex items-center gap-1 text-xs text-[var(--primary)] font-medium hover:underline"
+                >
+                  Ver todas <ChevronRight className="w-3.5 h-3.5" />
+                </Link>
+              }
+            />
+            <div className="flex overflow-x-auto snap-x snap-mandatory hide-scrollbar gap-3 pb-1 -mx-4 px-4 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-2 lg:grid-cols-3">
+              {noticias.map((n) => (
+                <Card
+                  key={n.id}
+                  className="min-w-[272px] sm:min-w-0 snap-start shrink-0 overflow-hidden shadow-sm border border-border/70 hover:shadow-md transition-all cursor-pointer group rounded-xl"
+                >
+                  <div className="h-36 w-full overflow-hidden bg-muted">
+                    <img
+                      src={n.imagem_url}
+                      alt={n.titulo}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                  </div>
+                  <CardContent className="p-4 space-y-1.5">
+                    <p className="font-semibold text-sm text-foreground leading-snug group-hover:text-[var(--primary)] transition-colors">
+                      {n.titulo}
+                    </p>
+                    <p className="text-xs text-muted-foreground line-clamp-2">{n.resumo}</p>
+                    <div className="flex items-center gap-3 pt-1 text-[11px] text-muted-foreground">
+                      <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{n.data}</span>
+                      <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{n.tempo_leitura}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </section>
+        </div>
+      </>
+    )
+  }
+
   return (
     <div className="flex flex-col gap-8 pb-12 max-w-2xl mx-auto lg:max-w-none">
 
-      {isGuest ? (
-        /* ── Guest: cinematic landing ── */
-        <>
-          <GuestHero cidadaos={cidadaosCount} />
-          <GuestFeatures />
-          <GuestTrustBar cidadaos={cidadaosCount} />
-        </>
-      ) : (
-        /* ── Auth: banner com gamificação ── */
-        <Card
-          className="relative overflow-hidden border-none shadow-sm"
-          style={{ background: 'linear-gradient(135deg, color-mix(in oklch, var(--primary) 10%, var(--card)) 0%, var(--card) 65%)' }}
-        >
-          <HeroBlob />
-          <CardContent className="p-6 relative z-10 flex flex-col sm:flex-row sm:items-center gap-5 justify-between">
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">{greeting} 👋</p>
-              <h1 className="text-2xl font-bold tracking-tight text-foreground">
-                Olá, <span className="text-[var(--primary)]">{firstName}</span>!
-              </h1>
-              <p className="text-sm text-muted-foreground max-w-sm leading-relaxed">
-                Aqui está o resumo da sua atividade no ecoBairro.
-              </p>
-            </div>
-            <div className="flex flex-col gap-2 sm:items-end min-w-[200px]">
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1.5 bg-[var(--primary)]/10 rounded-full px-2.5 py-1">
-                  <Star className="w-3 h-3 text-[var(--primary)]" fill="currentColor" />
-                  <span className="text-xs font-semibold text-[var(--primary)]">{gamification.nivel}</span>
-                </div>
-                <span className="text-xs text-muted-foreground">
-                  <Counter to={gamification.pontos} /> pts
-                </span>
+      {/* ── Auth: banner com gamificação ── */}
+      <Card
+        className="relative overflow-hidden border-none shadow-sm"
+        style={{ background: 'linear-gradient(135deg, color-mix(in oklch, var(--primary) 10%, var(--card)) 0%, var(--card) 65%)' }}
+      >
+        <HeroBlob />
+        <CardContent className="p-6 relative z-10 flex flex-col sm:flex-row sm:items-center gap-5 justify-between">
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">{greeting} 👋</p>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">
+              Olá, <span className="text-[var(--primary)]">{firstName}</span>!
+            </h1>
+            <p className="text-sm text-muted-foreground max-w-sm leading-relaxed">
+              Aqui está o resumo da sua atividade no ecoBairro.
+            </p>
+          </div>
+          <div className="flex flex-col gap-2 sm:items-end min-w-[200px]">
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 bg-[var(--primary)]/10 rounded-full px-2.5 py-1">
+                <Star className="w-3 h-3 text-[var(--primary)]" fill="currentColor" />
+                <span className="text-xs font-semibold text-[var(--primary)]">{gamification.nivel}</span>
               </div>
-              <Progress value={progressoGamificacao} className="h-2 w-full [&>div]:bg-[var(--primary)]" />
-              <p className="text-[11px] text-muted-foreground">
-                Faltam <span className="font-semibold text-foreground">{pontosRestantes} pts</span> para{' '}
-                <span className="font-medium">{reportStats.proximoNivel}</span>
-              </p>
+              <span className="text-xs text-muted-foreground">
+                <Counter to={gamification.pontos} /> pts
+              </span>
             </div>
-          </CardContent>
-        </Card>
-      )}
+            <Progress value={progressoGamificacao} className="h-2 w-full [&>div]:bg-[var(--primary)]" />
+            <p className="text-[11px] text-muted-foreground">
+              Faltam <span className="font-semibold text-foreground">{pontosRestantes} pts</span> para{' '}
+              <span className="font-medium">{reportStats.proximoNivel}</span>
+            </p>
+          </div>
+        </CardContent>
+      </Card>
 
-      {!isGuest && (
-        <>
-          {/* ── 2. Atalhos Rápidos ── */}
+      {/* ── Auth sections ── */}
+      <>
+        {/* ── 2. Atalhos Rápidos ── */}
           <div className="grid grid-cols-3 gap-3">
             {atalhos.map((a) => {
               const Icon = a.icon
@@ -606,8 +746,7 @@ function HomePage() {
               </button>
             </div>
           </section>
-        </>
-      )}
+      </>
 
       {/* ── 8. Notícias e Campanhas ── */}
       <section className="space-y-4">

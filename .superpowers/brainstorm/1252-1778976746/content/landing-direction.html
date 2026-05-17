@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ecoBairro — Landing Page Styles</title>
+<script src="/helper.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+    background: #080810;
+    color: #e0e0f0;
+    padding: 24px;
+  }
+  .page-title { text-align: center; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: #555; margin-bottom: 4px; }
+  .page-headline { text-align: center; font-size: 20px; font-weight: 800; color: #f0f0ff; margin-bottom: 4px; }
+  .page-sub { text-align: center; font-size: 12px; color: #555; margin-bottom: 28px; }
+
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; max-width: 1300px; margin: 0 auto; }
+
+  .card {
+    border-radius: 16px;
+    border: 2px solid #1a1a2e;
+    overflow: hidden;
+    cursor: pointer;
+    transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s;
+    background: #0e0e1c;
+  }
+  .card:hover { border-color: #3a8f5f; transform: translateY(-3px); box-shadow: 0 12px 40px rgba(58,143,95,0.2); }
+  .card.selected { border-color: #5dba88; box-shadow: 0 0 0 1px #5dba88, 0 12px 40px rgba(93,186,136,0.3); }
+
+  .card-label { padding: 12px 14px 8px; display: flex; align-items: center; gap: 8px; }
+  .letter-badge { width: 22px; height: 22px; border-radius: 5px; background: #3a8f5f; color: #fff; font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .card-name { font-size: 13px; font-weight: 700; color: #e0e0ff; }
+  .card-desc { font-size: 10px; color: #555; margin-left: auto; text-align: right; }
+
+  .frame-wrap { padding: 0 10px 10px; }
+  .frame { border-radius: 10px; overflow: hidden; height: 500px; position: relative; }
+
+  /* ═══════════════════════════════
+     OPTION A — Cinematic Full Hero
+     Airbnb / Duolingo vibe
+  ═══════════════════════════════ */
+  .mock-a { background: #0a120d; display: flex; flex-direction: column; }
+
+  .a-hero {
+    position: relative;
+    flex: 1;
+    background: linear-gradient(170deg, #0a1f12 0%, #0d1a28 60%, #080d18 100%);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    text-align: center;
+    padding: 28px 20px 24px;
+    overflow: hidden;
+  }
+  /* Big radial glow */
+  .a-hero::before {
+    content: '';
+    position: absolute; top: -40px; left: 50%; transform: translateX(-50%);
+    width: 300px; height: 200px;
+    background: radial-gradient(ellipse, rgba(58,143,95,0.28) 0%, transparent 70%);
+  }
+  /* Bottom fade */
+  .a-hero::after {
+    content: '';
+    position: absolute; bottom: 0; left: 0; right: 0; height: 60px;
+    background: linear-gradient(transparent, #0a120d);
+  }
+  .a-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    border: 1px solid rgba(93,186,136,0.35);
+    background: rgba(93,186,136,0.08);
+    color: #5dba88;
+    font-size: 8.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 4px 10px; border-radius: 20px;
+    margin-bottom: 12px;
+    position: relative; z-index: 1;
+  }
+  .a-badge::before { content: '●'; font-size: 6px; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  .a-headline {
+    font-size: 26px; font-weight: 900; line-height: 1.1;
+    color: #fff; position: relative; z-index: 1; margin-bottom: 8px;
+  }
+  .a-headline em { font-style: normal; color: #5dba88; }
+  .a-sub { font-size: 9.5px; color: rgba(255,255,255,0.45); line-height: 1.5; max-width: 200px; position: relative; z-index: 1; margin-bottom: 16px; }
+
+  .a-ctas { display: flex; gap: 7px; position: relative; z-index: 1; margin-bottom: 20px; }
+  .btn-primary { background: #3a8f5f; color: #fff; border: none; border-radius: 8px; padding: 8px 16px; font-size: 9px; font-weight: 700; cursor: pointer; }
+  .btn-outline { background: transparent; color: rgba(255,255,255,0.7); border: 1px solid rgba(255,255,255,0.18); border-radius: 8px; padding: 8px 16px; font-size: 9px; font-weight: 600; cursor: pointer; }
+
+  /* Floating stat pills */
+  .a-stats { display: flex; gap: 7px; position: relative; z-index: 1; }
+  .stat-pill { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 5px 10px; text-align: center; }
+  .stat-pill .n { font-size: 13px; font-weight: 900; color: #fff; }
+  .stat-pill .l { font-size: 6.5px; color: rgba(255,255,255,0.35); text-transform: uppercase; letter-spacing: 0.06em; }
+
+  /* Feature cards below hero */
+  .a-features { padding: 10px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .feat-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07); border-radius: 9px; padding: 9px; }
+  .feat-icon { width: 22px; height: 22px; border-radius: 6px; background: rgba(93,186,136,0.12); display: flex; align-items: center; justify-content: center; margin-bottom: 5px; }
+  .feat-icon svg { width: 11px; height: 11px; stroke: #5dba88; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .feat-title { font-size: 7.5px; font-weight: 700; color: rgba(255,255,255,0.8); margin-bottom: 2px; }
+  .feat-desc { font-size: 6.5px; color: rgba(255,255,255,0.3); line-height: 1.4; }
+
+  /* ═══════════════════════════════
+     OPTION B — Split Screen Hero
+     Linear / Notion / Stripe vibe
+  ═══════════════════════════════ */
+  .mock-b {
+    background: #f8f9fb;
+    display: flex; flex-direction: column;
+  }
+  .b-hero {
+    display: grid; grid-template-columns: 1fr 1fr;
+    flex: 1;
+    background: #fff;
+    position: relative; overflow: hidden;
+  }
+  /* Left: text */
+  .b-left {
+    padding: 22px 16px 16px 18px;
+    display: flex; flex-direction: column; justify-content: center;
+    position: relative; z-index: 2;
+  }
+  .b-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: #eaf5ef; color: #2e7d50;
+    font-size: 7.5px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;
+    padding: 3px 8px; border-radius: 20px;
+    margin-bottom: 10px; width: fit-content;
+    border: 1px solid #c0e0cc;
+  }
+  .b-headline { font-size: 22px; font-weight: 900; line-height: 1.1; color: #0d1a12; margin-bottom: 7px; }
+  .b-headline em { font-style: normal; color: #2e7d50; }
+  .b-sub { font-size: 8.5px; color: #666; line-height: 1.55; margin-bottom: 14px; }
+  .b-ctas { display: flex; flex-direction: column; gap: 5px; }
+  .b-btn-p { background: #2e7d50; color: #fff; border-radius: 8px; padding: 8px 12px; font-size: 8.5px; font-weight: 700; text-align: center; }
+  .b-btn-o { background: transparent; color: #2e7d50; border: 1.5px solid #c0e0cc; border-radius: 8px; padding: 7px 12px; font-size: 8.5px; font-weight: 600; text-align: center; }
+  .b-trust { display: flex; align-items: center; gap: 4px; margin-top: 10px; }
+  .b-avatars { display: flex; }
+  .b-avatar { width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid #fff; margin-left: -4px; background: #c0e0cc; }
+  .b-avatar:first-child { margin-left: 0; }
+  .b-avatar:nth-child(2) { background: #a0c8b0; }
+  .b-avatar:nth-child(3) { background: #80b090; }
+  .b-trust-text { font-size: 7px; color: #999; }
+  .b-trust-text strong { color: #444; }
+
+  /* Right: visual */
+  .b-right {
+    background: linear-gradient(135deg, #e8f5ef 0%, #d0eadc 100%);
+    position: relative; overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .b-right::before {
+    content: '';
+    position: absolute; top: -30px; right: -30px;
+    width: 120px; height: 120px;
+    background: radial-gradient(circle, rgba(58,143,95,0.2) 0%, transparent 70%);
+    border-radius: 50%;
+  }
+  /* Simulated "map" card */
+  .b-map-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 10px;
+    width: 110px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    position: relative; z-index: 2;
+  }
+  .b-map-area { height: 60px; background: linear-gradient(135deg, #c8ecd9, #a0ccb4); border-radius: 7px; margin-bottom: 6px; display: flex; align-items: center; justify-content: center; }
+  .b-map-area svg { width: 20px; height: 20px; stroke: #2e7d50; fill: none; stroke-width: 2; }
+  .b-ecopoint { display: flex; align-items: center; gap: 4px; margin-bottom: 3px; }
+  .b-dot { width: 6px; height: 6px; border-radius: 50%; background: #3a8f5f; flex-shrink: 0; }
+  .b-dot.orange { background: #fb923c; }
+  .b-ecopoint-text { font-size: 6.5px; color: #333; font-weight: 500; }
+  .b-ecopoint-dist { font-size: 6px; color: #aaa; margin-left: auto; }
+  /* Floating badge */
+  .b-float-badge {
+    position: absolute; bottom: 16px; right: 14px;
+    background: #fff;
+    border-radius: 8px;
+    padding: 6px 8px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+    z-index: 3;
+  }
+  .b-float-num { font-size: 16px; font-weight: 900; color: #2e7d50; line-height: 1; }
+  .b-float-lbl { font-size: 6px; color: #aaa; text-transform: uppercase; letter-spacing: 0.05em; }
+
+  /* Feature row below */
+  .b-features { padding: 10px; background: #f8f9fb; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .b-feat { background: #fff; border: 1px solid #e8eaed; border-radius: 9px; padding: 9px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
+  .b-feat-ico { width: 20px; height: 20px; border-radius: 5px; background: #eaf5ef; display: flex; align-items: center; justify-content: center; margin-bottom: 4px; }
+  .b-feat-ico svg { width: 10px; height: 10px; stroke: #3a8f5f; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .b-feat-title { font-size: 7.5px; font-weight: 700; color: #1a2a1e; margin-bottom: 1px; }
+  .b-feat-desc { font-size: 6.5px; color: #888; line-height: 1.4; }
+
+  /* ═══════════════════════════════
+     OPTION C — Gradient Mesh Hero
+     Apple/Framer/Liveblocks vibe
+  ═══════════════════════════════ */
+  .mock-c {
+    background: #06080f;
+    display: flex; flex-direction: column;
+    position: relative; overflow: hidden;
+  }
+  /* Mesh gradient orbs */
+  .c-orb1 { position: absolute; top: -50px; left: -50px; width: 200px; height: 200px; border-radius: 50%; background: radial-gradient(circle, rgba(58,143,95,0.4) 0%, transparent 70%); pointer-events: none; }
+  .c-orb2 { position: absolute; top: 30px; right: -60px; width: 200px; height: 200px; border-radius: 50%; background: radial-gradient(circle, rgba(80,60,180,0.3) 0%, transparent 70%); pointer-events: none; }
+  .c-orb3 { position: absolute; bottom: 20px; left: 20%; width: 150px; height: 150px; border-radius: 50%; background: radial-gradient(circle, rgba(58,143,95,0.2) 0%, transparent 70%); pointer-events: none; }
+
+  .c-hero {
+    position: relative; z-index: 2;
+    padding: 24px 18px 16px;
+    display: flex; flex-direction: column;
+    align-items: flex-start;
+  }
+  .c-logo { font-size: 8px; font-weight: 800; letter-spacing: 0.08em; color: #5dba88; text-transform: uppercase; margin-bottom: 16px; display: flex; align-items: center; gap: 5px; }
+  .c-logo-dot { width: 6px; height: 6px; border-radius: 50%; background: #5dba88; }
+
+  .c-headline { font-size: 28px; font-weight: 900; line-height: 1.05; color: #fff; margin-bottom: 10px; }
+  .c-headline .line2 { color: transparent; background: linear-gradient(90deg, #5dba88, #7dd8a8, #3a8f5f); -webkit-background-clip: text; background-clip: text; }
+  .c-sub { font-size: 9.5px; color: rgba(255,255,255,0.4); line-height: 1.55; max-width: 220px; margin-bottom: 16px; }
+
+  .c-ctas { display: flex; gap: 8px; margin-bottom: 20px; }
+  .c-btn-p {
+    background: linear-gradient(135deg, #3a8f5f, #5dba88);
+    color: #fff; border-radius: 8px; padding: 8px 14px;
+    font-size: 8.5px; font-weight: 700;
+    box-shadow: 0 4px 16px rgba(58,143,95,0.4);
+  }
+  .c-btn-o { background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.12); color: rgba(255,255,255,0.7); border-radius: 8px; padding: 8px 14px; font-size: 8.5px; font-weight: 600; }
+
+  /* Stats row */
+  .c-stats { display: flex; gap: 16px; padding: 0 18px 14px; position: relative; z-index: 2; }
+  .c-stat { }
+  .c-stat .n { font-size: 18px; font-weight: 900; color: #fff; line-height: 1; }
+  .c-stat .l { font-size: 7px; color: rgba(255,255,255,0.35); margin-top: 1px; }
+  .c-divider { width: 1px; background: rgba(255,255,255,0.08); align-self: stretch; }
+
+  /* Feature grid */
+  .c-features {
+    margin: 0 10px 10px;
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    position: relative; z-index: 2;
+    flex: 1;
+  }
+  .c-feat {
+    border: 1px solid rgba(255,255,255,0.07);
+    background: rgba(255,255,255,0.03);
+    border-radius: 10px;
+    padding: 10px;
+    transition: border-color 0.2s;
+  }
+  .c-feat:hover { border-color: rgba(93,186,136,0.3); }
+  .c-feat-header { display: flex; align-items: center; gap: 5px; margin-bottom: 4px; }
+  .c-feat-ico { width: 18px; height: 18px; border-radius: 5px; background: rgba(93,186,136,0.12); display: flex; align-items: center; justify-content: center; }
+  .c-feat-ico svg { width: 9px; height: 9px; stroke: #5dba88; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .c-feat-name { font-size: 8px; font-weight: 700; color: rgba(255,255,255,0.85); }
+  .c-feat-desc { font-size: 7px; color: rgba(255,255,255,0.3); line-height: 1.4; }
+
+  /* Trust bar at bottom */
+  .c-trust {
+    margin: 0 10px 10px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 10px;
+    padding: 8px 12px;
+    display: flex; align-items: center; gap: 10px;
+    position: relative; z-index: 2;
+  }
+  .c-avatars { display: flex; }
+  .c-av { width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid #06080f; margin-left: -5px; }
+  .c-av:first-child { margin-left: 0; background: #5dba88; }
+  .c-av:nth-child(2) { background: #3a8f5f; }
+  .c-av:nth-child(3) { background: #60a5fa; }
+  .c-av:nth-child(4) { background: #a78bfa; }
+  .c-trust-text { font-size: 7px; color: rgba(255,255,255,0.4); }
+  .c-trust-text strong { color: rgba(255,255,255,0.75); }
+  .c-stars { margin-left: auto; color: #fbbf24; font-size: 9px; letter-spacing: -1px; }
+
+  .footer { text-align: center; margin-top: 20px; font-size: 11px; color: #444; }
+</style>
+</head>
+<body>
+
+<p class="page-title">ecoBairro — Landing Page</p>
+<h2 class="page-headline">Que estilo de landing page?</h2>
+<p class="page-sub">Todos mostram o estado de visitante (não logado). Clica para selecionar.</p>
+
+<div class="grid">
+
+  <!-- ─── A: Cinematic Hero ─── -->
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-label">
+      <div class="letter-badge">A</div>
+      <div>
+        <div class="card-name">Cinematic Dark</div>
+        <div class="card-desc">Airbnb · Duolingo · glow central</div>
+      </div>
+    </div>
+    <div class="frame-wrap">
+      <div class="frame mock-a">
+        <div class="a-hero">
+          <div class="a-badge">🌱 Plataforma de Cidadania Ativa</div>
+          <div class="a-headline">O teu bairro<br>mais <em>sustentável</em></div>
+          <div class="a-sub">Reporta problemas, partilha recursos e mede o impacto real da tua comunidade.</div>
+          <div class="a-ctas">
+            <div class="btn-primary">Entrar na plataforma</div>
+            <div class="btn-outline">Saber mais</div>
+          </div>
+          <div class="a-stats">
+            <div class="stat-pill">
+              <div class="n">1.2k</div>
+              <div class="l">Cidadãos</div>
+            </div>
+            <div class="stat-pill">
+              <div class="n">340</div>
+              <div class="l">Reports</div>
+            </div>
+            <div class="stat-pill">
+              <div class="n">89%</div>
+              <div class="l">Resolvidos</div>
+            </div>
+          </div>
+        </div>
+        <div class="a-features">
+          <div class="feat-card">
+            <div class="feat-icon">
+              <svg viewBox="0 0 24 24"><path d="M14.5 10c-.83 0-1.5-.67-1.5-1.5v-5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5v5c0 .83-.67 1.5-1.5 1.5z"/><path d="M20.5 10H19V8.5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/><path d="M9.5 14c.83 0 1.5.67 1.5 1.5v5c0 .83-.67 1.5-1.5 1.5S8 21.33 8 20.5v-5c0-.83.67-1.5 1.5-1.5z"/><path d="M3.5 14H5v1.5c0 .83-.67 1.5-1.5 1.5S2 16.33 2 15.5 2.67 14 3.5 14z"/><path d="M14 14.5c0-.83.67-1.5 1.5-1.5h5c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5h-5c-.83 0-1.5-.67-1.5-1.5z"/><path d="M15.5 19H14v1.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5-.67-1.5-1.5-1.5z"/><path d="M10 9.5C10 8.67 9.33 8 8.5 8h-5C2.67 8 2 8.67 2 9.5S2.67 11 3.5 11h5c.83 0 1.5-.67 1.5-1.5z"/><path d="M8.5 5H10V3.5C10 2.67 9.33 2 8.5 2S7 2.67 7 3.5 7.67 5 8.5 5z"/></svg>
+            </div>
+            <div class="feat-title">Reportes</div>
+            <div class="feat-desc">Problemas resolvidos pela câmara</div>
+          </div>
+          <div class="feat-card">
+            <div class="feat-icon">
+              <svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            </div>
+            <div class="feat-title">Ecopontos</div>
+            <div class="feat-desc">Localiza pontos de reciclagem</div>
+          </div>
+          <div class="feat-card">
+            <div class="feat-icon">
+              <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            </div>
+            <div class="feat-title">Impacto</div>
+            <div class="feat-desc">Mede a tua pegada ambiental</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── B: Split Screen ─── -->
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-label">
+      <div class="letter-badge">B</div>
+      <div>
+        <div class="card-name">Split Screen Light</div>
+        <div class="card-desc">Stripe · Linear · clean + visual</div>
+      </div>
+    </div>
+    <div class="frame-wrap">
+      <div class="frame mock-b">
+        <div class="b-hero">
+          <div class="b-left">
+            <div class="b-badge">🌿 Plataforma Cívica</div>
+            <div class="b-headline">O teu bairro<br>mais <em>sustentável</em></div>
+            <div class="b-sub">Reporta problemas, partilha recursos e acompanha o impacto real no teu bairro.</div>
+            <div class="b-ctas">
+              <div class="b-btn-p">Entrar na plataforma →</div>
+              <div class="b-btn-o">Criar conta grátis</div>
+            </div>
+            <div class="b-trust">
+              <div class="b-avatars">
+                <div class="b-avatar"></div>
+                <div class="b-avatar"></div>
+                <div class="b-avatar"></div>
+              </div>
+              <div class="b-trust-text"><strong>+1.200 vizinhos</strong> já na plataforma</div>
+            </div>
+          </div>
+          <div class="b-right">
+            <div class="b-map-card">
+              <div class="b-map-area">
+                <svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              </div>
+              <div class="b-ecopoint">
+                <div class="b-dot"></div>
+                <span class="b-ecopoint-text">Eco Rua da Paz</span>
+                <span class="b-ecopoint-dist">120m</span>
+              </div>
+              <div class="b-ecopoint">
+                <div class="b-dot orange"></div>
+                <span class="b-ecopoint-text">Eco Parque Norte</span>
+                <span class="b-ecopoint-dist">340m</span>
+              </div>
+              <div class="b-ecopoint">
+                <div class="b-dot"></div>
+                <span class="b-ecopoint-text">Eco Av. Central</span>
+                <span class="b-ecopoint-dist">520m</span>
+              </div>
+            </div>
+            <div class="b-float-badge">
+              <div class="b-float-num">89%</div>
+              <div class="b-float-lbl">Resolvidos</div>
+            </div>
+          </div>
+        </div>
+        <div class="b-features">
+          <div class="b-feat">
+            <div class="b-feat-ico">
+              <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            </div>
+            <div class="b-feat-title">Reporta Problemas</div>
+            <div class="b-feat-desc">Fotos e GPS direto para a câmara</div>
+          </div>
+          <div class="b-feat">
+            <div class="b-feat-ico">
+              <svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            </div>
+            <div class="b-feat-title">Mapa de Ecopontos</div>
+            <div class="b-feat-desc">Encontra reciclagem perto de ti</div>
+          </div>
+          <div class="b-feat">
+            <div class="b-feat-ico">
+              <svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>
+            </div>
+            <div class="b-feat-title">Partilha Recursos</div>
+            <div class="b-feat-desc">Troca objetos com vizinhos</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── C: Gradient Mesh ─── -->
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-label">
+      <div class="letter-badge">C</div>
+      <div>
+        <div class="card-name">Gradient Mesh Dark</div>
+        <div class="card-desc">Apple · Framer · orbs + grid</div>
+      </div>
+    </div>
+    <div class="frame-wrap">
+      <div class="frame mock-c">
+        <div class="c-orb1"></div>
+        <div class="c-orb2"></div>
+        <div class="c-orb3"></div>
+
+        <div class="c-hero">
+          <div class="c-logo"><div class="c-logo-dot"></div>ecoBairro</div>
+          <div class="c-headline">O bairro é<br><span class="line2">de todos nós</span></div>
+          <div class="c-sub">Plataforma de cidadania ativa. Reporta, partilha e mede o impacto ambiental do teu bairro.</div>
+          <div class="c-ctas">
+            <div class="c-btn-p">Começar grátis →</div>
+            <div class="c-btn-o">Entrar</div>
+          </div>
+        </div>
+
+        <div class="c-stats">
+          <div class="c-stat"><div class="n">1.2k</div><div class="l">Cidadãos ativos</div></div>
+          <div class="c-divider"></div>
+          <div class="c-stat"><div class="n">340</div><div class="l">Reports enviados</div></div>
+          <div class="c-divider"></div>
+          <div class="c-stat"><div class="n">89%</div><div class="l">Resolvidos</div></div>
+        </div>
+
+        <div class="c-features">
+          <div class="c-feat">
+            <div class="c-feat-header">
+              <div class="c-feat-ico">
+                <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              </div>
+              <span class="c-feat-name">Reportes</span>
+            </div>
+            <div class="c-feat-desc">Envia problemas com foto e localização GPS direto para a câmara municipal</div>
+          </div>
+          <div class="c-feat">
+            <div class="c-feat-header">
+              <div class="c-feat-ico">
+                <svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              </div>
+              <span class="c-feat-name">Ecopontos</span>
+            </div>
+            <div class="c-feat-desc">Mapa de pontos de reciclagem com disponibilidade em tempo real</div>
+          </div>
+          <div class="c-feat">
+            <div class="c-feat-header">
+              <div class="c-feat-ico">
+                <svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>
+              </div>
+              <span class="c-feat-name">Partilhas</span>
+            </div>
+            <div class="c-feat-desc">Oferece e troca objetos com vizinhos. Menos desperdício, mais comunidade</div>
+          </div>
+          <div class="c-feat">
+            <div class="c-feat-header">
+              <div class="c-feat-ico">
+                <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+              </div>
+              <span class="c-feat-name">Impacto</span>
+            </div>
+            <div class="c-feat-desc">Acompanha a tua contribuição ambiental e compete com os vizinhos</div>
+          </div>
+        </div>
+
+        <div class="c-trust">
+          <div class="c-avatars">
+            <div class="c-av"></div>
+            <div class="c-av"></div>
+            <div class="c-av"></div>
+            <div class="c-av"></div>
+          </div>
+          <div class="c-trust-text">Juntos com <strong>+1.200 vizinhos</strong> ativos no ecoBairro</div>
+          <div class="c-stars">★★★★★</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<p class="footer">Clica para selecionar · podes escolher elementos de diferentes opções no terminal</p>
+
+</body>
+</html>

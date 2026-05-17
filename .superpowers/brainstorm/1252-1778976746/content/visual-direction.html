@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ecoBairro — Direção Visual</title>
+<script src="/helper.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+    background: #0f0f14;
+    color: #e0e0f0;
+    padding: 24px;
+    min-height: 100vh;
+  }
+
+  .page-title {
+    text-align: center;
+    font-size: 13px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #888;
+    margin-bottom: 6px;
+  }
+  .page-headline {
+    text-align: center;
+    font-size: 22px;
+    font-weight: 700;
+    color: #f0f0ff;
+    margin-bottom: 4px;
+  }
+  .page-sub {
+    text-align: center;
+    font-size: 13px;
+    color: #666;
+    margin-bottom: 28px;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .card {
+    border-radius: 16px;
+    border: 2px solid #222235;
+    overflow: hidden;
+    cursor: pointer;
+    transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s;
+    background: #16162a;
+  }
+  .card:hover {
+    border-color: #3a8f5f;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 32px rgba(58,143,95,0.18);
+  }
+  .card.selected {
+    border-color: #3a8f5f;
+    box-shadow: 0 0 0 1px #3a8f5f, 0 8px 32px rgba(58,143,95,0.25);
+  }
+
+  .card-label {
+    padding: 14px 16px 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .letter-badge {
+    width: 24px; height: 24px;
+    border-radius: 6px;
+    background: #3a8f5f;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 800;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .card-name { font-size: 14px; font-weight: 700; color: #e8e8ff; }
+  .card-desc { font-size: 11px; color: #888; margin-left: auto; }
+
+  .mockup-wrap {
+    padding: 0 12px 12px;
+  }
+  .mockup-frame {
+    border-radius: 10px;
+    overflow: hidden;
+    width: 100%;
+    height: 420px;
+    position: relative;
+  }
+
+  /* ─── OPTION A: Glassmorphism Hero ─── */
+  .mock-a {
+    background: linear-gradient(145deg, #1a2a1e 0%, #282A42 40%, #1e1a2e 100%);
+    padding: 0;
+    position: relative;
+    overflow: hidden;
+  }
+  .mock-a::before {
+    content: '';
+    position: absolute;
+    top: -60px; right: -60px;
+    width: 240px; height: 240px;
+    background: radial-gradient(circle, rgba(58,143,95,0.35) 0%, transparent 70%);
+    border-radius: 50%;
+  }
+  .mock-a::after {
+    content: '';
+    position: absolute;
+    bottom: 40px; left: -40px;
+    width: 180px; height: 180px;
+    background: radial-gradient(circle, rgba(100,80,200,0.25) 0%, transparent 70%);
+    border-radius: 50%;
+  }
+  .mock-a .inner { position: relative; z-index: 2; padding: 16px; display: flex; flex-direction: column; gap: 10px; height: 100%; }
+  .glass-hero {
+    background: rgba(255,255,255,0.06);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 14px;
+    padding: 14px;
+  }
+  .glass-hero .greeting { font-size: 9px; color: rgba(255,255,255,0.5); margin-bottom: 4px; }
+  .glass-hero .name { font-size: 16px; font-weight: 800; color: #fff; line-height: 1.2; }
+  .glass-hero .name span { color: #5dba88; }
+  .glass-hero .sub { font-size: 9px; color: rgba(255,255,255,0.45); margin-top: 4px; }
+  .level-pill {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: rgba(93,186,136,0.15);
+    border: 1px solid rgba(93,186,136,0.3);
+    border-radius: 20px;
+    padding: 3px 8px;
+    font-size: 9px; color: #5dba88; font-weight: 600;
+    margin-top: 8px;
+  }
+  .progress-bar { height: 3px; background: rgba(255,255,255,0.1); border-radius: 2px; margin-top: 6px; overflow: hidden; }
+  .progress-bar .fill { height: 100%; width: 45%; background: linear-gradient(90deg, #3a8f5f, #5dba88); border-radius: 2px; }
+
+  .shortcuts-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .shortcut-tile {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px;
+    padding: 10px 6px;
+    display: flex; flex-direction: column; align-items: center; gap: 5px;
+  }
+  .shortcut-icon {
+    width: 28px; height: 28px; border-radius: 8px;
+    background: rgba(93,186,136,0.15);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .shortcut-icon svg { width: 14px; height: 14px; stroke: #5dba88; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .shortcut-label { font-size: 7.5px; color: rgba(255,255,255,0.7); text-align: center; font-weight: 500; }
+
+  .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .stat-glass {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 10px;
+    padding: 10px;
+  }
+  .stat-glass .num { font-size: 18px; font-weight: 800; color: #fff; line-height: 1; }
+  .stat-glass .unit { font-size: 7px; color: rgba(255,255,255,0.45); margin-top: 2px; }
+  .stat-glass .lbl { font-size: 7px; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 0.05em; }
+
+  .news-row { display: flex; gap: 6px; overflow: hidden; }
+  .news-card-glass {
+    flex-shrink: 0; width: 110px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 10px; overflow: hidden;
+  }
+  .news-img { height: 52px; background: linear-gradient(135deg, #1f4030, #2d5c42); display: flex; align-items: center; justify-content: center; }
+  .news-img span { font-size: 18px; }
+  .news-body { padding: 6px 7px; }
+  .news-title { font-size: 7.5px; font-weight: 600; color: rgba(255,255,255,0.8); line-height: 1.3; }
+  .news-meta { font-size: 6.5px; color: rgba(255,255,255,0.3); margin-top: 3px; }
+
+  /* ─── OPTION B: Bold Editorial ─── */
+  .mock-b {
+    background: #f6f7f9;
+    padding: 0;
+  }
+  .mock-b .inner { padding: 14px; display: flex; flex-direction: column; gap: 10px; height: 100%; overflow: hidden; }
+
+  .hero-editorial {
+    background: linear-gradient(135deg, #f0faf5 0%, #e8f5ee 100%);
+    border: 1px solid #c5e8d5;
+    border-radius: 14px;
+    padding: 14px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero-editorial::after {
+    content: '';
+    position: absolute;
+    right: -20px; top: -20px;
+    width: 80px; height: 80px;
+    border-radius: 50%;
+    background: rgba(58,143,95,0.1);
+  }
+  .ed-greeting { font-size: 9px; color: #888; margin-bottom: 2px; }
+  .ed-name { font-size: 18px; font-weight: 900; color: #1a2a1e; line-height: 1.1; }
+  .ed-name em { font-style: normal; color: #2e7d50; }
+  .ed-sub { font-size: 8.5px; color: #666; margin-top: 3px; }
+  .ed-level { display: inline-flex; align-items: center; gap: 3px; margin-top: 6px; font-size: 8px; font-weight: 700; color: #2e7d50; }
+  .ed-progress { height: 3px; background: #d0eadc; border-radius: 2px; margin-top: 5px; overflow: hidden; }
+  .ed-progress .fill { height: 100%; width: 45%; background: #3a8f5f; border-radius: 2px; }
+
+  .ed-shortcuts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .ed-shortcut {
+    background: #fff;
+    border: 1px solid #e8eaed;
+    border-radius: 10px;
+    padding: 10px 6px;
+    display: flex; flex-direction: column; align-items: center; gap: 5px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .ed-shortcut .icon-wrap { width: 28px; height: 28px; border-radius: 8px; background: #eaf5ef; display: flex; align-items: center; justify-content: center; }
+  .ed-shortcut svg { width: 13px; height: 13px; stroke: #3a8f5f; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .ed-shortcut span { font-size: 7px; color: #333; font-weight: 600; text-align: center; }
+
+  .ed-impact { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .impact-card {
+    background: #fff;
+    border-radius: 10px;
+    border: 1px solid #e8eaed;
+    padding: 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  .impact-card .big-num { font-size: 22px; font-weight: 900; color: #1a2a1e; line-height: 1; }
+  .impact-card .unit { font-size: 7px; font-weight: 600; color: #3a8f5f; }
+  .impact-card .label { font-size: 7px; color: #888; text-transform: uppercase; letter-spacing: 0.06em; margin-top: 3px; }
+
+  .ed-news { display: flex; flex-direction: column; gap: 6px; flex: 1; overflow: hidden; }
+  .news-row-item {
+    display: flex; gap: 8px; align-items: center;
+    background: #fff; border: 1px solid #e8eaed;
+    border-radius: 10px; padding: 8px 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .news-thumb-ed { width: 36px; height: 36px; border-radius: 7px; background: linear-gradient(135deg, #c8ecd9, #a0d9bc); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+  .news-text-ed .title { font-size: 8px; font-weight: 700; color: #222; line-height: 1.3; }
+  .news-text-ed .meta { font-size: 7px; color: #aaa; margin-top: 2px; }
+
+  /* ─── OPTION C: Bento Grid ─── */
+  .mock-c {
+    background: #0d0d18;
+    padding: 0;
+    position: relative;
+    overflow: hidden;
+  }
+  .mock-c .inner { padding: 12px; height: 100%; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto auto auto auto; gap: 7px; }
+
+  .bento-hero {
+    grid-column: 1 / -1;
+    background: linear-gradient(120deg, #1a3a28 0%, #1e2340 100%);
+    border: 1px solid rgba(58,143,95,0.3);
+    border-radius: 12px;
+    padding: 12px 14px;
+    position: relative; overflow: hidden;
+  }
+  .bento-hero::before {
+    content: '';
+    position: absolute;
+    right: -30px; top: -30px;
+    width: 120px; height: 120px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(93,186,136,0.2) 0%, transparent 70%);
+  }
+  .bento-hero .tag { font-size: 7px; text-transform: uppercase; letter-spacing: 0.12em; color: #5dba88; font-weight: 700; margin-bottom: 3px; }
+  .bento-hero .title { font-size: 16px; font-weight: 900; color: #fff; line-height: 1.2; }
+  .bento-hero .title em { font-style: normal; color: #5dba88; }
+  .bento-hero .sub { font-size: 8px; color: rgba(255,255,255,0.5); margin-top: 4px; }
+  .bento-hero .pills { display: flex; gap: 4px; margin-top: 8px; }
+  .bento-hero .pill {
+    font-size: 7.5px; font-weight: 600;
+    padding: 3px 8px; border-radius: 20px;
+  }
+  .pill-primary { background: #3a8f5f; color: #fff; }
+  .pill-outline { background: transparent; border: 1px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.7); }
+
+  .bento-tile {
+    background: #1a1a2e;
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 12px;
+    padding: 10px;
+    display: flex; flex-direction: column;
+  }
+  .bento-tile.accent { border-color: rgba(58,143,95,0.25); background: linear-gradient(135deg, #0f2a1c, #1a1a2e); }
+  .bento-tile .t-label { font-size: 7px; color: rgba(255,255,255,0.35); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
+  .bento-tile .t-num { font-size: 24px; font-weight: 900; color: #fff; line-height: 1; }
+  .bento-tile .t-num em { font-style: normal; font-size: 10px; color: #5dba88; font-weight: 600; }
+  .bento-tile .t-sub { font-size: 7px; color: rgba(255,255,255,0.3); margin-top: 3px; }
+  .bento-tile .t-bar { height: 2px; background: rgba(255,255,255,0.07); border-radius: 1px; margin-top: auto; padding-top: 8px; overflow: hidden; }
+  .bento-tile .t-bar .fill { height: 100%; width: 45%; background: #3a8f5f; border-radius: 1px; }
+
+  .bento-wide {
+    grid-column: 1 / -1;
+    background: #1a1a2e;
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 12px;
+    padding: 10px;
+  }
+  .bento-wide .row-label { font-size: 7px; color: rgba(255,255,255,0.35); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 7px; }
+  .shortcut-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+  .sc { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 8px; display: flex; align-items: center; gap: 6px; }
+  .sc-icon { width: 22px; height: 22px; border-radius: 6px; background: rgba(93,186,136,0.12); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .sc-icon svg { width: 11px; height: 11px; stroke: #5dba88; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .sc-lbl { font-size: 7.5px; color: rgba(255,255,255,0.65); font-weight: 500; }
+
+  .bento-news {
+    grid-column: 1 / -1;
+    background: #1a1a2e;
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .news-strip { display: flex; gap: 0; }
+  .news-tile { flex: 1; padding: 9px 10px; border-right: 1px solid rgba(255,255,255,0.05); }
+  .news-tile:last-child { border-right: none; }
+  .news-tile .nt-cat { font-size: 6.5px; color: #5dba88; text-transform: uppercase; font-weight: 700; margin-bottom: 3px; }
+  .news-tile .nt-title { font-size: 7.5px; color: rgba(255,255,255,0.8); font-weight: 600; line-height: 1.3; }
+  .news-tile .nt-date { font-size: 6.5px; color: rgba(255,255,255,0.25); margin-top: 4px; }
+
+  /* Selection feedback */
+  .selected-indicator {
+    display: none;
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    background: #3a8f5f; color: #fff;
+    padding: 8px 20px; border-radius: 20px;
+    font-size: 13px; font-weight: 600;
+    box-shadow: 0 4px 16px rgba(58,143,95,0.4);
+    z-index: 100;
+  }
+  .selected-indicator.show { display: block; }
+
+  .footer { text-align: center; margin-top: 20px; font-size: 11px; color: #555; }
+</style>
+</head>
+<body>
+
+<p class="page-title">ecoBairro — Visual Brainstorm</p>
+<h2 class="page-headline">Qual direção visual preferes?</h2>
+<p class="page-sub">Clica numa opção para selecionar. Podes mudar de ideias.</p>
+
+<div class="grid">
+
+  <!-- ─── OPTION A ─── -->
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-label">
+      <div class="letter-badge">A</div>
+      <div>
+        <div class="card-name">Glassmorphism Dark</div>
+        <div class="card-desc">Moderno · Premium · Dark-first</div>
+      </div>
+    </div>
+    <div class="mockup-wrap">
+      <div class="mockup-frame mock-a">
+        <div class="inner">
+          <!-- Hero glass card -->
+          <div class="glass-hero">
+            <div class="greeting">Boa tarde 👋</div>
+            <div class="name">Olá, <span>João</span>!</div>
+            <div class="sub">Aqui está o resumo da sua atividade.</div>
+            <div class="level-pill">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+              Reciclador · 230 pts
+            </div>
+            <div class="progress-bar"><div class="fill"></div></div>
+          </div>
+          <!-- Shortcuts -->
+          <div class="shortcuts-row">
+            <div class="shortcut-tile">
+              <div class="shortcut-icon">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+              </div>
+              <span class="shortcut-label">Criar Reporte</span>
+            </div>
+            <div class="shortcut-tile">
+              <div class="shortcut-icon">
+                <svg viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 5v4h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+              </div>
+              <span class="shortcut-label">Pedir Recolha</span>
+            </div>
+            <div class="shortcut-tile">
+              <div class="shortcut-icon">
+                <svg viewBox="0 0 24 24"><path d="M6 9H4.5a2.5 2.5 0 010-5H6"/><path d="M18 9h1.5a2.5 2.5 0 000-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0012 0V2z"/></svg>
+              </div>
+              <span class="shortcut-label">Quiz Semanal</span>
+            </div>
+          </div>
+          <!-- Stats -->
+          <div class="stats-row">
+            <div class="stat-glass">
+              <div class="lbl">Reciclagem</div>
+              <div class="num">48</div>
+              <div class="unit">kg este ano</div>
+            </div>
+            <div class="stat-glass">
+              <div class="lbl">Comunidade</div>
+              <div class="num">312</div>
+              <div class="unit">vizinhos</div>
+            </div>
+            <div class="stat-glass">
+              <div class="lbl">Impacto</div>
+              <div class="num">6</div>
+              <div class="unit">árvores equiv.</div>
+            </div>
+          </div>
+          <!-- News -->
+          <div class="news-row">
+            <div class="news-card-glass">
+              <div class="news-img"><span>🌱</span></div>
+              <div class="news-body">
+                <div class="news-title">Campanha de Reciclagem na Baixa</div>
+                <div class="news-meta">Hoje · 3 min</div>
+              </div>
+            </div>
+            <div class="news-card-glass">
+              <div class="news-img"><span>♻️</span></div>
+              <div class="news-body">
+                <div class="news-title">Novos ecopontos no Parque</div>
+                <div class="news-meta">Ontem · 2 min</div>
+              </div>
+            </div>
+            <div class="news-card-glass">
+              <div class="news-img"><span>🏆</span></div>
+              <div class="news-body">
+                <div class="news-title">Top 10 Recicladores do Mês</div>
+                <div class="news-meta">2 dias · 4 min</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── OPTION B ─── -->
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-label">
+      <div class="letter-badge">B</div>
+      <div>
+        <div class="card-name">Editorial Bold</div>
+        <div class="card-desc">Limpo · Legível · Light-first</div>
+      </div>
+    </div>
+    <div class="mockup-wrap">
+      <div class="mockup-frame mock-b">
+        <div class="inner">
+          <!-- Hero editorial -->
+          <div class="hero-editorial">
+            <div class="ed-greeting">Boa tarde, João 👋</div>
+            <div class="ed-name">Olá, <em>João</em>!<br>Bem-vindo de volta.</div>
+            <div class="ed-sub">Aqui está o resumo da sua atividade no ecoBairro.</div>
+            <div class="ed-level">⭐ Reciclador · 230 / 500 pts</div>
+            <div class="ed-progress"><div class="fill"></div></div>
+          </div>
+          <!-- Shortcuts -->
+          <div class="ed-shortcuts">
+            <div class="ed-shortcut">
+              <div class="icon-wrap">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+              </div>
+              <span>Criar Reporte</span>
+            </div>
+            <div class="ed-shortcut">
+              <div class="icon-wrap">
+                <svg viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 5v4h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+              </div>
+              <span>Pedir Recolha</span>
+            </div>
+            <div class="ed-shortcut">
+              <div class="icon-wrap">
+                <svg viewBox="0 0 24 24"><path d="M6 9H4.5a2.5 2.5 0 010-5H6"/><path d="M18 9h1.5a2.5 2.5 0 000-5H18"/><path d="M4 22h16"/><path d="M18 2H6v7a6 6 0 0012 0V2z"/></svg>
+              </div>
+              <span>Quiz Semanal</span>
+            </div>
+          </div>
+          <!-- Impact big numbers -->
+          <div class="ed-impact">
+            <div class="impact-card">
+              <div class="big-num">48</div>
+              <div class="unit">kg</div>
+              <div class="label">Reciclagem</div>
+            </div>
+            <div class="impact-card">
+              <div class="big-num">312</div>
+              <div class="unit">pax</div>
+              <div class="label">Comunidade</div>
+            </div>
+            <div class="impact-card">
+              <div class="big-num">6</div>
+              <div class="unit">árvores</div>
+              <div class="label">Ecossistema</div>
+            </div>
+          </div>
+          <!-- News list -->
+          <div class="ed-news">
+            <div class="news-row-item">
+              <div class="news-thumb-ed">🌱</div>
+              <div class="news-text-ed">
+                <div class="title">Campanha de Reciclagem na Baixa</div>
+                <div class="meta">Hoje · 3 min leitura</div>
+              </div>
+            </div>
+            <div class="news-row-item">
+              <div class="news-thumb-ed">♻️</div>
+              <div class="news-text-ed">
+                <div class="title">Novos ecopontos instalados no Parque</div>
+                <div class="meta">Ontem · 2 min leitura</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── OPTION C ─── -->
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-label">
+      <div class="letter-badge">C</div>
+      <div>
+        <div class="card-name">Bento Grid Dark</div>
+        <div class="card-desc">Assimétrico · Bold · 2024-style</div>
+      </div>
+    </div>
+    <div class="mockup-wrap">
+      <div class="mockup-frame mock-c">
+        <div class="inner">
+          <!-- Hero bento -->
+          <div class="bento-hero">
+            <div class="tag">ecoBairro · Painel</div>
+            <div class="title">Olá, <em>João</em>!</div>
+            <div class="sub">Bom tarde. Tens 3 reports ativos hoje.</div>
+            <div class="pills">
+              <div class="pill pill-primary">Entrar</div>
+              <div class="pill pill-outline">Registar</div>
+            </div>
+          </div>
+          <!-- Stat tiles -->
+          <div class="bento-tile accent">
+            <div class="t-label">Reciclagem</div>
+            <div class="t-num">48 <em>kg</em></div>
+            <div class="t-sub">este ano</div>
+            <div class="t-bar"><div class="fill"></div></div>
+          </div>
+          <div class="bento-tile">
+            <div class="t-label">Comunidade</div>
+            <div class="t-num">312 <em>pax</em></div>
+            <div class="t-sub">vizinhos ativos</div>
+            <div class="t-bar"><div class="fill" style="width:70%;background:#60a5fa"></div></div>
+          </div>
+          <!-- Shortcuts bento -->
+          <div class="bento-wide">
+            <div class="row-label">Atalhos Rápidos</div>
+            <div class="shortcut-row">
+              <div class="sc">
+                <div class="sc-icon">
+                  <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                </div>
+                <span class="sc-lbl">Criar Reporte</span>
+              </div>
+              <div class="sc">
+                <div class="sc-icon">
+                  <svg viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 5v4h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+                </div>
+                <span class="sc-lbl">Pedir Recolha</span>
+              </div>
+              <div class="sc">
+                <div class="sc-icon">
+                  <svg viewBox="0 0 24 24"><path d="M6 9H4.5a2.5 2.5 0 010-5H6"/><path d="M18 9h1.5a2.5 2.5 0 000-5H18"/><path d="M4 22h16"/><path d="M18 2H6v7a6 6 0 0012 0V2z"/></svg>
+                </div>
+                <span class="sc-lbl">Quiz Semanal</span>
+              </div>
+            </div>
+          </div>
+          <!-- News strip -->
+          <div class="bento-news">
+            <div class="news-strip">
+              <div class="news-tile">
+                <div class="nt-cat">Campanha</div>
+                <div class="nt-title">Reciclagem na Baixa este fim de semana</div>
+                <div class="nt-date">Hoje</div>
+              </div>
+              <div class="news-tile">
+                <div class="nt-cat">Ecopontos</div>
+                <div class="nt-title">Novos pontos no Parque Central</div>
+                <div class="nt-date">Ontem</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<p class="footer">Seleciona uma direção → responde no terminal com a tua escolha ou feedback</p>
+
+</body>
+</html>

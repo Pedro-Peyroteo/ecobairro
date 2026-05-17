@@ -20,9 +20,19 @@ export const Route = createFileRoute('/_layoutpublic')({
 
 function PublicLayoutRoute() {
   const { user } = Route.useRouteContext() as { user: User }
+  const isGuest = user.role === 'guest'
 
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+
+  // Guest: full-bleed — each page controls its own layout/padding
+  if (isGuest) {
+    return (
+      <div className="min-h-svh overflow-y-auto bg-background">
+        <Outlet />
+      </div>
+    )
+  }
 
   return (
     <>
