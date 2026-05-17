@@ -74,7 +74,8 @@ const MOCK_NOTICIAS = [
     id: 'n1',
     titulo: 'Campanha de Recolha de Resíduos Elétricos em Lisboa',
     resumo: 'A câmara municipal lança nova iniciativa para recolha gratuita de equipamentos elétricos e eletrónicos em todos os bairros da cidade durante o mês de junho.',
-    imagem_url: 'https://picsum.photos/seed/ecobairro1/600/400',
+    gradient: 'linear-gradient(135deg, #134e3a 0%, #0a2e22 100%)',
+    icon: Recycle,
     data: '14 Mai 2026',
     tempo_leitura: '3 min',
   },
@@ -82,7 +83,8 @@ const MOCK_NOTICIAS = [
     id: 'n2',
     titulo: 'Novo Ecoponto Instalado na Rua da Palma — Porto',
     resumo: 'Moradores do Bonfim celebram a instalação de três novos ecopontos com separação de vidro, papel e embalagens, fruto de 240 reports enviados pela plataforma ecoBairro.',
-    imagem_url: 'https://picsum.photos/seed/ecobairro2/600/400',
+    gradient: 'linear-gradient(135deg, #1a3a5c 0%, #0d1f38 100%)',
+    icon: MapPin,
     data: '10 Mai 2026',
     tempo_leitura: '2 min',
   },
@@ -90,7 +92,8 @@ const MOCK_NOTICIAS = [
     id: 'n3',
     titulo: 'Dia do Ambiente: Plantação de 500 Árvores nas Cidades',
     resumo: 'No próximo dia 5 de junho, voluntários e cidadãos são convidados a participar na maior ação de plantação urbana dos últimos anos. Inscrição gratuita via ecoBairro.',
-    imagem_url: 'https://picsum.photos/seed/ecobairro3/600/400',
+    gradient: 'linear-gradient(135deg, #1e3a1e 0%, #0e200e 100%)',
+    icon: Leaf,
     data: '5 Mai 2026',
     tempo_leitura: '4 min',
   },
@@ -98,7 +101,8 @@ const MOCK_NOTICIAS = [
     id: 'n4',
     titulo: 'Taxa de Reciclagem em Braga Sobe 34% em 2025',
     resumo: 'Os dados do relatório anual confirmam que a participação cidadã em plataformas como o ecoBairro contribuiu diretamente para o aumento da taxa de reciclagem no município.',
-    imagem_url: 'https://picsum.photos/seed/ecobairro4/600/400',
+    gradient: 'linear-gradient(135deg, #2e1f4a 0%, #180e2a 100%)',
+    icon: TrendingUp,
     data: '28 Abr 2026',
     tempo_leitura: '5 min',
   },
@@ -430,7 +434,7 @@ function HomePage() {
 
   const ecopontos = feed?.ecopontos ?? []
   const partilhas = feed?.partilhas ?? []
-  const noticias = (feed?.noticias && feed.noticias.length > 0) ? feed.noticias : MOCK_NOTICIAS
+  const noticias = feed?.noticias ?? []
   const alertaCritico = feed?.alerta
   const impacto = feed?.impacto
   const cidadaosCount = feed?.impacto?.comunidade_pax || COMMUNITY_STATS.cidadaos
@@ -449,38 +453,47 @@ function HomePage() {
               title="Notícias e Campanhas"
               action={
                 <Link
-                  to="/noticias"
+                  to="/login"
                   className="flex items-center gap-1 text-xs text-[var(--primary)] font-medium hover:underline"
                 >
                   Ver todas <ChevronRight className="w-3.5 h-3.5" />
                 </Link>
               }
             />
-            <div className="flex overflow-x-auto snap-x snap-mandatory hide-scrollbar gap-3 pb-1 -mx-4 px-4 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-2 lg:grid-cols-3">
-              {noticias.map((n) => (
-                <Card
-                  key={n.id}
-                  className="min-w-[272px] sm:min-w-0 snap-start shrink-0 overflow-hidden shadow-sm border border-border/70 hover:shadow-md transition-all cursor-pointer group rounded-xl"
-                >
-                  <div className="h-36 w-full overflow-hidden bg-muted">
-                    <img
-                      src={n.imagem_url}
-                      alt={n.titulo}
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    />
-                  </div>
-                  <CardContent className="p-4 space-y-1.5">
-                    <p className="font-semibold text-sm text-foreground leading-snug group-hover:text-[var(--primary)] transition-colors">
-                      {n.titulo}
-                    </p>
-                    <p className="text-xs text-muted-foreground line-clamp-2">{n.resumo}</p>
-                    <div className="flex items-center gap-3 pt-1 text-[11px] text-muted-foreground">
-                      <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{n.data}</span>
-                      <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{n.tempo_leitura}</span>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+            <div className="flex overflow-x-auto snap-x snap-mandatory hide-scrollbar gap-3 pb-1 -mx-4 px-4 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-2 lg:grid-cols-4">
+              {MOCK_NOTICIAS.map((n) => {
+                const Icon = n.icon
+                return (
+                  <Link
+                    key={n.id}
+                    to="/login"
+                    className="min-w-[272px] sm:min-w-0 snap-start shrink-0 group"
+                  >
+                    <Card className="overflow-hidden shadow-sm border border-border/70 hover:border-[var(--primary)]/40 hover:shadow-md transition-all rounded-xl h-full">
+                      {/* Gradient banner instead of image */}
+                      <div
+                        className="h-28 w-full flex items-center justify-center relative overflow-hidden"
+                        style={{ background: n.gradient }}
+                      >
+                        <Icon className="w-10 h-10 text-white/20 absolute" />
+                        <div className="relative z-10 text-center px-4">
+                          <Icon className="w-6 h-6 text-white/70 mx-auto mb-1" />
+                        </div>
+                      </div>
+                      <CardContent className="p-4 space-y-1.5">
+                        <p className="font-semibold text-sm text-foreground leading-snug group-hover:text-[var(--primary)] transition-colors">
+                          {n.titulo}
+                        </p>
+                        <p className="text-xs text-muted-foreground line-clamp-2">{n.resumo}</p>
+                        <div className="flex items-center gap-3 pt-1 text-[11px] text-muted-foreground">
+                          <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{n.data}</span>
+                          <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{n.tempo_leitura}</span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                )
+              })}
             </div>
           </section>
         </div>
