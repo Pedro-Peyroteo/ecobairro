@@ -133,7 +133,7 @@ function GuestHero({ cidadaos }: { cidadaos: number }) {
         className="absolute inset-0 w-full h-full object-cover pointer-events-none"
         style={{ opacity: 0.38, zIndex: 0 }}
       >
-        <source src="/videopromocional.mp4" type="video/mp4" />
+        <source src="/videopromocional_.mp4" type="video/mp4" />
       </video>
 
       {/* Dark gradient overlay over video */}
