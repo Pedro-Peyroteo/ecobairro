@@ -247,7 +247,6 @@ export function SplineScene({ scene: _scene, className }: SplineSceneProps) {
   const thetaRef    = useRef(0.22)
   const dragStart   = useRef<{ x: number; y: number } | null>(null)
   const paused      = useRef(false)
-  const rafRef      = useRef<number>(0)
 
   // Global pointer move/up for smooth drag beyond canvas bounds
   useEffect(() => {
