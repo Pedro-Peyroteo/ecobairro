@@ -3,7 +3,8 @@ import { requireRole, getAccessToken } from '@/lib/auth'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Search, PlusCircle, MapPin, X, Save, Pencil, Trash2, Wifi, WifiOff } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { useModalA11y } from '@/lib/use-modal-a11y'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -60,6 +61,8 @@ function EcopontosPage() {
   const [modal, setModal] = useState<'novo' | 'editar' | null>(null)
   const [editando, setEditando] = useState<EcopontoRecord | null>(null)
   const [saving, setSaving] = useState(false)
+  const modalRef = useRef<HTMLDivElement>(null)
+  useModalA11y(modal !== null, modalRef, () => setModal(null))
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<EcopontoForm>({
     resolver: zodResolver(ecopontoSchema),
@@ -312,7 +315,7 @@ function EcopontosPage() {
       {modal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40" onClick={() => setModal(null)} />
-          <div role="dialog" aria-modal="true" aria-labelledby="ecopontos-modal-title" className="relative z-10 w-full max-w-md bg-card rounded-2xl shadow-2xl border border-border p-6 flex flex-col gap-4">
+          <div ref={modalRef} role="dialog" aria-modal="true" aria-labelledby="ecopontos-modal-title" tabIndex={-1} className="relative z-10 w-full max-w-md bg-card rounded-2xl shadow-2xl border border-border p-6 flex flex-col gap-4">
             <div className="flex items-center justify-between">
               <h2 id="ecopontos-modal-title" className="text-base font-bold text-foreground">{modal === 'novo' ? 'Novo Ecoponto' : 'Editar Ecoponto'}</h2>
               <button type="button" aria-label="Fechar modal" onClick={() => setModal(null)} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>

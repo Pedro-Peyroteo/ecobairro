@@ -7,6 +7,7 @@ import {
   Upload, X, ImageIcon
 } from 'lucide-react'
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useModalA11y } from '@/lib/use-modal-a11y'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -109,6 +110,8 @@ function ReportesPage() {
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [modalAberto, setModalAberto] = useState(false)
   const [previewUrl, setPreviewUrl]   = useState<string | null>(null)
+  const modalRef = useRef<HTMLDivElement>(null)
+  useModalA11y(modalAberto, modalRef, () => fecharModal())
 
   const { register, handleSubmit, watch, reset, formState: { errors } } = useForm<NovoReporteForm>({
     resolver: zodResolver(novoReporteSchema),
@@ -409,7 +412,7 @@ function ReportesPage() {
       {modalAberto && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40" onClick={fecharModal} />
-          <div role="dialog" aria-modal="true" aria-labelledby="reportes-modal-title" className="relative z-10 w-full max-w-lg bg-card rounded-2xl shadow-2xl border border-border p-6 flex flex-col gap-4 max-h-[90vh] overflow-y-auto">
+          <div ref={modalRef} role="dialog" aria-modal="true" aria-labelledby="reportes-modal-title" tabIndex={-1} className="relative z-10 w-full max-w-lg bg-card rounded-2xl shadow-2xl border border-border p-6 flex flex-col gap-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between">
               <h2 id="reportes-modal-title" className="text-base font-bold text-foreground">Novo Reporte</h2>
               <button type="button" aria-label="Fechar modal" onClick={fecharModal} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
