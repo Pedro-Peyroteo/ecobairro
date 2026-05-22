@@ -318,6 +318,12 @@ export interface AnalyticsKpis {
   users_total: number;
 }
 
+export interface PublicStatsResponse {
+  ecopontos_ativos: number;
+  cidadaos_total: number;
+  taxa_resolucao: number;
+}
+
 export interface AnalyticsResponse {
   kpis: AnalyticsKpis;
   reports_mensais: AnalyticsMonthly[];
