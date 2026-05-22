@@ -13,6 +13,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { PaginationBar } from '@/components/ui/pagination-bar'
 import { fetchJson } from '@/lib/http/fetch-json'
+import { getApiErrorMessage } from '@/lib/http/api-error'
 import { clientEnv } from '@/lib/env'
 import { getAccessToken } from '@/lib/auth'
 import { fileToDataUrl } from '@/lib/image-upload'
@@ -64,7 +65,9 @@ function PartilhasPage() {
   const [partilhas, setPartilhas] = useState<PartilhaRecord[]>([])
   const [total, setTotal]       = useState(0)
   const [loading, setLoading]   = useState(true)
+  const [listError, setListError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
   const [modalAberto, setModalAberto] = useState(false)
   const [previewUrl, setPreviewUrl]   = useState<string | null>(null)
 
@@ -84,6 +87,7 @@ function PartilhasPage() {
 
   const load = useCallback(async () => {
     setLoading(true)
+    setListError(null)
     try {
       const params: Record<string, string | number> = { page: pagina, pageSize: POR_PAGINA }
       if (filtro !== 'todos') params.categoria = filtro
@@ -95,9 +99,10 @@ function PartilhasPage() {
       })
       setPartilhas(resp.partilhas)
       setTotal(resp.total)
-    } catch {
+    } catch (err) {
       setPartilhas([])
       setTotal(0)
+      setListError(getApiErrorMessage(err, 'Não foi possível carregar as partilhas.'))
     } finally {
       setLoading(false)
     }
@@ -108,8 +113,8 @@ function PartilhasPage() {
 
   const pageCount = Math.ceil(total / POR_PAGINA)
 
-  function abrirModal() { reset(); setPreviewUrl(null); setModalAberto(true) }
-  function fecharModal() { setModalAberto(false); setPreviewUrl(null); reset() }
+  function abrirModal() { reset(); setPreviewUrl(null); setSubmitError(null); setModalAberto(true) }
+  function fecharModal() { setModalAberto(false); setPreviewUrl(null); setSubmitError(null); reset() }
 
   async function onSubmitPartilha(data: NovaPartilhaForm) {
     setSubmitting(true)
@@ -129,7 +134,9 @@ function PartilhasPage() {
       })
       fecharModal()
       await load()
-    } catch { /* mantém modal aberto para retentar */ }
+    } catch (err) {
+      setSubmitError(getApiErrorMessage(err, 'Não foi possível submeter a partilha.'))
+    }
     finally { setSubmitting(false) }
   }
 
@@ -140,6 +147,13 @@ function PartilhasPage() {
 
   return (
     <div className="flex flex-col gap-10 pb-12">
+
+      {listError && (
+        <div role="alert" aria-live="polite" className="rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive flex items-center justify-between gap-3">
+          <span>{listError}</span>
+          <button onClick={() => void load()} className="text-xs font-medium underline-offset-2 hover:underline">Tentar novamente</button>
+        </div>
+      )}
 
       {/* ── Cabeçalho ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
@@ -271,10 +285,10 @@ function PartilhasPage() {
       {modalAberto && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40" onClick={fecharModal} />
-          <div className="relative z-10 w-full max-w-md bg-card rounded-2xl shadow-2xl border border-border p-6 flex flex-col gap-4 max-h-[90vh] overflow-y-auto">
+          <div role="dialog" aria-modal="true" aria-labelledby="partilhas-modal-title" className="relative z-10 w-full max-w-md bg-card rounded-2xl shadow-2xl border border-border p-6 flex flex-col gap-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between">
-              <h2 className="text-base font-bold text-foreground">Partilhar Objeto</h2>
-              <button onClick={fecharModal} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
+              <h2 id="partilhas-modal-title" className="text-base font-bold text-foreground">Partilhar Objeto</h2>
+              <button type="button" aria-label="Fechar modal" onClick={fecharModal} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
             </div>
             <form onSubmit={handleSubmit(onSubmitPartilha)} className="flex flex-col gap-3">
 

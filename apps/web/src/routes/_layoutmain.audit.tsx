@@ -4,6 +4,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { ShieldCheck, Search, Download, User, Settings, FileText, Trash2, LogIn, LogOut, Loader2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { fetchJson } from '@/lib/http/fetch-json'
+import { getApiErrorMessage } from '@/lib/http/api-error'
 import { clientEnv } from '@/lib/env'
 import { getAccessToken } from '@/lib/auth'
 import type { AuditLogRecord, ListAuditLogsResponse } from '@ecobairro/contracts'
@@ -37,6 +38,7 @@ function AuditPage() {
   const [logs, setLogs] = useState<AuditLogRecord[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [listError, setListError] = useState<string | null>(null)
   const [filtroAcao, setFiltroAcao] = useState<TipoAcao | 'todos' | 'login_logout'>('todos')
   const [pesquisa, setPesquisa] = useState('')
 
@@ -44,6 +46,7 @@ function AuditPage() {
 
   async function load() {
     setLoading(true)
+    setListError(null)
     try {
       const params = new URLSearchParams({ page: '1', pageSize: '50' })
       if (filtroAcao !== 'todos') params.set('acao', filtroAcao)
@@ -54,6 +57,10 @@ function AuditPage() {
       })
       setLogs(res.logs)
       setTotal(res.total)
+    } catch (err) {
+      setLogs([])
+      setTotal(0)
+      setListError(getApiErrorMessage(err, 'Não foi possível carregar os logs de auditoria.'))
     } finally {
       setLoading(false)
     }
@@ -85,6 +92,13 @@ function AuditPage() {
 
   return (
     <div className="flex flex-col gap-8 pb-12">
+
+      {listError && (
+        <div role="alert" aria-live="polite" className="rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive flex items-center justify-between gap-3">
+          <span>{listError}</span>
+          <button onClick={() => void load()} className="text-xs font-medium underline-offset-2 hover:underline">Tentar novamente</button>
+        </div>
+      )}
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>

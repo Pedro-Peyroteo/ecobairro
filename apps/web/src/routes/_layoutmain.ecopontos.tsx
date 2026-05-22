@@ -8,6 +8,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { fetchJson } from '@/lib/http/fetch-json'
+import { getApiErrorMessage } from '@/lib/http/api-error'
 import { clientEnv } from '@/lib/env'
 import type {
   EcopontoRecord,
@@ -52,6 +53,8 @@ function authHeaders(): Record<string, string> {
 function EcopontosPage() {
   const [ecopontos, setEcopontos] = useState<EcopontoRecord[]>([])
   const [loading, setLoading] = useState(true)
+  const [listError, setListError] = useState<string | null>(null)
+  const [submitError, setSubmitError] = useState<string | null>(null)
   const [pesquisa, setPesquisa] = useState('')
   const [filtroNivel, setFiltroNivel] = useState<NivelEnchimento | 'todos'>('todos')
   const [modal, setModal] = useState<'novo' | 'editar' | null>(null)
@@ -64,13 +67,16 @@ function EcopontosPage() {
 
   async function reload() {
     setLoading(true)
+    setListError(null)
     try {
       const res = await fetchJson<ListEcopontosResponse>('/v1/ecopontos?todos=true', {
         baseUrl: clientEnv.apiBaseUrl,
         headers: authHeaders(),
       })
       setEcopontos(res.ecopontos)
-    } catch { /* mantém lista anterior */ }
+    } catch (err) {
+      setListError(getApiErrorMessage(err, 'Não foi possível carregar os ecopontos.'))
+    }
     finally { setLoading(false) }
   }
 
@@ -143,8 +149,11 @@ function EcopontosPage() {
         })
       }
       setModal(null)
+      setSubmitError(null)
       await reload()
-    } catch { /* erros de rede — manter modal aberto */ }
+    } catch (err) {
+      setSubmitError(getApiErrorMessage(err, 'Não foi possível guardar o ecoponto.'))
+    }
     finally { setSaving(false) }
   }
 
@@ -157,11 +166,20 @@ function EcopontosPage() {
         headers: authHeaders(),
       })
       await reload()
-    } catch { /* ignorar */ }
+    } catch (err) {
+      setListError(getApiErrorMessage(err, 'Não foi possível desativar o ecoponto.'))
+    }
   }
 
   return (
     <div className="flex flex-col gap-8 pb-12">
+
+      {listError && (
+        <div role="alert" aria-live="polite" className="rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive flex items-center justify-between gap-3">
+          <span>{listError}</span>
+          <button onClick={() => void reload()} className="text-xs font-medium underline-offset-2 hover:underline">Tentar novamente</button>
+        </div>
+      )}
 
       {/* Cabeçalho */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -294,10 +312,10 @@ function EcopontosPage() {
       {modal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40" onClick={() => setModal(null)} />
-          <div className="relative z-10 w-full max-w-md bg-card rounded-2xl shadow-2xl border border-border p-6 flex flex-col gap-4">
+          <div role="dialog" aria-modal="true" aria-labelledby="ecopontos-modal-title" className="relative z-10 w-full max-w-md bg-card rounded-2xl shadow-2xl border border-border p-6 flex flex-col gap-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-base font-bold text-foreground">{modal === 'novo' ? 'Novo Ecoponto' : 'Editar Ecoponto'}</h2>
-              <button onClick={() => setModal(null)} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
+              <h2 id="ecopontos-modal-title" className="text-base font-bold text-foreground">{modal === 'novo' ? 'Novo Ecoponto' : 'Editar Ecoponto'}</h2>
+              <button type="button" aria-label="Fechar modal" onClick={() => setModal(null)} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
             </div>
             <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-3">
               <div className="grid grid-cols-2 gap-3">

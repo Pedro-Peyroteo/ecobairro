@@ -8,6 +8,7 @@ import { Route as RouteIcon, Clock, MapPin, Truck, CheckCircle, Play, Loader2 } 
 import { useEffect, useState } from 'react'
 import 'leaflet/dist/leaflet.css'
 import { fetchJson } from '@/lib/http/fetch-json'
+import { getApiErrorMessage } from '@/lib/http/api-error'
 import { clientEnv } from '@/lib/env'
 import { getAccessToken } from '@/lib/auth'
 import type { RotaRecord, ListRotasResponse } from '@ecobairro/contracts'
@@ -38,12 +39,14 @@ function waypointIcon(color: string, n: number) {
 function RotasPage() {
   const [rotas, setRotas] = useState<RotaRecord[]>([])
   const [loading, setLoading] = useState(true)
+  const [listError, setListError] = useState<string | null>(null)
   const [rotaSelecionada, setRotaSelecionada] = useState<RotaRecord | null>(null)
 
   const headers = { Authorization: `Bearer ${getAccessToken() ?? ''}` }
 
   async function load() {
     setLoading(true)
+    setListError(null)
     try {
       const res = await fetchJson<ListRotasResponse>('/v1/rotas', {
         baseUrl: clientEnv.apiBaseUrl,
@@ -51,6 +54,9 @@ function RotasPage() {
       })
       setRotas(res.rotas)
       if (res.rotas.length > 0) setRotaSelecionada(res.rotas[0]!)
+    } catch (err) {
+      setRotas([])
+      setListError(getApiErrorMessage(err, 'Não foi possível carregar as rotas.'))
     } finally {
       setLoading(false)
     }
@@ -79,6 +85,12 @@ function RotasPage() {
 
   return (
     <div className="flex flex-col gap-6 pb-12">
+      {listError && (
+        <div role="alert" aria-live="polite" className="rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive flex items-center justify-between gap-3">
+          <span>{listError}</span>
+          <button onClick={() => void load()} className="text-xs font-medium underline-offset-2 hover:underline">Tentar novamente</button>
+        </div>
+      )}
       <div>
         <h1 className="text-xl font-bold text-foreground">Gestão de Rotas</h1>
         <p className="text-sm text-muted-foreground mt-0.5">{rotas.length} rotas configuradas</p>
