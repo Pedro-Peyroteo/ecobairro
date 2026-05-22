@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Inject,
   Param,
   Patch,
   Post,
@@ -19,7 +20,10 @@ import { UpdateCampanhaDto } from './dto/update-campanha.dto';
 @Controller('campanhas')
 @UseGuards(JwtAuthGuard)
 export class CampanhasController {
-  constructor(private readonly campanhas: CampanhasService) {}
+  private readonly campanhas: CampanhasService;
+  constructor(@Inject(CampanhasService) campanhas: CampanhasService) {
+    this.campanhas = campanhas;
+  }
 
   @Get()
   list(@Query() query: ListCampanhasDto) {
