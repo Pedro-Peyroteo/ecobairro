@@ -320,6 +320,11 @@ function EcopontosPage() {
               <h2 id="ecopontos-modal-title" className="text-base font-bold text-foreground">{modal === 'novo' ? 'Novo Ecoponto' : 'Editar Ecoponto'}</h2>
               <button type="button" aria-label="Fechar modal" onClick={() => setModal(null)} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
             </div>
+            {submitError && (
+              <div role="alert" className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                {submitError}
+              </div>
+            )}
             <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-3">
               <div className="grid grid-cols-2 gap-3">
                 <div className="col-span-2 sm:col-span-1">

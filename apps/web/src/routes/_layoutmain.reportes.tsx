@@ -210,7 +210,6 @@ function ReportesPage() {
       local: search.local,
       tipo: search.tipo,
     })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search.novo, search.local, search.tipo])
 
   async function onSubmitReporte(data: NovoReporteForm) {

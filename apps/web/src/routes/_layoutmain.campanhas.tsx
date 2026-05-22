@@ -287,6 +287,11 @@ function CampanhasPage() {
               <h2 id="campanhas-modal-title" className="text-base font-bold text-foreground">{editando ? 'Editar Mensagem' : 'Nova Mensagem'}</h2>
               <button type="button" aria-label="Fechar modal" onClick={() => setModalAberto(false)} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
             </div>
+            {submitError && (
+              <div role="alert" className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                {submitError}
+              </div>
+            )}
             <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-3">
               <div>
                 <label className="text-xs font-medium text-muted-foreground mb-1 block">Título</label>
