@@ -10,7 +10,7 @@ import {
 import { useEffect, useRef, useState } from 'react'
 import { fetchJson } from '@/lib/http/fetch-json'
 import { clientEnv } from '@/lib/env'
-import { getAccessToken } from '@/lib/auth'
+import { getAccessToken, getUser } from '@/lib/auth'
 import type { HomeFeedResponse } from '@ecobairro/contracts'
 
 export const Route = createFileRoute('/_layoutpublic/home')({
@@ -63,10 +63,15 @@ function ecoState(pct: number) {
 /* ─── Página ─── */
 function HomePage() {
   const token = getAccessToken()
+  const sessionUser = getUser()
   const greeting = getGreeting()
   const [feed, setFeed] = useState<HomeFeedResponse | null>(null)
-  const isGuest = !token || !feed?.viewer || feed.viewer.role !== 'CIDADAO'
-  const userDisplayName = feed?.viewer?.nome ?? feed?.viewer?.email ?? 'ecoBairro'
+  // isGuest é determinado pelo sessionStorage (síncrono, disponível no primeiro
+  // render) e NÃO depende do feed. Evita o flash da versão guest enquanto o
+  // /v1/home está pendente, e mantém a versão de utilizador autenticado se o
+  // feed falhar ou demorar.
+  const isGuest = !token || !sessionUser || sessionUser.role !== 'cidadao'
+  const userDisplayName = feed?.viewer?.nome ?? feed?.viewer?.email ?? sessionUser?.name ?? 'ecoBairro'
   const firstName = isGuest ? 'ecoBairro' : userDisplayName.split(' ')[0]
 
   useEffect(() => {
