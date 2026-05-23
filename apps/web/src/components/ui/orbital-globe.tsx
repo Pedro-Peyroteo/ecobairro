@@ -200,7 +200,10 @@ export function OrbitalGlobe() {
       <div className="relative w-full h-full flex items-center justify-center">
 
         {/* Centro: Globo 3D reduzido */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[380px] h-[380px] flex items-center justify-center z-10 pointer-events-none">
+        <div
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[380px] h-[380px] flex items-center justify-center z-10 pointer-events-none opacity-85"
+          style={{ filter: 'brightness(1.3) contrast(0.9)' }}
+        >
           <SplineScene scene="https://prod.spline.design/kZDDjO5HlviOn7dI/scene.splinecode" className="w-full h-full" />
         </div>
 

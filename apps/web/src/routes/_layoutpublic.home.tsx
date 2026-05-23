@@ -277,7 +277,7 @@ function GuestHero() {
         playsInline
         aria-hidden="true"
         className="absolute inset-0 w-full h-full object-cover pointer-events-none"
-        style={{ opacity: 0.30, zIndex: 0 }}
+        style={{ opacity: 0.80, zIndex: 0 }}
       >
         <source src="/videopromocional.mp4" type="video/mp4" />
       </video>
@@ -287,7 +287,7 @@ function GuestHero() {
         className="absolute inset-0 pointer-events-none"
         style={{
           zIndex: 1,
-          background: 'linear-gradient(135deg, rgba(8,12,11,0.96) 0%, rgba(13,17,23,0.80) 40%, rgba(11,13,26,0.85) 100%)',
+          background: 'linear-gradient(135deg, rgba(8,12,11,0.85) 0%, rgba(13,17,23,0.60) 40%, rgba(11,13,26,0.70) 100%)',
         }}
         aria-hidden="true"
       />
@@ -365,10 +365,15 @@ function GuestHero() {
 
       </div>
 
-      {/* ── Right: Globe ── */}
-      <div className="hidden md:block flex-1 h-full relative" style={{ zIndex: 10 }}>
+      {/* ── Right: Globe (Scaled down & Bottom-Right) ── */}
+      {/* 
+      <div
+        className="hidden md:block absolute bottom-0 right-0 w-[600px] h-[600px] scale-[0.60] lg:scale-[0.70] xl:scale-[0.75] origin-bottom-right"
+        style={{ zIndex: 10 }}
+      >
         <OrbitalGlobe />
       </div>
+      */}
 
       {/* Scroll indicator */}
       <a
