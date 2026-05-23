@@ -1,7 +1,10 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Zap, Recycle, Users, CheckCircle } from 'lucide-react'
+import { Zap, Recycle, Users, CheckCircle, ArrowRight, Link as LinkIcon } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { SplineScene } from '@/components/ui/splite'
 
 interface TimelineItem {
@@ -358,7 +361,7 @@ export function OrbitalGlobe() {
                                   variant="outline"
                                   size="sm"
                                   className="h-6 px-2.5 py-0 text-[10px] rounded border-white/10 bg-white/5 hover:bg-white/15 text-white/70 hover:text-white transition-colors"
-                                  onClick={(e) => {
+                                  onClick={(e: React.MouseEvent) => {
                                     e.stopPropagation()
                                     toggleItem(relatedId)
                                   }}
