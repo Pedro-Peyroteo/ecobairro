@@ -259,12 +259,30 @@ function PublicNavbar() {
 /* ─── Hero ─── */
 function GuestHero() {
   const videoRef = useRef<HTMLVideoElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+
   useEffect(() => {
     if (videoRef.current) videoRef.current.playbackRate = 1.5
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          videoRef.current?.play().catch(() => {})
+        } else {
+          videoRef.current?.pause()
+        }
+      },
+      { threshold: 0.01 } // Activa logo que 1% do hero esteja visível
+    )
+
+    if (containerRef.current) observer.observe(containerRef.current)
+
+    return () => observer.disconnect()
   }, [])
 
   return (
     <div
+      ref={containerRef}
       className="relative w-full h-svh overflow-hidden flex items-center"
       style={{ background: 'linear-gradient(135deg, #080c0b 0%, #0d1117 45%, #0b0d1a 100%)' }}
     >
