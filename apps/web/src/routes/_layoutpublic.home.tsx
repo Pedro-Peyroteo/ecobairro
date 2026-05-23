@@ -214,10 +214,10 @@ function PublicNavbar() {
       className="fixed top-0 left-0 right-0 z-50 transition-all duration-300"
       style={{
         background: scrolled
-          ? 'rgba(8,12,11,0.95)'
-          : 'rgba(8,12,11,0.5)',
+          ? 'rgba(8,12,11,0.65)'
+          : 'transparent',
         backdropFilter: 'blur(16px)',
-        borderBottom: scrolled ? '1px solid rgba(255,255,255,0.07)' : '1px solid rgba(255,255,255,0.03)',
+        borderBottom: scrolled ? '1px solid rgba(255,255,255,0.05)' : '1px solid transparent',
       }}
     >
       {/* Usa o mesmo padding do hero para o logo ficar alinhado com o título */}
