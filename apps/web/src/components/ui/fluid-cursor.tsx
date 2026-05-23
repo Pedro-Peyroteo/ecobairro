@@ -51,7 +51,7 @@ const FluidCursorEffect = () => {
     let colorUpdateTimer = 0.0;
 
     // Programs
-    let copyProgram: any, clearProgram: any, splatProgram: any, advectionProgram: any;
+    let clearProgram: any, splatProgram: any, advectionProgram: any;
     let divergenceProgram: any, curlProgram: any, vorticityProgram: any, pressureProgram: any;
     let gradienSubtractProgram: any, displayMaterial: any;
     let blit: any;
@@ -296,19 +296,7 @@ const FluidCursorEffect = () => {
         `
       );
 
-      const copyShader = compileShader(
-        gl.FRAGMENT_SHADER,
-        `
-        precision mediump float;
-        precision mediump sampler2D;
-        varying highp vec2 vUv;
-        uniform sampler2D uTexture;
 
-        void main () {
-            gl_FragColor = texture2D(uTexture, vUv);
-        }
-        `
-      );
 
       const clearShader = compileShader(
         gl.FRAGMENT_SHADER,
@@ -568,7 +556,7 @@ const FluidCursorEffect = () => {
         `
       );
 
-      copyProgram = new Program(baseVertexShader, copyShader);
+
       clearProgram = new Program(baseVertexShader, clearShader);
       splatProgram = new Program(baseVertexShader, splatShader);
       advectionProgram = new Program(baseVertexShader, advectionShader);

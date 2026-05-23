@@ -1,10 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { ArrowRight, Link as LinkIcon, Zap, FileText, Recycle, Users, MapPin, CheckCircle } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Zap, Recycle, Users, CheckCircle } from 'lucide-react'
 import { SplineScene } from '@/components/ui/splite'
 
 interface TimelineItem {
@@ -77,6 +74,7 @@ export function OrbitalGlobe() {
   const containerRef = useRef<HTMLDivElement>(null)
   const orbitRef = useRef<HTMLDivElement>(null)
   const nodeRefs = useRef<Record<number, HTMLDivElement | null>>({})
+  const pulseTimers = useRef<{ [key: number]: ReturnType<typeof setTimeout> }>({})
 
   const handleContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (e.target === containerRef.current || e.target === orbitRef.current) {
@@ -231,7 +229,7 @@ export function OrbitalGlobe() {
             return (
               <div
                 key={item.id}
-                ref={(el) => (nodeRefs.current[item.id] = el)}
+                ref={(el) => { nodeRefs.current[item.id] = el }}
                 className="absolute transition-all duration-700 cursor-pointer"
                 style={nodeStyle}
                 onClick={(e) => {

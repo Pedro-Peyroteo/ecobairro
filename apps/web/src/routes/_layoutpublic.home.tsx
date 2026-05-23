@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
-import { SplineScene } from '@/components/ui/splite'
+
 import { OrbitalGlobe } from '@/components/ui/orbital-globe'
 import FluidCursorEffect from '@/components/ui/fluid-cursor'
 import { Spotlight } from '@/components/ui/spotlight'
@@ -199,7 +199,6 @@ const TESTIMONIALS = [
   },
 ]
 
-const SPLINE_SCENE = 'https://prod.spline.design/kZDDjO5HlviOn7dI/scene.splinecode'
 
 /* ─── Public Navbar ─── */
 function PublicNavbar() {
@@ -257,7 +256,7 @@ function PublicNavbar() {
 
 
 /* ─── Hero ─── */
-function GuestHero({ cidadaos }: { cidadaos: number }) {
+function GuestHero() {
   const videoRef = useRef<HTMLVideoElement>(null)
   useEffect(() => {
     if (videoRef.current) videoRef.current.playbackRate = 1.5
@@ -1016,7 +1015,7 @@ function HomePage() {
     return (
       <>
         <PublicNavbar />
-        <GuestHero cidadaos={cidadaosCount} />
+        <GuestHero />
         <StatsBar cidadaos={cidadaosCount} />
         <HowItWorks />
         <FeaturesSection />

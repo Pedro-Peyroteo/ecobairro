@@ -1,7 +1,4 @@
 import { useEffect, useRef, useCallback } from 'react'
-import { Recycle, Users, Leaf } from 'lucide-react'
-import type { LucideIcon } from 'lucide-react'
-
 interface SplineSceneProps {
   scene?: string
   className?: string
