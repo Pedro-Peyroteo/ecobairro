@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 
-import { OrbitalGlobe } from '@/components/ui/orbital-globe'
+// import { OrbitalGlobe } from '@/components/ui/orbital-globe'
 import FluidCursorEffect from '@/components/ui/fluid-cursor'
 import { Spotlight } from '@/components/ui/spotlight'
 import {
