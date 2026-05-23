@@ -402,13 +402,14 @@ function StatsBar({ cidadaos }: { cidadaos: number }) {
   return (
     <div
       ref={ref}
-      className="w-full"
+      className="w-full relative overflow-hidden"
       style={{
         background: 'linear-gradient(to bottom, #080c0b 0%, #0d1117 100%)',
         borderBottom: '1px solid rgba(255,255,255,0.06)',
       }}
     >
-      <div className="max-w-[1280px] mx-auto px-6 md:px-10 py-12 grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-0">
+      <FluidCursorEffect />
+      <div className="relative z-10 max-w-[1280px] mx-auto px-6 md:px-10 py-12 grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-0">
         {stats.map((s, i) => {
           const Icon = s.icon
           return (
