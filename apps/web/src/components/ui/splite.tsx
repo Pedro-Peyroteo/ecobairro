@@ -7,19 +7,7 @@ interface SplineSceneProps {
   className?: string
 }
 
-interface StatCard {
-  Icon: LucideIcon
-  value: string
-  label: string
-  sub: string
-  color: string
-}
 
-const STAT_CARDS: StatCard[] = [
-  { Icon: Recycle, value: '340',   label: 'Reportes',   sub: 'enviados à câmara',    color: '#4ade80' },
-  { Icon: Users,   value: '1.200', label: 'Cidadãos',   sub: 'ativos na plataforma', color: '#60a5fa' },
-  { Icon: Leaf,    value: '89%',   label: 'Resolvidos', sub: 'taxa de resolução',     color: '#a3e635' },
-]
 
 // City markers [lat, lon] — community locations
 const CITIES: [number, number][] = [
@@ -209,36 +197,7 @@ function drawGlobe(canvas: HTMLCanvasElement, phi: number, theta: number) {
 
 const SPEED = 0.003
 
-function StatCard({ card, delay }: { card: StatCard; delay: number }) {
-  const Icon = card.Icon
-  return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: 11,
-      padding: '10px 14px', borderRadius: 13,
-      background: 'rgba(6,10,18,0.90)',
-      border: `1px solid color-mix(in srgb, ${card.color} 30%, transparent)`,
-      backdropFilter: 'blur(16px)',
-      boxShadow: `0 4px 24px rgba(0,0,0,0.55), 0 0 0 0.5px color-mix(in srgb, ${card.color} 12%, transparent)`,
-      animation: 'eco-float 6s ease-in-out infinite',
-      animationDelay: `${delay}s`,
-      minWidth: 158,
-      whiteSpace: 'nowrap' as const,
-    }}>
-      <div style={{
-        width: 36, height: 36, borderRadius: 9, flexShrink: 0,
-        background: `color-mix(in srgb, ${card.color} 16%, transparent)`,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-      }}>
-        <Icon size={17} color={card.color} />
-      </div>
-      <div>
-        <div style={{ fontSize: 16, fontWeight: 800, color: '#fff', lineHeight: 1.1, letterSpacing: '-0.02em' }}>{card.value}</div>
-        <div style={{ fontSize: 11, fontWeight: 600, color: card.color, lineHeight: 1.3 }}>{card.label}</div>
-        <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.30)', lineHeight: 1.2, marginTop: 1 }}>{card.sub}</div>
-      </div>
-    </div>
-  )
-}
+
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function SplineScene({ scene: _scene, className }: SplineSceneProps) {
@@ -317,20 +276,7 @@ export function SplineScene({ scene: _scene, className }: SplineSceneProps) {
         }}
       />
 
-      {/* ── Stat cards around globe ── */}
-      {/* Outer div = positioning anchor; inner div = float animation (separate transforms) */}
-      {/* Reports — left, vertically centered-ish */}
-      <div style={{ position: 'absolute', zIndex: 10, top: '38%', left: '3%', transform: 'translateY(-50%)' }}>
-        <StatCard card={STAT_CARDS[0]} delay={0} />
-      </div>
-      {/* Cidadãos — bottom-center */}
-      <div style={{ position: 'absolute', zIndex: 10, bottom: '14%', left: '50%', transform: 'translateX(-50%)' }}>
-        <StatCard card={STAT_CARDS[1]} delay={-2} />
-      </div>
-      {/* Resolvidos — right-center */}
-      <div style={{ position: 'absolute', zIndex: 10, top: '50%', right: '4%', transform: 'translateY(-50%)' }}>
-        <StatCard card={STAT_CARDS[2]} delay={-4} />
-      </div>
+
 
       <style>{`
         @keyframes eco-float {
