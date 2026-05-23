@@ -13,6 +13,7 @@ import {
   PlusCircle, Truck, Trophy, LogIn, UserPlus, ArrowRight, ShieldCheck,
   Zap, Mail, ChevronDown,
 } from 'lucide-react'
+import { motion } from 'framer-motion'
 
 import { useEffect, useRef, useState, type ElementType, type ReactNode } from 'react'
 import { fetchJson } from '@/lib/http/fetch-json'
@@ -682,7 +683,7 @@ function NoticiasSection() {
           </div>
           <Link
             to="/login"
-            className="flex items-center gap-1.5 text-sm text-[var(--primary)] font-semibold hover:gap-2.5 transition-all"
+            className="flex items-center gap-1.5 text-sm text-[var(--primary)] font-semibold hover:opacity-75 transition-opacity"
           >
             Ver todas as notícias <ArrowRight className="w-4 h-4" />
           </Link>
@@ -702,13 +703,20 @@ function NoticiasSection() {
                   transition: `opacity 0.6s ease ${i * 0.12}s, transform 0.6s ease ${i * 0.12}s`,
                 }}
               >
-                <article className="rounded-2xl overflow-hidden border border-border/70 bg-card hover:border-[var(--primary)]/30 hover:shadow-lg transition-all duration-300 h-full flex flex-col">
+                <article className="relative rounded-2xl overflow-hidden border border-border/70 bg-card hover:border-[var(--primary)]/30 hover:shadow-lg transition-all duration-300 h-full flex flex-col">
+                  {/* Subtle gradient bg on hover (same as features section) */}
+                  <div
+                    className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none z-10"
+                    style={{ background: 'radial-gradient(circle at top left, color-mix(in srgb, var(--primary) 6%, transparent), transparent 60%)' }}
+                    aria-hidden="true"
+                  />
+
                   {/* Image */}
-                  <div className="h-44 w-full overflow-hidden relative bg-muted">
+                  <div className="h-44 w-full overflow-hidden relative bg-muted z-0">
                     <img
                       src={n.imagem}
                       alt={n.titulo}
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      className="w-full h-full object-cover"
                       loading="lazy"
                     />
                     {/* Category badge */}
@@ -843,9 +851,9 @@ function PublicFooter() {
               Plataforma de cidadania ativa para uma cidade mais sustentável e participativa.
             </p>
             <div className="flex items-center gap-3 pt-1">
-              <a href="mailto:hello@ecobairro.pt" className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-[var(--primary)] transition-colors">
+              <a href="mailto:ola@ecobairro.pt" className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-[var(--primary)] transition-colors">
                 <Mail className="w-3.5 h-3.5" />
-                hello@ecobairro.pt
+                ola@ecobairro.pt
               </a>
             </div>
           </div>
@@ -1297,36 +1305,42 @@ function HomePage() {
           action={
             <Link
               to="/noticias"
-              className="flex items-center gap-1 text-xs text-[var(--primary)] font-medium hover:underline"
+              className="flex items-center gap-1.5 text-sm text-[var(--primary)] font-semibold hover:opacity-75 transition-opacity"
             >
-              Ver todas <ChevronRight className="w-3.5 h-3.5" />
+              Ver todas as notícias <ChevronRight className="w-4 h-4" />
             </Link>
           }
         />
         <div className="flex overflow-x-auto snap-x snap-mandatory hide-scrollbar gap-3 pb-1 -mx-4 px-4 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-2 lg:grid-cols-3">
-          {noticias.map((n) => (
-            <Card
+          {noticias.map((n, i) => (
+            <motion.div
               key={n.id}
-              className="min-w-[272px] sm:min-w-0 snap-start shrink-0 overflow-hidden shadow-sm border border-border/70 hover:shadow-md transition-all cursor-pointer group rounded-xl"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.1, duration: 0.5 }}
+              className="min-w-[272px] sm:min-w-0 snap-start shrink-0 cursor-pointer"
             >
-              <div className="h-36 w-full overflow-hidden bg-muted">
-                <img
-                  src={n.imagem_url}
-                  alt={n.titulo}
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                />
-              </div>
-              <CardContent className="p-4 space-y-1.5">
-                <p className="font-semibold text-sm text-foreground leading-snug group-hover:text-[var(--primary)] transition-colors">
-                  {n.titulo}
-                </p>
-                <p className="text-xs text-muted-foreground line-clamp-2">{n.resumo}</p>
-                <div className="flex items-center gap-3 pt-1 text-[11px] text-muted-foreground">
-                  <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{n.data}</span>
-                  <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{n.tempo_leitura}</span>
+              <Card className="h-full overflow-hidden shadow-sm border border-border/70 group rounded-xl bg-card relative">
+                <div className="h-36 w-full overflow-hidden bg-muted relative">
+                  <img
+                    src={n.imagem_url}
+                    alt={n.titulo}
+                    className="w-full h-full object-cover"
+                  />
                 </div>
-              </CardContent>
-            </Card>
+                <CardContent className="p-4 space-y-1.5 relative z-10">
+                  <p className="font-semibold text-sm text-foreground leading-snug group-hover:text-[var(--primary)] transition-colors">
+                    {n.titulo}
+                  </p>
+                  <p className="text-xs text-muted-foreground line-clamp-2">{n.resumo}</p>
+                  <div className="flex items-center gap-3 pt-1 text-[11px] text-muted-foreground">
+                    <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{n.data}</span>
+                    <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{n.tempo_leitura}</span>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
           ))}
         </div>
       </section>
