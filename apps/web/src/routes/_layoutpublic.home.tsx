@@ -266,13 +266,14 @@ function GuestHero() {
 
     const observer = new IntersectionObserver(
       ([entry]) => {
+        if (!videoRef.current) return
         if (entry.isIntersecting) {
-          videoRef.current?.play().catch(() => {})
+          videoRef.current.play().catch(() => {})
         } else {
-          videoRef.current?.pause()
+          videoRef.current.pause()
         }
       },
-      { threshold: 0.01 } // Activa logo que 1% do hero esteja visível
+      { threshold: 0 }
     )
 
     if (containerRef.current) observer.observe(containerRef.current)
@@ -289,7 +290,6 @@ function GuestHero() {
       {/* Background video */}
       <video
         ref={videoRef}
-        autoPlay
         muted
         loop
         playsInline
