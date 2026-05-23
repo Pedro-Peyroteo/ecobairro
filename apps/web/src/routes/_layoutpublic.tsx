@@ -28,7 +28,7 @@ function PublicLayoutRoute() {
   // Guest: full-bleed — each page controls its own layout/padding
   if (isGuest) {
     return (
-      <div className="min-h-svh overflow-y-auto bg-background">
+      <div className="force-light min-h-svh overflow-y-auto bg-background">
         <Outlet />
       </div>
     )

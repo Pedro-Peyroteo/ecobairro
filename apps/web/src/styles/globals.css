@@ -183,6 +183,46 @@
   --shadow-color: rgba(20, 21, 33, 0.44);
 }
 
+.force-light {
+  /* ecoBairro primary: green */
+  --primary: oklch(0.55 0.18 150);
+  --primary-foreground: oklch(0.99 0 0);
+  --primary-light: oklch(0.55 0.18 150 / 0.16);
+
+  /* Backgrounds — matches Materialize light: #F7F7F9 body, #FFFFFF paper */
+  --background: #F7F7F9;
+  --foreground: rgb(38 43 67);
+  --card: #FFFFFF;
+  --card-foreground: rgb(38 43 67);
+  --popover: #FFFFFF;
+  --popover-foreground: rgb(38 43 67);
+
+  --secondary: #6D788D;
+  --secondary-foreground: #FFFFFF;
+  --muted: #F5F5F7;
+  --muted-foreground: rgb(38 43 67 / 0.6);
+  --accent: oklch(0.55 0.18 150 / 0.08);
+  --accent-foreground: oklch(0.55 0.18 150);
+  --destructive: #FF4D49;
+  --border: rgb(38 43 67 / 0.12);
+  --input: rgb(38 43 67 / 0.12);
+  --ring: oklch(0.55 0.18 150);
+
+  /* Sidebar — white in light mode */
+  --sidebar: #FFFFFF;
+  --sidebar-foreground: rgb(38 43 67);
+  --sidebar-border: rgb(38 43 67 / 0.12);
+  --sidebar-accent: oklch(0.55 0.18 150 / 0.1);
+  --sidebar-accent-foreground: oklch(0.45 0.18 150);
+
+  --shadow-color: rgba(76, 78, 100, 0.13);
+
+  --header-height: 64px;
+  --layout-padding: 24px;
+  --nav-width: 260px;
+  --nav-collapsed-width: 68px;
+}
+
 *,
 ::before,
 ::after {

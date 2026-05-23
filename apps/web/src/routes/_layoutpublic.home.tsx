@@ -903,7 +903,7 @@ function PublicFooter() {
             © {year} ecoBairro. Todos os direitos reservados.
           </p>
           <p className="text-xs text-muted-foreground">
-            Feito em Portugal 🇵🇹 para cidadãos ativos
+            Feito em Portugal para cidadãos ativos
           </p>
         </div>
       </div>
