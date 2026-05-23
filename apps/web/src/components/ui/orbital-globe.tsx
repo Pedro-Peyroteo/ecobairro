@@ -77,7 +77,6 @@ export function OrbitalGlobe() {
   const containerRef = useRef<HTMLDivElement>(null)
   const orbitRef = useRef<HTMLDivElement>(null)
   const nodeRefs = useRef<Record<number, HTMLDivElement | null>>({})
-  const pulseTimers = useRef<{ [key: number]: ReturnType<typeof setTimeout> }>({})
 
   const handleContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (e.target === containerRef.current || e.target === orbitRef.current) {
@@ -122,7 +121,7 @@ export function OrbitalGlobe() {
   }
 
   useEffect(() => {
-    let rotationTimer: NodeJS.Timeout
+    let rotationTimer: ReturnType<typeof setInterval>
 
     if (autoRotate) {
       rotationTimer = setInterval(() => {

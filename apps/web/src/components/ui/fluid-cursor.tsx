@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useRef, useEffect, useState } from "react";
+import { useRef, useEffect } from "react";
 
 const FluidCursorEffect = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationIdRef = useRef<number | null>(null);
-  const [isInitialized, setIsInitialized] = useState(false);
+
 
   // Configuration
   const config = {
@@ -1129,7 +1129,6 @@ const FluidCursorEffect = () => {
         initFramebuffers();
         const cleanup = setupEventListeners();
         updateFrame();
-        setIsInitialized(true);
         return cleanup;
       } catch (error: any) {
         console.error("Failed to initialize fluid simulation:", error);
