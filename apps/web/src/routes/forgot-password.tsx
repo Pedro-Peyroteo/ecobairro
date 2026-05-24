@@ -1,12 +1,14 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Leaf, Recycle, MapPin, BarChart3, ArrowLeft } from 'lucide-react'
+import { Leaf, Recycle, MapPin, BarChart3, ArrowLeft, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { forgotPasswordRequest } from '@/lib/api/auth'
+import { getApiErrorMessage } from '@/lib/http/api-error'
 import { cn } from '@/lib/utils'
 
 export const Route = createFileRoute('/forgot-password')({
@@ -20,8 +22,10 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>
 
 function ForgotPasswordPage() {
+  const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   const {
     register,
@@ -31,12 +35,24 @@ function ForgotPasswordPage() {
     resolver: zodResolver(schema),
   })
 
-  const onSubmit = async () => {
-    setLoading(true)
-    await new Promise((r) => setTimeout(r, 800))
-    // Simulate sending email
-    setLoading(false)
-    setSubmitted(true)
+  const onSubmit = async (data: FormData) => {
+    try {
+      setSubmitError(null)
+      setLoading(true)
+      const response = await forgotPasswordRequest(data.email)
+      if (response.reset_token) {
+        navigate({
+          to: '/reset-password',
+          search: { token: response.reset_token },
+        })
+        return
+      }
+      setSubmitted(true)
+    } catch (error) {
+      setSubmitError(getApiErrorMessage(error, 'Falha ao solicitar recuperação.'))
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -85,6 +101,16 @@ function ForgotPasswordPage() {
           <span className="font-bold text-base tracking-tight">ecoBairro</span>
         </div>
 
+        {/* Close — voltar à home */}
+        <button
+          type="button"
+          onClick={() => navigate({ to: '/home' })}
+          aria-label="Voltar à home"
+          className="absolute top-6 right-6 flex items-center justify-center w-9 h-9 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+        >
+          <X className="w-5 h-5" />
+        </button>
+
         <div className="flex flex-col gap-6 w-full max-w-sm mx-auto">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Esqueceu-se da password? </h1>
@@ -94,10 +120,24 @@ function ForgotPasswordPage() {
           </div>
 
           {submitted ? (
-            <div className="rounded-lg bg-primary/10 p-4 text-center">
+            <div className="rounded-lg bg-primary/10 p-4 text-center space-y-2">
               <p className="text-sm font-medium text-foreground">
-                Email enviado com sucesso! Verifique a sua caixa de entrada.
+                Se existir uma conta com este email, enviámos as instruções de recuperação.
               </p>
+              {import.meta.env.DEV && (
+                <p className="text-xs text-muted-foreground">
+                  Em desenvolvimento local, abra o{' '}
+                  <a
+                    href="http://localhost:8025"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-primary underline underline-offset-2"
+                  >
+                    Mailpit (localhost:8025)
+                  </a>{' '}
+                  para ver os emails capturados.
+                </p>
+              )}
             </div>
           ) : (
             <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-5">
@@ -121,6 +161,9 @@ function ForgotPasswordPage() {
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? 'A enviar...' : 'Enviar link de recuperação'}
               </Button>
+              {submitError && (
+                <p className="text-xs text-destructive text-center">{submitError}</p>
+              )}
             </form>
           )}
 

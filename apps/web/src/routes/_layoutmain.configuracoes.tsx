@@ -1,58 +1,142 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { User, Bell, Shield, Palette, Save } from 'lucide-react'
-import { useState } from 'react'
+import { User, Bell, Shield, Palette, Save, Loader } from 'lucide-react'
+import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { getUser } from '@/lib/auth'
+import { getUser, getAccessToken } from '@/lib/auth'
+import { fetchJson } from '@/lib/http/fetch-json'
+import { getApiErrorMessage } from '@/lib/http/api-error'
+import { clientEnv } from '@/lib/env'
+import type { CitizenSelfProfileResponse, UpdateCitizenSelfProfileRequest } from '@ecobairro/contracts'
 
 export const Route = createFileRoute('/_layoutmain/configuracoes')({
   component: ConfiguracoesPage,
 })
 
 const perfilSchema = z.object({
-  nome: z.string().min(2, 'Nome obrigatório (mín. 2 caracteres)'),
-  email: z.string().email('Email inválido'),
+  nome:     z.string().min(2, 'Nome obrigatório (mín. 2 caracteres)'),
+  email:    z.string().email('Email inválido'),
   telefone: z.string().optional(),
-  morada: z.string().optional(),
 })
 
 type PerfilForm = z.infer<typeof perfilSchema>
 
-function ConfiguracoesPage() {
-  const user = getUser()
+type NotifKey = 'emailReportes' | 'emailNoticias' | 'emailRecolhas' | 'pushAlertas' | 'pushCampanhas'
+type NotifState = Record<NotifKey, boolean>
 
-  const { register, handleSubmit, watch, formState: { errors } } = useForm<PerfilForm>({
+const DEFAULT_NOTIF: NotifState = {
+  emailReportes: true,
+  emailNoticias: false,
+  emailRecolhas: true,
+  pushAlertas:   true,
+  pushCampanhas: true,
+}
+
+function authHeaders() {
+  const tok = getAccessToken()
+  return tok ? { Authorization: `Bearer ${tok}` } : {}
+}
+
+function ConfiguracoesPage() {
+  const sessionUser = getUser()
+  const isCidadao   = sessionUser?.role === 'cidadao'
+
+  const { register, handleSubmit, watch, reset, formState: { errors } } = useForm<PerfilForm>({
     resolver: zodResolver(perfilSchema),
     defaultValues: {
-      nome: user?.name ?? '',
-      email: user?.email ?? '',
+      nome:     sessionUser?.name ?? '',
+      email:    sessionUser?.email ?? '',
       telefone: '',
-      morada: 'Aveiro, Portugal',
     },
   })
 
   const nomeAtual = watch('nome')
 
-  const [notificacoes, setNotificacoes] = useState({
-    emailReportes: true,
-    emailNoticias: false,
-    emailRecolhas: true,
-    pushAlertas: true,
-    pushCampanhas: true,
-  })
+  const [notificacoes, setNotificacoes] = useState<NotifState>(DEFAULT_NOTIF)
+  const [loadingPerfil, setLoadingPerfil] = useState(isCidadao)
+  const [guardado, setGuardado]   = useState(false)
+  const [guardandoNotif, setGuardandoNotif] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
-  const [guardado, setGuardado] = useState(false)
+  /* Load profile for citizens */
+  useEffect(() => {
+    if (!isCidadao) return
+    fetchJson<CitizenSelfProfileResponse>('/v1/cidadaos/me', {
+      baseUrl: clientEnv.apiBaseUrl,
+      headers: authHeaders(),
+    })
+      .then(data => {
+        reset({
+          nome:     data.nome_completo ?? sessionUser?.name ?? '',
+          email:    data.email,
+          telefone: data.phone ?? '',
+        })
+        const prefs = data.notificacao_prefs as Partial<NotifState> | null
+        if (prefs) {
+          setNotificacoes(prev => ({ ...prev, ...prefs }))
+        }
+      })
+      .catch(() => {/* keep defaults */})
+      .finally(() => setLoadingPerfil(false))
+  }, [isCidadao])
 
-  function onSavePerfil(_data: PerfilForm) {
+  async function onSavePerfil(data: PerfilForm) {
+    setSaveError(null)
+    if (isCidadao) {
+      const body: UpdateCitizenSelfProfileRequest = {
+        nome_completo: data.nome,
+        phone:         data.telefone || undefined,
+      }
+      try {
+        await fetchJson('/v1/cidadaos/me', {
+          baseUrl: clientEnv.apiBaseUrl,
+          method:  'PUT',
+          body:    JSON.stringify(body),
+          headers: authHeaders(),
+        })
+      } catch (err) {
+        setSaveError(getApiErrorMessage(err, 'Não foi possível guardar o perfil.'))
+        return
+      }
+    }
     setGuardado(true)
-    setTimeout(() => setGuardado(false), 2000)
+    setTimeout(() => setGuardado(false), 2500)
+  }
+
+  async function saveNotif(next: NotifState) {
+    setNotificacoes(next)
+    if (!isCidadao) return
+    setGuardandoNotif(true)
+    setSaveError(null)
+    try {
+      await fetchJson('/v1/cidadaos/me', {
+        baseUrl: clientEnv.apiBaseUrl,
+        method:  'PUT',
+        body:    JSON.stringify({ notificacao_prefs: next } satisfies UpdateCitizenSelfProfileRequest),
+        headers: authHeaders(),
+      })
+    } catch (err) {
+      setSaveError(getApiErrorMessage(err, 'Não foi possível guardar as preferências de notificação.'))
+    }
+    finally { setGuardandoNotif(false) }
+  }
+
+  function toggleNotif(key: NotifKey) {
+    const next = { ...notificacoes, [key]: !notificacoes[key] }
+    void saveNotif(next)
   }
 
   return (
     <div className="flex flex-col gap-8 pb-12 max-w-2xl">
+
+      {saveError && (
+        <div role="alert" aria-live="polite" className="rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {saveError}
+        </div>
+      )}
 
       <div>
         <h1 className="text-xl font-bold text-foreground">Configurações</h1>
@@ -70,67 +154,66 @@ function ConfiguracoesPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-full bg-[var(--primary)] flex items-center justify-center text-white text-xl font-bold shrink-0">
-              {(nomeAtual || 'U').split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase() || 'U'}
+          {loadingPerfil ? (
+            <div className="flex items-center gap-2 text-muted-foreground py-4">
+              <Loader className="w-4 h-4 animate-spin" />
+              <span className="text-sm">A carregar perfil…</span>
             </div>
-            <div>
-              <p className="text-sm font-medium text-foreground">{nomeAtual || 'Utilizador'}</p>
-              <p className="text-xs text-muted-foreground capitalize">{user?.role ?? 'cidadao'}</p>
-              <button className="text-xs text-[var(--primary)] hover:underline mt-1">Alterar foto</button>
-            </div>
-          </div>
+          ) : (
+            <>
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 rounded-full bg-[var(--primary)] flex items-center justify-center text-white text-xl font-bold shrink-0">
+                  {(nomeAtual || 'U').split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase() || 'U'}
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-foreground">{nomeAtual || 'Utilizador'}</p>
+                  <p className="text-xs text-muted-foreground capitalize">{sessionUser?.role ?? 'cidadao'}</p>
+                </div>
+              </div>
 
-          <form onSubmit={handleSubmit(onSavePerfil)} className="flex flex-col gap-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">Nome completo</label>
-                <input
-                  type="text"
-                  {...register('nome')}
-                  placeholder="O seu nome"
-                  className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30 focus:border-[var(--primary)]/50 transition-all"
-                />
-                {errors.nome && <p className="text-xs text-destructive mt-1">{errors.nome.message}</p>}
-              </div>
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">Email</label>
-                <input
-                  type="email"
-                  {...register('email')}
-                  placeholder="email@exemplo.pt"
-                  className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30 focus:border-[var(--primary)]/50 transition-all"
-                />
-                {errors.email && <p className="text-xs text-destructive mt-1">{errors.email.message}</p>}
-              </div>
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">Telefone</label>
-                <input
-                  type="tel"
-                  {...register('telefone')}
-                  placeholder="+351 9XX XXX XXX"
-                  className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30 focus:border-[var(--primary)]/50 transition-all"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">Localização</label>
-                <input
-                  type="text"
-                  {...register('morada')}
-                  placeholder="Cidade, País"
-                  className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30 focus:border-[var(--primary)]/50 transition-all"
-                />
-              </div>
-            </div>
+              <form onSubmit={handleSubmit(onSavePerfil)} className="flex flex-col gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">Nome completo</label>
+                    <input
+                      type="text"
+                      {...register('nome')}
+                      placeholder="O seu nome"
+                      className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30 focus:border-[var(--primary)]/50 transition-all"
+                    />
+                    {errors.nome && <p className="text-xs text-destructive mt-1">{errors.nome.message}</p>}
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">Email</label>
+                    <input
+                      type="email"
+                      {...register('email')}
+                      disabled
+                      placeholder="email@exemplo.pt"
+                      className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-muted text-muted-foreground cursor-not-allowed"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">Telefone</label>
+                    <input
+                      type="tel"
+                      {...register('telefone')}
+                      placeholder="+351 9XX XXX XXX"
+                      className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30 focus:border-[var(--primary)]/50 transition-all"
+                    />
+                  </div>
+                </div>
 
-            <div className="flex items-center justify-between pt-1">
-              {guardado && <p className="text-xs text-emerald-600 font-medium">Guardado com sucesso</p>}
-              <Button type="submit" size="sm" className="gap-2 bg-[var(--primary)] hover:opacity-90 transition-opacity ml-auto">
-                <Save className="w-3.5 h-3.5" />
-                Guardar alterações
-              </Button>
-            </div>
-          </form>
+                <div className="flex items-center justify-between pt-1">
+                  {guardado && <p className="text-xs text-emerald-600 font-medium">Guardado com sucesso</p>}
+                  <Button type="submit" size="sm" className="gap-2 bg-[var(--primary)] hover:opacity-90 transition-opacity ml-auto">
+                    <Save className="w-3.5 h-3.5" />
+                    Guardar alterações
+                  </Button>
+                </div>
+              </form>
+            </>
+          )}
         </CardContent>
       </Card>
 
@@ -142,23 +225,24 @@ function ConfiguracoesPage() {
               <Bell className="w-4 h-4 text-amber-500" />
             </div>
             Notificações
+            {guardandoNotif && <Loader className="w-3.5 h-3.5 animate-spin text-muted-foreground ml-auto" />}
           </CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-1">
           {([
-            { key: 'emailReportes', label: 'Atualizações dos meus reportes',    desc: 'Email quando o estado de um reporte muda'       },
-            { key: 'emailNoticias', label: 'Novidades e eventos do bairro',     desc: 'Email com as últimas notícias'                  },
-            { key: 'emailRecolhas', label: 'Confirmação de recolhas agendadas', desc: 'Email ao agendar ou confirmar recolha'          },
-            { key: 'pushAlertas',   label: 'Alertas de ecopontos cheios',       desc: 'Notificação quando há alertas na sua zona'      },
-            { key: 'pushCampanhas', label: 'Campanhas institucionais',          desc: 'Notificação de novos comunicados da autarquia'  },
-          ] as const).map(({ key, label, desc }) => (
+            { key: 'emailReportes' as NotifKey, label: 'Atualizações dos meus reportes',    desc: 'Email quando o estado de um reporte muda'       },
+            { key: 'emailNoticias' as NotifKey, label: 'Novidades e eventos do bairro',     desc: 'Email com as últimas notícias'                  },
+            { key: 'emailRecolhas' as NotifKey, label: 'Confirmação de recolhas agendadas', desc: 'Email ao agendar ou confirmar recolha'          },
+            { key: 'pushAlertas'   as NotifKey, label: 'Alertas de ecopontos cheios',       desc: 'Notificação quando há alertas na sua zona'      },
+            { key: 'pushCampanhas' as NotifKey, label: 'Campanhas institucionais',          desc: 'Notificação de novos comunicados da autarquia'  },
+          ]).map(({ key, label, desc }) => (
             <div key={key} className="flex items-center justify-between py-3 border-b border-border/50 last:border-0">
               <div>
                 <p className="text-sm font-medium text-foreground">{label}</p>
                 <p className="text-xs text-muted-foreground">{desc}</p>
               </div>
               <button
-                onClick={() => setNotificacoes(n => ({ ...n, [key]: !n[key] }))}
+                onClick={() => toggleNotif(key)}
                 className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors focus:outline-none ${notificacoes[key] ? 'bg-[var(--primary)]' : 'bg-muted'}`}
               >
                 <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${notificacoes[key] ? 'translate-x-4' : 'translate-x-0'}`} />

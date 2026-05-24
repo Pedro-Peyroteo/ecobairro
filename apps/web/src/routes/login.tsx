@@ -1,16 +1,21 @@
 import { createFileRoute, useNavigate, Link } from '@tanstack/react-router'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Eye, EyeOff, Leaf, Recycle, MapPin, BarChart3 } from 'lucide-react'
+import { Eye, EyeOff, Leaf, Recycle, MapPin, BarChart3, X } from 'lucide-react'
 import { useGoogleLogin } from '@react-oauth/google'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { setAuthSession } from '@/lib/auth'
+import { getCitizenProfile, getMe, loginRequest, toUiRole } from '@/lib/api/auth'
+import { fetchJson } from '@/lib/http/fetch-json'
+import { getApiErrorMessage } from '@/lib/http/api-error'
 import { cn } from '@/lib/utils'
 
 import { clientEnv } from '@/lib/env'
+import type { PublicStatsResponse } from '@ecobairro/contracts'
 
 const hasGoogleClientId = !!clientEnv.googleClientId
 
@@ -53,11 +58,26 @@ function GoogleIcon() {
   )
 }
 
+function formatCount(n: number): string {
+  if (n >= 1000) return `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k`
+  return String(n)
+}
+
 function LoginPage() {
   const navigate = useNavigate()
   const [showPassword, setShowPassword] = useState(false)
   const [rememberMe, setRememberMe] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
+  const [stats, setStats] = useState<PublicStatsResponse | null>(null)
+
+  useEffect(() => {
+    fetchJson<PublicStatsResponse>('/v1/home/public-stats', {
+      baseUrl: clientEnv.apiBaseUrl,
+    })
+      .then(setStats)
+      .catch(() => { /* deixa placeholder durante loading */ })
+  }, [])
 
   const {
     register,
@@ -68,11 +88,45 @@ function LoginPage() {
   })
 
   const onSubmit = async (data: FormData) => {
-    setLoading(true)
-    await new Promise((r) => setTimeout(r, 800))
-    sessionStorage.setItem('user', JSON.stringify({ id: '1', name: 'João Silva', email: data.email, role: 'cidadao' }))
-    setLoading(false)
-    navigate({ to: '/dashboard' })
+    try {
+      setSubmitError(null)
+      setLoading(true)
+      const login = await loginRequest({
+        email: data.email,
+        password: data.password,
+      })
+      const me = await getMe(login.access_token)
+      const role = toUiRole(me.role)
+      let displayName = me.email
+
+      if (role === 'cidadao') {
+        try {
+          const profile = await getCitizenProfile(login.access_token)
+          if (profile.nome_completo?.trim()) {
+            displayName = profile.nome_completo
+          }
+        } catch {
+          // Keep login resilient even if profile fetch fails.
+        }
+      }
+
+      setAuthSession({
+        user: {
+          id: me.id,
+          name: displayName,
+          email: me.email,
+          role,
+        },
+        accessToken: login.access_token,
+        refreshToken: login.refresh_token,
+      })
+
+      navigate({ to: role === 'cidadao' ? '/home' : '/dashboard' })
+    } catch (error) {
+      setSubmitError(getApiErrorMessage(error, 'Falha ao autenticar. Tente novamente.'))
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -107,20 +161,20 @@ function LoginPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-8 text-center">
+          <div className="flex items-center gap-8 text-center" aria-busy={stats === null}>
             <div>
-              <p className="text-2xl font-bold text-primary">248</p>
+              <p className="text-2xl font-bold text-primary">{stats ? stats.ecopontos_ativos : '—'}</p>
               <p className="text-xs text-muted-foreground">Ecopontos</p>
             </div>
             <div className="w-px h-10 bg-border" />
             <div>
-              <p className="text-2xl font-bold text-primary">1.2k</p>
-              <p className="text-xs text-muted-foreground">Utilizadores</p>
+              <p className="text-2xl font-bold text-primary">{stats ? formatCount(stats.cidadaos_total) : '—'}</p>
+              <p className="text-xs text-muted-foreground">Cidadãos</p>
             </div>
             <div className="w-px h-10 bg-border" />
             <div>
-              <p className="text-2xl font-bold text-primary">98%</p>
-              <p className="text-xs text-muted-foreground">Eficiência</p>
+              <p className="text-2xl font-bold text-primary">{stats ? `${stats.taxa_resolucao}%` : '—'}</p>
+              <p className="text-xs text-muted-foreground">Resolução</p>
             </div>
           </div>
         </div>
@@ -137,6 +191,16 @@ function LoginPage() {
           </div>
           <span className="font-bold text-base tracking-tight">ecoBairro</span>
         </div>
+
+        {/* Close — voltar à home */}
+        <button
+          type="button"
+          onClick={() => navigate({ to: '/home' })}
+          aria-label="Voltar à home"
+          className="absolute top-6 right-6 flex items-center justify-center w-9 h-9 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+        >
+          <X className="w-5 h-5" />
+        </button>
 
         <div className="flex flex-col gap-5 w-full max-w-sm mx-auto">
           <div>
@@ -224,6 +288,9 @@ function LoginPage() {
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? 'A entrar...' : 'Entrar'}
             </Button>
+            {submitError && (
+              <p className="text-xs text-destructive text-center">{submitError}</p>
+            )}
 
             <p className="text-center text-sm text-muted-foreground">
               Ainda não tens conta?{' '}

@@ -1,12 +1,17 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import {
   MapPin, TrendingUp, ChevronRight, Star, AlertTriangle, Recycle, Users, Leaf,
-  FileText, CheckCircle, Package, Gift, Newspaper, Calendar, Clock
+  FileText, CheckCircle, Package, Gift, Newspaper, Calendar, Clock,
+  PlusCircle, Truck, Trophy,
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
+import { fetchJson } from '@/lib/http/fetch-json'
+import { clientEnv } from '@/lib/env'
+import { getAccessToken, getUser } from '@/lib/auth'
+import type { HomeFeedResponse } from '@ecobairro/contracts'
 
 export const Route = createFileRoute('/_layoutpublic/home')({
   component: HomePage,
@@ -43,9 +48,11 @@ function Counter({ to }: { to: number }) {
   return <>{v.toLocaleString('pt-PT')}</>
 }
 
-import { 
-  mockUser, alertaCritico, atalhos, ecopontos, reports, partilhas, noticias 
-} from '@/mocks/homeMocks'
+const atalhos = [
+  { label: 'Criar Reporte', icon: PlusCircle, to: '/reportes', search: { novo: '1' } as const },
+  { label: 'Pedir Recolha', icon: Truck,       to: '/recolhas', search: { novo: '1' } as const },
+  { label: 'Quiz Semanal',  icon: Trophy,      to: '/quiz',     search: undefined },
+] as const
 
 function ecoState(pct: number) {
   if (pct >= 80) return { label: 'Cheio', color: '#f87171', barColor: '#f87171cc' }
@@ -55,15 +62,73 @@ function ecoState(pct: number) {
 
 /* ─── Página ─── */
 function HomePage() {
-  const stored = sessionStorage.getItem('user')
-  const currentUser = stored ? JSON.parse(stored) : { id: 'guest', nome: 'Visitante', email: 'guest@eco.pt', role: 'guest' }
-  const isGuest = currentUser.role === 'guest' || (currentUser.role === 'cidadao' && currentUser.email === 'demo@eco.pt')
-
+  const token = getAccessToken()
+  const sessionUser = getUser()
   const greeting = getGreeting()
-  const userDisplayName = currentUser.nome || currentUser.name || 'ecoBairro'
+  const [feed, setFeed] = useState<HomeFeedResponse | null>(null)
+  // isGuest é determinado pelo sessionStorage (síncrono, disponível no primeiro
+  // render) e NÃO depende do feed. Evita o flash da versão guest enquanto o
+  // /v1/home está pendente, e mantém a versão de utilizador autenticado se o
+  // feed falhar ou demorar.
+  const isGuest = !token || !sessionUser || sessionUser.role !== 'cidadao'
+  const userDisplayName = feed?.viewer?.nome ?? feed?.viewer?.email ?? sessionUser?.name ?? 'ecoBairro'
   const firstName = isGuest ? 'ecoBairro' : userDisplayName.split(' ')[0]
-  const pontosRestantes = mockUser.pontosProximo - mockUser.pontos
-  const progresso = Math.round((mockUser.pontos / mockUser.pontosProximo) * 100)
+
+  useEffect(() => {
+    const headers: Record<string, string> = {}
+    if (token) {
+      headers.Authorization = `Bearer ${token}`
+    }
+
+    const load = async () => {
+      try {
+        const data = await fetchJson<HomeFeedResponse>('/v1/home', {
+          baseUrl: clientEnv.apiBaseUrl,
+          headers,
+        })
+        setFeed(data)
+      } catch {
+        setFeed(null)
+      }
+    }
+
+    void load()
+  }, [token])
+
+  const gamification = feed?.gamification ?? {
+    nivel: 'Reciclador',
+    pontos: 0,
+    pontos_proximo: 500,
+  }
+  const pontosRestantes = Math.max(
+    0,
+    gamification.pontos_proximo - gamification.pontos,
+  )
+  const progressoGamificacao = Math.round(
+    (gamification.pontos / Math.max(gamification.pontos_proximo, 1)) * 100,
+  )
+
+  const reportStats = !isGuest && feed
+    ? {
+        ativos: feed.reports.ativos,
+        resolvidos: feed.reports.resolvidos,
+        total: feed.reports.total,
+        progresso: feed.reports.progresso,
+        proximoNivel: feed.reports.proximo_nivel,
+      }
+    : {
+        ativos: 0,
+        resolvidos: 0,
+        total: 0,
+        progresso: 0,
+        proximoNivel: 'Reciclador Avançado',
+      }
+
+  const ecopontos = feed?.ecopontos ?? []
+  const partilhas = feed?.partilhas ?? []
+  const noticias = feed?.noticias ?? []
+  const alertaCritico = feed?.alerta
+  const impacto = feed?.impacto
 
   return (
     <div className="flex flex-col gap-10 pb-12 max-w-2xl mx-auto lg:max-w-none">
@@ -94,13 +159,13 @@ function HomePage() {
               <div className="flex items-center justify-between w-full text-xs text-muted-foreground">
                 <span className="flex items-center gap-1">
                   <Star className="w-3 h-3 text-[var(--primary)]" />
-                  {mockUser.nivel}
+                  {gamification.nivel}
                 </span>
-                <span><Counter to={mockUser.pontos} /> / {mockUser.pontosProximo} pts</span>
+                <span><Counter to={gamification.pontos} /> / {gamification.pontos_proximo} pts</span>
               </div>
-              <Progress value={progresso} className="h-1.5 w-full [&>div]:bg-[var(--primary)]" />
+              <Progress value={progressoGamificacao} className="h-1.5 w-full [&>div]:bg-[var(--primary)]" />
               <p className="text-[11px] text-muted-foreground">
-                Faltam <span className="font-semibold text-foreground">{pontosRestantes} pts</span> para {reports.proximoNivel}
+                Faltam <span className="font-semibold text-foreground">{pontosRestantes} pts</span> para {reportStats.proximoNivel}
               </p>
             </div>
           )}
@@ -114,15 +179,17 @@ function HomePage() {
         {atalhos.map((a) => {
           const Icon = a.icon
           return (
-            <button
+            <Link
               key={a.label}
+              to={a.to}
+              search={a.search}
               className="flex flex-col items-center gap-2.5 p-4 rounded-xl bg-card border border-border hover:border-[var(--primary)]/40 hover:shadow-sm transition-all active:scale-[0.97] cursor-pointer"
             >
               <div className="w-10 h-10 flex items-center justify-center rounded-xl bg-[var(--primary)]/10">
                 <Icon className="w-5 h-5 text-[var(--primary)]" />
               </div>
               <span className="text-xs font-medium text-foreground leading-tight text-center">{a.label}</span>
-            </button>
+            </Link>
           )
         })}
       </div>
@@ -134,10 +201,28 @@ function HomePage() {
             <MapPin className="w-4 h-4 text-[var(--primary)]" />
             <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">Ecopontos Favoritos</h2>
           </div>
-          <button className="flex items-center gap-1 text-xs text-[var(--primary)] font-medium hover:underline">
+          <Link
+            to="/mapa"
+            className="flex items-center gap-1 text-xs text-[var(--primary)] font-medium hover:underline"
+          >
             Ver mapa <ChevronRight className="w-3.5 h-3.5" />
-          </button>
+          </Link>
         </div>
+        {ecopontos.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-border bg-card/50 px-4 py-8 text-center space-y-2">
+            <MapPin className="w-8 h-8 text-muted-foreground/40 mx-auto" />
+            <p className="text-sm font-medium text-foreground">Ainda sem ecopontos favoritos</p>
+            <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+              Abra o mapa e marque os ecopontos que usa com mais frequência para os ver aqui.
+            </p>
+            <Link
+              to="/mapa"
+              className="inline-flex items-center gap-1 text-xs text-[var(--primary)] font-medium hover:underline"
+            >
+              Explorar mapa <ChevronRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+        ) : (
         <div className="flex overflow-x-auto snap-x snap-mandatory hide-scrollbar gap-3 pb-1 -mx-4 px-4 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-2 lg:grid-cols-3">
           {ecopontos.map((eco) => {
             const state = ecoState(eco.ocupacao)
@@ -153,7 +238,7 @@ function HomePage() {
                       </div>
                     </div>
                     <div className="w-11 h-11 rounded-lg overflow-hidden shrink-0 ring-1 ring-border relative flex items-center justify-center">
-                      <img src={eco.mapUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                      <img src={eco.map_url} alt="" className="absolute inset-0 w-full h-full object-cover" />
                       <MapPin className="relative z-10 w-3 h-3 fill-red-500 text-white drop-shadow" strokeWidth={1.5} />
                     </div>
                   </div>
@@ -174,17 +259,20 @@ function HomePage() {
             )
           })}
         </div>
+        )}
       </section>
 
       {/* ── 4. Alerta ecoponto crítico (após ecopontos) ── */}
-      <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3">
-        <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-foreground">{alertaCritico.nome}</p>
-          <p className="text-xs text-muted-foreground">{alertaCritico.ocupacao}% ocupado — evite depositar resíduos por agora</p>
+      {alertaCritico && (
+        <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3">
+          <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-foreground">{alertaCritico.nome}</p>
+            <p className="text-xs text-muted-foreground">{alertaCritico.ocupacao}% ocupado — evite depositar resíduos por agora</p>
+          </div>
+          <Badge variant="outline" className="text-[10px] shrink-0 border-amber-400/50 text-amber-600">Atenção</Badge>
         </div>
-        <Badge variant="outline" className="text-[10px] shrink-0 border-amber-400/50 text-amber-600">Atenção</Badge>
-      </div>
+      )}
 
       {/* ── 5. Impacto pessoal ── */}
       <section className="space-y-4">
@@ -194,9 +282,30 @@ function HomePage() {
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {[
-            { label: 'Reciclagem', value: 34, unit: 'kg', icon: Recycle, color: 'oklch(0.55 0.18 150)', desc: 'resíduos reciclados' },
-            { label: 'Comunidade', value: 1200, unit: 'pax', icon: Users, color: '#60a5fa', desc: 'membros ativos' },
-            { label: 'Ecossistema', value: 3, unit: 'árvores', icon: Leaf, color: 'oklch(0.55 0.18 150)', desc: 'CO₂ poupado' },
+            {
+              label: 'Reciclagem',
+              value: impacto?.reciclagem_kg ?? 0,
+              unit: 'kg',
+              icon: Recycle,
+              color: 'oklch(0.55 0.18 150)',
+              desc: 'estimativa a partir dos seus reports resolvidos',
+            },
+            {
+              label: 'Comunidade',
+              value: impacto?.comunidade_pax ?? 0,
+              unit: 'pax',
+              icon: Users,
+              color: '#60a5fa',
+              desc: 'cidadãos registados na plataforma',
+            },
+            {
+              label: 'Ecossistema',
+              value: impacto?.arvores_equivalentes ?? 0,
+              unit: 'árvores',
+              icon: Leaf,
+              color: 'oklch(0.55 0.18 150)',
+              desc: 'equivalente a partir da sua atividade',
+            },
           ].map((item) => {
             const Icon = item.icon
             return (
@@ -227,9 +336,9 @@ function HomePage() {
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {[
-            { label: 'Ativos', value: reports.ativos, icon: TrendingUp, color: '#fb923c' },
-            { label: 'Resolvidos', value: reports.resolvidos, icon: CheckCircle, color: 'oklch(0.55 0.18 150)' },
-            { label: 'Total', value: reports.total, icon: Package, color: '#8A93A4' },
+            { label: 'Ativos', value: reportStats.ativos, icon: TrendingUp, color: '#fb923c' },
+            { label: 'Resolvidos', value: reportStats.resolvidos, icon: CheckCircle, color: 'oklch(0.55 0.18 150)' },
+            { label: 'Total', value: reportStats.total, icon: Package, color: '#8A93A4' },
           ].map((stat) => {
             const Icon = stat.icon
             return (
@@ -249,10 +358,10 @@ function HomePage() {
           })}
         </div>
         <div className="bg-card border border-border/70 shadow-sm rounded-xl p-4 space-y-2">
-          <Progress value={reports.progresso} className="h-2 [&>div]:bg-[var(--primary)]" />
+          <Progress value={progressoGamificacao} className="h-2 [&>div]:bg-[var(--primary)]" />
           <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>{reports.progresso}% para subir de nível</span>
-            <span>Próximo nível: <span className="font-medium text-foreground">{reports.proximoNivel}</span></span>
+            <span>{progressoGamificacao}% para subir de nível ({gamification.pontos}/{gamification.pontos_proximo} pts)</span>
+            <span>Próximo nível: <span className="font-medium text-foreground">{reportStats.proximoNivel}</span></span>
           </div>
         </div>
       </section>
@@ -264,13 +373,20 @@ function HomePage() {
             <Package className="w-4 h-4 text-[var(--primary)]" />
             <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">Partilhas na sua zona</h2>
           </div>
-          <button className="flex items-center gap-1 text-xs text-[var(--primary)] font-medium hover:underline">
+          <Link
+            to="/partilhas"
+            className="flex items-center gap-1 text-xs text-[var(--primary)] font-medium hover:underline"
+          >
             Ver todas <ChevronRight className="w-3.5 h-3.5" />
-          </button>
+          </Link>
         </div>
         <div className="flex flex-col rounded-xl border border-border/70 bg-card overflow-hidden divide-y divide-border">
           {partilhas.map((p) => (
-            <div key={p.id} className="flex items-center gap-3 px-4 py-3 hover:bg-muted/30 transition-colors cursor-pointer">
+            <Link
+              key={p.id}
+              to="/partilhas"
+              className="flex items-center gap-3 px-4 py-3 hover:bg-muted/30 transition-colors cursor-pointer"
+            >
               <div className="w-8 h-8 rounded-lg bg-[var(--primary)]/10 flex items-center justify-center shrink-0">
                 <Package className="w-4 h-4 text-[var(--primary)]" />
               </div>
@@ -279,17 +395,20 @@ function HomePage() {
                 <p className="text-xs text-muted-foreground">{p.utilizador} · {p.zona}</p>
               </div>
               <ChevronRight className="w-4 h-4 text-muted-foreground/40 shrink-0" />
-            </div>
+            </Link>
           ))}
           {/* CTA Drag-feel para nova partilha */}
-          <button className="flex items-center justify-center gap-2 px-4 py-3.5 hover:bg-muted/30 transition-colors cursor-pointer group">
+          <Link
+            to="/partilhas"
+            className="flex items-center justify-center gap-2 px-4 py-3.5 hover:bg-muted/30 transition-colors cursor-pointer group"
+          >
             <div className="w-8 h-8 rounded-lg border-2 border-dashed border-border group-hover:border-[var(--primary)]/50 flex items-center justify-center transition-colors shrink-0">
               <Gift className="w-4 h-4 text-muted-foreground group-hover:text-[var(--primary)] transition-colors" />
             </div>
             <span className="text-sm text-muted-foreground group-hover:text-[var(--primary)] transition-colors font-medium">
               Partilhar algo da minha casa
             </span>
-          </button>
+          </Link>
         </div>
       </section>
       </>
@@ -302,22 +421,25 @@ function HomePage() {
             <Newspaper className="w-4 h-4 text-[var(--primary)]" />
             <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">Notícias e Campanhas</h2>
           </div>
-          <button className="flex items-center gap-1 text-xs text-[var(--primary)] font-medium hover:underline">
+          <Link
+            to="/noticias"
+            className="flex items-center gap-1 text-xs text-[var(--primary)] font-medium hover:underline"
+          >
             Ver todas <ChevronRight className="w-3.5 h-3.5" />
-          </button>
+          </Link>
         </div>
         <div className="flex overflow-x-auto snap-x snap-mandatory hide-scrollbar gap-3 pb-1 -mx-4 px-4 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-2 lg:grid-cols-3">
           {noticias.map((n) => (
             <Card key={n.id} className="min-w-[272px] sm:min-w-0 snap-start shrink-0 overflow-hidden shadow-sm border border-border/70 hover:shadow-md transition-all cursor-pointer group rounded-xl">
               <div className="h-36 w-full overflow-hidden bg-muted">
-                <img src={n.imagem} alt={n.titulo} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                <img src={n.imagem_url} alt={n.titulo} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
               </div>
               <CardContent className="p-4 space-y-1.5">
                 <p className="font-semibold text-sm text-foreground leading-snug group-hover:text-[var(--primary)] transition-colors">{n.titulo}</p>
                 <p className="text-xs text-muted-foreground line-clamp-2">{n.resumo}</p>
                 <div className="flex items-center gap-3 pt-1 text-[11px] text-muted-foreground">
                   <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{n.data}</span>
-                  <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{n.tempo}</span>
+                  <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{n.tempo_leitura}</span>
                 </div>
               </CardContent>
             </Card>

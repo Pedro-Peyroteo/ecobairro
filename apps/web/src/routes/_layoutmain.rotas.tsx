@@ -4,55 +4,27 @@ import { MapContainer, TileLayer, Polyline, Marker, Popup } from 'react-leaflet'
 import { divIcon } from 'leaflet'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { Card, CardContent } from '@/components/ui/card'
-import { Route as RouteIcon, Clock, MapPin, Truck, CheckCircle, Play } from 'lucide-react'
-import { useState } from 'react'
+import { Route as RouteIcon, Clock, MapPin, Truck, CheckCircle, Play, Loader2 } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import 'leaflet/dist/leaflet.css'
+import { fetchJson } from '@/lib/http/fetch-json'
+import { getApiErrorMessage } from '@/lib/http/api-error'
+import { clientEnv } from '@/lib/env'
+import { getAccessToken } from '@/lib/auth'
+import type { RotaRecord, ListRotasResponse } from '@ecobairro/contracts'
 
 export const Route = createFileRoute('/_layoutmain/rotas')({
   beforeLoad: requireRole(['operador', 'admin']),
   component: RotasPage,
 })
 
-type EstadoRota = 'ativa' | 'concluida' | 'pendente'
-
-interface Rota {
-  id: number
-  nome: string
-  operador: string
-  estado: EstadoRota
-  ecopontos: number
-  distancia: string
-  duracao: string
-  waypoints: [number, number][]
-  cor: string
-}
+type EstadoRota = RotaRecord['estado']
 
 const estadoConfig: Record<EstadoRota, { label: string; color: string }> = {
   ativa:     { label: 'Ativa',     color: '#22c55e' },
   concluida: { label: 'Concluída', color: '#60a5fa' },
   pendente:  { label: 'Pendente',  color: '#fb923c' },
 }
-
-const rotas: Rota[] = [
-  {
-    id: 1, nome: 'Rota Norte — Manhã', operador: 'Pedro Mendes', estado: 'ativa',
-    ecopontos: 6, distancia: '8.2 km', duracao: '1h 45min',
-    waypoints: [[40.6460, -8.6440], [40.6445, -8.6480], [40.6433, -8.6480], [40.6420, -8.6490], [40.6409, -8.6537], [40.6390, -8.6510]],
-    cor: '#22c55e',
-  },
-  {
-    id: 2, nome: 'Rota Sul — Tarde', operador: 'Sofia Lopes', estado: 'pendente',
-    ecopontos: 5, distancia: '6.5 km', duracao: '1h 20min',
-    waypoints: [[40.6390, -8.6510], [40.6370, -8.6555], [40.6350, -8.6600], [40.6315, -8.6574], [40.6370, -8.6600]],
-    cor: '#fb923c',
-  },
-  {
-    id: 3, nome: 'Rota Beira-Mar', operador: 'Carlos Lima', estado: 'concluida',
-    ecopontos: 4, distancia: '5.1 km', duracao: '1h 05min',
-    waypoints: [[40.6420, -8.6610], [40.6430, -8.6580], [40.6440, -8.6550], [40.6430, -8.6490]],
-    cor: '#60a5fa',
-  },
-]
 
 function waypointIcon(color: string, n: number) {
   const svg = renderToStaticMarkup(
@@ -65,16 +37,65 @@ function waypointIcon(color: string, n: number) {
 }
 
 function RotasPage() {
-  const [rotaSelecionada, setRotaSelecionada] = useState<Rota>(rotas[0])
+  const [rotas, setRotas] = useState<RotaRecord[]>([])
+  const [loading, setLoading] = useState(true)
+  const [listError, setListError] = useState<string | null>(null)
+  const [rotaSelecionada, setRotaSelecionada] = useState<RotaRecord | null>(null)
+
+  const headers = { Authorization: `Bearer ${getAccessToken() ?? ''}` }
+
+  async function load() {
+    setLoading(true)
+    setListError(null)
+    try {
+      const res = await fetchJson<ListRotasResponse>('/v1/rotas', {
+        baseUrl: clientEnv.apiBaseUrl,
+        headers,
+      })
+      setRotas(res.rotas)
+      if (res.rotas.length > 0) setRotaSelecionada(res.rotas[0]!)
+    } catch (err) {
+      setRotas([])
+      setListError(getApiErrorMessage(err, 'Não foi possível carregar as rotas.'))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => { void load() }, [])
+
+  async function updateEstado(id: string, estado: EstadoRota) {
+    const updated = await fetchJson<RotaRecord>(`/v1/rotas/${id}`, {
+      baseUrl: clientEnv.apiBaseUrl,
+      headers,
+      method: 'PATCH',
+      body: JSON.stringify({ estado }),
+    })
+    setRotas(prev => prev.map(r => r.id === id ? updated : r))
+    if (rotaSelecionada?.id === id) setRotaSelecionada(updated)
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-6 h-6 animate-spin text-[var(--primary)]" />
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col gap-6 pb-12">
+      {listError && (
+        <div role="alert" aria-live="polite" className="rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive flex items-center justify-between gap-3">
+          <span>{listError}</span>
+          <button onClick={() => void load()} className="text-xs font-medium underline-offset-2 hover:underline">Tentar novamente</button>
+        </div>
+      )}
       <div>
         <h1 className="text-xl font-bold text-foreground">Gestão de Rotas</h1>
         <p className="text-sm text-muted-foreground mt-0.5">{rotas.length} rotas configuradas</p>
       </div>
 
-      {/* KPIs */}
       <div className="grid grid-cols-3 gap-3">
         {[
           { label: 'Ativas',     value: rotas.filter(r => r.estado === 'ativa').length,     color: '#22c55e' },
@@ -89,11 +110,10 @@ function RotasPage() {
       </div>
 
       <div className="flex flex-col lg:flex-row gap-4">
-        {/* Lista de rotas */}
         <div className="flex flex-col gap-2 w-full lg:w-72 shrink-0">
           {rotas.map(r => {
             const cfg = estadoConfig[r.estado]
-            const isSelected = rotaSelecionada.id === r.id
+            const isSelected = rotaSelecionada?.id === r.id
             return (
               <Card
                 key={r.id}
@@ -119,12 +139,18 @@ function RotasPage() {
                     <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{r.duracao}</span>
                   </div>
                   {r.estado === 'pendente' && (
-                    <button className="mt-2 flex items-center gap-1 text-[11px] font-medium text-[var(--primary)] hover:underline">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); void updateEstado(r.id, 'ativa') }}
+                      className="mt-2 flex items-center gap-1 text-[11px] font-medium text-[var(--primary)] hover:underline"
+                    >
                       <Play className="w-3 h-3" /> Iniciar rota
                     </button>
                   )}
                   {r.estado === 'ativa' && (
-                    <button className="mt-2 flex items-center gap-1 text-[11px] font-medium text-emerald-600 hover:underline">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); void updateEstado(r.id, 'concluida') }}
+                      className="mt-2 flex items-center gap-1 text-[11px] font-medium text-emerald-600 hover:underline"
+                    >
                       <CheckCircle className="w-3 h-3" /> Concluir rota
                     </button>
                   )}
@@ -134,14 +160,13 @@ function RotasPage() {
           })}
         </div>
 
-        {/* Mapa */}
         <div className="flex-1 min-h-[420px] rounded-xl overflow-hidden border border-border shadow-sm">
           <MapContainer center={[40.638, -8.654]} zoom={14} style={{ height: '100%', minHeight: 420 }}>
             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap" />
             {rotas.map(r => (
-              <Polyline key={r.id} positions={r.waypoints} color={r.cor} weight={r.id === rotaSelecionada.id ? 4 : 2} opacity={r.id === rotaSelecionada.id ? 0.9 : 0.35} />
+              <Polyline key={r.id} positions={r.waypoints} color={r.cor} weight={r.id === rotaSelecionada?.id ? 4 : 2} opacity={r.id === rotaSelecionada?.id ? 0.9 : 0.35} />
             ))}
-            {rotaSelecionada.waypoints.map(([lat, lng], i) => (
+            {rotaSelecionada?.waypoints.map(([lat, lng], i) => (
               <Marker key={i} position={[lat, lng]} icon={waypointIcon(rotaSelecionada.cor, i + 1)}>
                 <Popup><p className="text-xs font-medium">Paragem {i + 1}</p></Popup>
               </Marker>

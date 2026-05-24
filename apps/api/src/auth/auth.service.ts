@@ -2,12 +2,15 @@ import {
   ConflictException,
   Inject,
   Injectable,
+  ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UserRole } from '@prisma/client';
 import { readNumberEnv } from '@ecobairro/config';
 import type {
+  AuthMeResponse,
+  ForgotPasswordResponse,
   LoginResponse,
   RegisterResponse,
   UserRole as ContractUserRole,
@@ -18,8 +21,11 @@ import { PrismaService } from '../database/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import type { JwtPayload } from './auth.types';
 import type { LoginDto } from './dto/login.dto';
+import type { ForgotPasswordDto } from './dto/forgot-password.dto';
 import type { RefreshDto } from './dto/refresh.dto';
 import type { RegisterDto } from './dto/register.dto';
+import type { ResetPasswordDto } from './dto/reset-password.dto';
+import { MailService } from '../mail/mail.service';
 
 interface StoredSession {
   refreshTokenHash: string;
@@ -33,15 +39,23 @@ export class AuthService {
   private readonly refreshTokenTtlSeconds =
     readNumberEnv('REFRESH_TOKEN_TTL_DAYS', 7) * 24 * 60 * 60;
   private readonly bcryptRounds = readNumberEnv('BCRYPT_ROUNDS', 12);
+  private readonly resetPasswordTtlSeconds =
+    readNumberEnv('PASSWORD_RESET_TTL_MINUTES', 30) * 60;
+  private readonly appBaseUrl = (process.env.APP_BASE_URL ?? 'http://localhost:8080').replace(/\/$/, '');
+  private readonly returnResetToken =
+    (process.env.PASSWORD_RESET_RETURN_TOKEN ?? 'false') === 'true';
+  private readonly mailService: MailService;
 
   constructor(
     @Inject(PrismaService) prisma: PrismaService,
     @Inject(RedisService) redisService: RedisService,
     @Inject(JwtService) jwtService: JwtService,
+    @Inject(MailService) mailService: MailService,
   ) {
     this.prisma = prisma;
     this.redisService = redisService;
     this.jwtService = jwtService;
+    this.mailService = mailService;
   }
 
   async register(input: RegisterDto): Promise<RegisterResponse> {
@@ -139,6 +153,99 @@ export class AuthService {
     await this.redisService.getClient().del(getUserSessionKey(userId));
   }
 
+  async me(userId: string): Promise<AuthMeResponse> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        emailVerified: true,
+        eliminadoEm: true,
+      },
+    });
+
+    if (!user || user.eliminadoEm) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    return {
+      id: user.id,
+      email: user.email,
+      role: user.role as ContractUserRole,
+      email_verified: user.emailVerified,
+    };
+  }
+
+  async forgotPassword(input: ForgotPasswordDto): Promise<ForgotPasswordResponse> {
+    const normalizedEmail = input.email.trim().toLowerCase();
+    const user = await this.prisma.user.findUnique({
+      where: { email: normalizedEmail },
+      select: { id: true, eliminadoEm: true },
+    });
+
+    if (!user || user.eliminadoEm) {
+      return { ok: true };
+    }
+
+    const rawToken = randomBytes(24).toString('hex');
+    await this.redisService
+      .getClient()
+      .set(
+        getPasswordResetKey(rawToken),
+        user.id,
+        'EX',
+        this.resetPasswordTtlSeconds,
+      );
+
+    const smtpConfigured = this.isPasswordEmailConfigured();
+
+    if (smtpConfigured && process.env.NODE_ENV !== 'test') {
+      await this.sendPasswordResetEmail(normalizedEmail, rawToken);
+    }
+
+    if (
+      process.env.NODE_ENV === 'test' ||
+      this.returnResetToken ||
+      (!smtpConfigured && process.env.NODE_ENV !== 'production')
+    ) {
+      return { ok: true, reset_token: rawToken };
+    }
+
+    return { ok: true };
+  }
+
+  async resetPassword(input: ResetPasswordDto): Promise<void> {
+    const resetKey = getPasswordResetKey(input.token);
+    const redis = this.redisService.getClient();
+    const userId = await redis.get(resetKey);
+
+    if (!userId) {
+      throw new UnauthorizedException('Invalid or expired reset token');
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, eliminadoEm: true },
+    });
+
+    if (!user || user.eliminadoEm) {
+      await redis.del(resetKey);
+      throw new UnauthorizedException('Invalid or expired reset token');
+    }
+
+    const passwordHash = await bcrypt.hash(input.new_password, this.bcryptRounds);
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash },
+    });
+
+    await Promise.all([
+      redis.del(resetKey),
+      redis.del(getUserSessionKey(userId)),
+    ]);
+  }
+
   private async issueSession(
     userId: string,
     role: ContractUserRole,
@@ -169,6 +276,27 @@ export class AuthService {
       pre_auth_token: null,
     };
   }
+
+  private isPasswordEmailConfigured(): boolean {
+    return !!process.env.SMTP_HOST?.trim();
+  }
+
+  private async sendPasswordResetEmail(email: string, rawToken: string): Promise<void> {
+    if (!this.isPasswordEmailConfigured()) {
+      throw new ServiceUnavailableException(
+        'Password recovery email service is not configured',
+      );
+    }
+    const resetUrl = `${this.appBaseUrl}/reset-password?token=${encodeURIComponent(rawToken)}`;
+    await this.mailService.send('password-reset', {
+      to: email,
+      subject: 'ecoBairro — Recuperação de password',
+      variables: {
+        resetUrl,
+        expiresMinutes: Math.floor(this.resetPasswordTtlSeconds / 60),
+      },
+    });
+  }
 }
 
 function getUserSessionKey(userId: string): string {
@@ -183,6 +311,10 @@ function extractUserIdFromRefreshToken(token: string): string | null {
   }
 
   return userId;
+}
+
+function getPasswordResetKey(rawToken: string): string {
+  return `user:reset:${hashToken(rawToken)}`;
 }
 
 function hashToken(token: string): string {

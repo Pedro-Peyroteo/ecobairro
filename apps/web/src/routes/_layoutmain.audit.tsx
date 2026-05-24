@@ -1,26 +1,20 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { requireRole } from '@/lib/auth'
 import { Card, CardContent } from '@/components/ui/card'
-import { ShieldCheck, Search, Download, User, Settings, FileText, Trash2, LogIn, LogOut } from 'lucide-react'
-import { useState } from 'react'
+import { ShieldCheck, Search, Download, User, Settings, FileText, Trash2, LogIn, LogOut, Loader2 } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { fetchJson } from '@/lib/http/fetch-json'
+import { getApiErrorMessage } from '@/lib/http/api-error'
+import { clientEnv } from '@/lib/env'
+import { getAccessToken } from '@/lib/auth'
+import type { AuditLogRecord, ListAuditLogsResponse } from '@ecobairro/contracts'
 
 export const Route = createFileRoute('/_layoutmain/audit')({
   beforeLoad: requireRole(['tecnico_ccdr', 'admin']),
   component: AuditPage,
 })
 
-type TipoAcao = 'login' | 'logout' | 'create' | 'update' | 'delete' | 'config'
-
-interface LogEntry {
-  id: number
-  utilizador: string
-  papel: string
-  acao: TipoAcao
-  descricao: string
-  ip: string
-  data: string
-  hora: string
-}
+type TipoAcao = AuditLogRecord['acao']
 
 const acaoConfig: Record<TipoAcao, { label: string; color: string; icon: React.ElementType }> = {
   login:  { label: 'Login',       color: '#60a5fa', icon: LogIn    },
@@ -31,83 +25,114 @@ const acaoConfig: Record<TipoAcao, { label: string; color: string; icon: React.E
   config: { label: 'Configuração',color: '#a78bfa', icon: Settings },
 }
 
-const mockLogs: LogEntry[] = [
-  { id: 1,  utilizador: 'admin@ecobairro.pt',      papel: 'admin',              acao: 'config', descricao: 'Alterou configurações globais do sistema',          ip: '192.168.1.10', data: '22 Jan 2026', hora: '14:32' },
-  { id: 2,  utilizador: 'joao.silva@cm-aveiro.pt', papel: 'tecnico_autarquia',  acao: 'create', descricao: 'Criou mensagem institucional #12',                  ip: '192.168.1.45', data: '22 Jan 2026', hora: '13:15' },
-  { id: 3,  utilizador: 'ana.costa@cm-aveiro.pt',  papel: 'tecnico_autarquia',  acao: 'update', descricao: 'Editou zona geográfica "Zona Norte"',               ip: '192.168.1.52', data: '22 Jan 2026', hora: '11:48' },
-  { id: 4,  utilizador: 'op01@ecobairro.pt',       papel: 'operador',           acao: 'login',  descricao: 'Sessão iniciada',                                   ip: '10.0.0.23',    data: '22 Jan 2026', hora: '09:00' },
-  { id: 5,  utilizador: 'admin@ecobairro.pt',      papel: 'admin',              acao: 'delete', descricao: 'Eliminou utilizador id:47 (conta desativada)',       ip: '192.168.1.10', data: '21 Jan 2026', hora: '17:20' },
-  { id: 6,  utilizador: 'rui.faria@cm-aveiro.pt',  papel: 'tecnico_ccdr',       acao: 'login',  descricao: 'Sessão iniciada',                                   ip: '172.16.0.8',   data: '21 Jan 2026', hora: '16:05' },
-  { id: 7,  utilizador: 'op02@ecobairro.pt',       papel: 'operador',           acao: 'update', descricao: 'Atualizou estado do ecoponto EP-204 para "Cheio"',  ip: '10.0.0.31',    data: '21 Jan 2026', hora: '14:12' },
-  { id: 8,  utilizador: 'joao.silva@cm-aveiro.pt', papel: 'tecnico_autarquia',  acao: 'create', descricao: 'Criou zona geográfica "Bairro do Liceu"',           ip: '192.168.1.45', data: '21 Jan 2026', hora: '10:33' },
-  { id: 9,  utilizador: 'admin@ecobairro.pt',      papel: 'admin',              acao: 'update', descricao: 'Alterou papel de utilizador id:23 para "operador"', ip: '192.168.1.10', data: '20 Jan 2026', hora: '15:55' },
-  { id: 10, utilizador: 'op01@ecobairro.pt',       papel: 'operador',           acao: 'logout', descricao: 'Sessão terminada',                                  ip: '10.0.0.23',    data: '20 Jan 2026', hora: '18:01' },
-  { id: 11, utilizador: 'ana.costa@cm-aveiro.pt',  papel: 'tecnico_autarquia',  acao: 'delete', descricao: 'Arquivou mensagem institucional #8',                ip: '192.168.1.52', data: '20 Jan 2026', hora: '11:22' },
-  { id: 12, utilizador: 'rui.faria@cm-aveiro.pt',  papel: 'tecnico_ccdr',       acao: 'logout', descricao: 'Sessão terminada',                                  ip: '172.16.0.8',   data: '19 Jan 2026', hora: '19:44' },
-]
-
-const tipoFiltros: { label: string; value: TipoAcao | 'todos' }[] = [
-  { label: 'Todos',        value: 'todos'  },
-  { label: 'Login/Logout', value: 'login'  },
-  { label: 'Criação',      value: 'create' },
-  { label: 'Alteração',    value: 'update' },
-  { label: 'Eliminação',   value: 'delete' },
-  { label: 'Configuração', value: 'config' },
+const tipoFiltros: { label: string; value: TipoAcao | 'todos' | 'login_logout' }[] = [
+  { label: 'Todos',        value: 'todos'       },
+  { label: 'Login/Logout', value: 'login_logout'},
+  { label: 'Criação',      value: 'create'      },
+  { label: 'Alteração',    value: 'update'      },
+  { label: 'Eliminação',   value: 'delete'      },
+  { label: 'Configuração', value: 'config'      },
 ]
 
 function AuditPage() {
-  const [filtroAcao, setFiltroAcao] = useState<TipoAcao | 'todos'>('todos')
+  const [logs, setLogs] = useState<AuditLogRecord[]>([])
+  const [total, setTotal] = useState(0)
+  const [loading, setLoading] = useState(true)
+  const [listError, setListError] = useState<string | null>(null)
+  const [filtroAcao, setFiltroAcao] = useState<TipoAcao | 'todos' | 'login_logout'>('todos')
   const [pesquisa, setPesquisa] = useState('')
 
-  const lista = mockLogs.filter((l) => {
-    const matchAcao = filtroAcao === 'todos' || l.acao === filtroAcao || (filtroAcao === 'login' && (l.acao === 'login' || l.acao === 'logout'))
-    const matchSearch = pesquisa === '' ||
-      l.utilizador.toLowerCase().includes(pesquisa.toLowerCase()) ||
-      l.descricao.toLowerCase().includes(pesquisa.toLowerCase())
-    return matchAcao && matchSearch
-  })
+  const headers = { Authorization: `Bearer ${getAccessToken() ?? ''}` }
+
+  async function load() {
+    setLoading(true)
+    setListError(null)
+    try {
+      const params = new URLSearchParams({ page: '1', pageSize: '50' })
+      if (filtroAcao !== 'todos') params.set('acao', filtroAcao)
+      if (pesquisa) params.set('q', pesquisa)
+      const res = await fetchJson<ListAuditLogsResponse>(`/v1/audit-logs?${params}`, {
+        baseUrl: clientEnv.apiBaseUrl,
+        headers,
+      })
+      setLogs(res.logs)
+      setTotal(res.total)
+    } catch (err) {
+      setLogs([])
+      setTotal(0)
+      setListError(getApiErrorMessage(err, 'Não foi possível carregar os logs de auditoria.'))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => { void load() }, [filtroAcao, pesquisa])
+
+  function exportCsv() {
+    const header = 'Utilizador,Papel,Ação,Descrição,IP,Data,Hora'
+    const rows = logs.map(l =>
+      [l.utilizador, l.papel, l.acao, `"${l.descricao.replace(/"/g, '""')}"`, l.ip, l.data, l.hora].join(',')
+    )
+    const csv = [header, ...rows].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `audit-logs-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const kpis = [
+    { label: 'Total de ações',    value: total,                                              color: '#60a5fa' },
+    { label: 'Utilizadores ativos',value: new Set(logs.map(l => l.utilizador)).size,          color: 'oklch(0.55 0.18 150)' },
+    { label: 'Eliminações',       value: logs.filter(l => l.acao === 'delete').length,        color: '#f87171' },
+    { label: 'Configurações',     value: logs.filter(l => l.acao === 'config').length,        color: '#a78bfa' },
+  ]
 
   return (
     <div className="flex flex-col gap-8 pb-12">
 
-      {/* Cabeçalho */}
+      {listError && (
+        <div role="alert" aria-live="polite" className="rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive flex items-center justify-between gap-3">
+          <span>{listError}</span>
+          <button onClick={() => void load()} className="text-xs font-medium underline-offset-2 hover:underline">Tentar novamente</button>
+        </div>
+      )}
+
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-bold text-foreground">Auditoria e Logs</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">{mockLogs.length} registos de auditoria</p>
+          <p className="text-sm text-muted-foreground mt-0.5">{loading ? '...' : total} registos de auditoria</p>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl border border-border bg-card text-foreground hover:bg-accent transition-colors self-start sm:self-auto">
+        <button
+          onClick={exportCsv}
+          className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl border border-border bg-card text-foreground hover:bg-accent transition-colors self-start sm:self-auto"
+        >
           <Download className="w-4 h-4" />
           Exportar CSV
         </button>
       </div>
 
-      {/* KPIs */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {[
-          { label: 'Total de ações', value: mockLogs.length,                                         color: '#60a5fa' },
-          { label: 'Utilizadores ativos', value: new Set(mockLogs.map(l => l.utilizador)).size,       color: 'oklch(0.55 0.18 150)' },
-          { label: 'Eliminações',    value: mockLogs.filter(l => l.acao === 'delete').length,         color: '#f87171' },
-          { label: 'Configurações',  value: mockLogs.filter(l => l.acao === 'config').length,         color: '#a78bfa' },
-        ].map((s) => (
+        {kpis.map((s) => (
           <Card key={s.label} className="border border-border/70 shadow-sm rounded-xl">
             <CardContent className="pt-4 pb-3">
               <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">{s.label}</p>
-              <p className="text-2xl font-bold mt-1" style={{ color: s.color }}>{s.value}</p>
+              <p className="text-2xl font-bold mt-1" style={{ color: s.color }}>{loading ? '-' : s.value}</p>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      {/* Filtros + Pesquisa */}
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
         <div className="flex gap-2 flex-wrap">
           {tipoFiltros.map((f) => (
             <button
               key={f.value}
-              onClick={() => setFiltroAcao(f.value as TipoAcao | 'todos')}
+              onClick={() => setFiltroAcao(f.value as typeof filtroAcao)}
               className={`px-4 py-1.5 text-xs font-medium rounded-full transition-all ${
-                filtroAcao === f.value || (f.value === 'login' && (filtroAcao === 'login' || filtroAcao === 'logout'))
+                filtroAcao === f.value
                   ? 'bg-[var(--primary)] text-white shadow-sm'
                   : 'bg-card border border-border text-muted-foreground hover:border-[var(--primary)]/40 hover:text-foreground'
               }`}
@@ -128,7 +153,6 @@ function AuditPage() {
         </div>
       </div>
 
-      {/* Tabela */}
       <Card className="border border-border/70 shadow-sm rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -142,7 +166,15 @@ function AuditPage() {
               </tr>
             </thead>
             <tbody>
-              {lista.length === 0 ? (
+              {loading ? (
+                <tr>
+                  <td colSpan={5} className="px-4 py-10 text-center">
+                    <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                      <Loader2 className="w-4 h-4 animate-spin" /> A carregar...
+                    </div>
+                  </td>
+                </tr>
+              ) : logs.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-4 py-10 text-center text-muted-foreground text-sm">
                     <div className="flex flex-col items-center gap-2">
@@ -151,8 +183,8 @@ function AuditPage() {
                     </div>
                   </td>
                 </tr>
-              ) : lista.map((l, i) => {
-                const cfg = acaoConfig[l.acao]
+              ) : logs.map((l, i) => {
+                const cfg = acaoConfig[l.acao] ?? acaoConfig['create']!
                 const Icon = cfg.icon
                 return (
                   <tr key={l.id} className={`border-b border-border/50 hover:bg-muted/20 transition-colors ${i % 2 === 0 ? '' : 'bg-muted/10'}`}>

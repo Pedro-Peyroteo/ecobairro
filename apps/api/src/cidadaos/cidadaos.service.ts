@@ -1,7 +1,15 @@
-import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Prisma, UserRole } from '@prisma/client';
 import type {
   CitizenSelfProfileResponse,
+  HomeEcoponto,
+  ListFavoritosResponse,
   UpdateCitizenSelfProfileRequest,
   UserRole as ContractUserRole,
 } from '@ecobairro/contracts';
@@ -17,30 +25,7 @@ export class CidadaosService {
 
   async getMe(userId: string, role: ContractUserRole): Promise<CitizenSelfProfileResponse> {
     assertCitizen(role);
-
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      include: {
-        cidadaoPerfil: true,
-      },
-    });
-
-    if (!user || user.eliminadoEm || !user.cidadaoPerfil) {
-      throw new NotFoundException('Citizen profile not found');
-    }
-
-    return {
-      id: user.id,
-      email: user.email,
-      phone: user.phone,
-      role: 'CIDADAO',
-      email_verified: user.emailVerified,
-      nome_completo: user.cidadaoPerfil.nomeCompleto,
-      gamification_opt_in: user.cidadaoPerfil.gamificationOptIn,
-      notificacao_prefs: asJsonObject(user.cidadaoPerfil.notificacaoPrefs),
-      dashboard_widgets: asJsonObject(user.cidadaoPerfil.dashboardWidgets),
-      criado_em: user.criadoEm.toISOString(),
-    };
+    return this.fetchProfile(userId);
   }
 
   async updateMe(
@@ -73,8 +58,108 @@ export class CidadaosService {
       });
     });
 
-    return this.getMe(userId, role);
+    return this.fetchProfile(userId);
   }
+
+  async listFavoritos(
+    userId: string,
+    role: ContractUserRole,
+  ): Promise<ListFavoritosResponse> {
+    assertCitizen(role);
+    const rows = await this.prisma.cidadaoEcopontoFavorito.findMany({
+      where: { userId, ecoponto: { ativo: true } },
+      include: { ecoponto: true },
+      orderBy: { criadoEm: 'asc' },
+    });
+    return {
+      ecopontos: rows.map((row) => mapEcopontoFavorito(row.ecoponto)),
+    };
+  }
+
+  async addFavorito(
+    userId: string,
+    role: ContractUserRole,
+    ecopontoId: string,
+  ): Promise<ListFavoritosResponse> {
+    assertCitizen(role);
+
+    const ecoponto = await this.prisma.ecoponto.findFirst({
+      where: { id: ecopontoId, ativo: true },
+    });
+    if (!ecoponto) {
+      throw new NotFoundException('Ecoponto not found');
+    }
+
+    try {
+      await this.prisma.cidadaoEcopontoFavorito.create({
+        data: { userId, ecopontoId },
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new ConflictException('Ecoponto already in favorites');
+      }
+      throw error;
+    }
+
+    return this.listFavoritos(userId, role);
+  }
+
+  async removeFavorito(
+    userId: string,
+    role: ContractUserRole,
+    ecopontoId: string,
+  ): Promise<ListFavoritosResponse> {
+    assertCitizen(role);
+
+    await this.prisma.cidadaoEcopontoFavorito.deleteMany({
+      where: { userId, ecopontoId },
+    });
+
+    return this.listFavoritos(userId, role);
+  }
+
+  private async fetchProfile(userId: string): Promise<CitizenSelfProfileResponse> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { cidadaoPerfil: true },
+    });
+
+    if (!user || user.eliminadoEm || !user.cidadaoPerfil) {
+      throw new NotFoundException('Citizen profile not found');
+    }
+
+    return {
+      id: user.id,
+      email: user.email,
+      phone: user.phone,
+      role: 'CIDADAO',
+      email_verified: user.emailVerified,
+      nome_completo: user.cidadaoPerfil.nomeCompleto,
+      gamification_opt_in: user.cidadaoPerfil.gamificationOptIn,
+      notificacao_prefs: asJsonObject(user.cidadaoPerfil.notificacaoPrefs),
+      dashboard_widgets: asJsonObject(user.cidadaoPerfil.dashboardWidgets),
+      criado_em: user.criadoEm.toISOString(),
+    };
+  }
+}
+
+function mapEcopontoFavorito(e: {
+  id: string;
+  nome: string;
+  distanciaLabel: string;
+  ocupacao: number;
+  mapTileUrl: string | null;
+}): HomeEcoponto {
+  return {
+    id: e.id,
+    nome: e.nome,
+    distancia: e.distanciaLabel,
+    ocupacao: e.ocupacao,
+    map_url: e.mapTileUrl ?? '',
+  };
 }
 
 function assertCitizen(role: ContractUserRole): asserts role is 'CIDADAO' {

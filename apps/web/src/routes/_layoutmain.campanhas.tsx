@@ -2,42 +2,30 @@ import { createFileRoute } from '@tanstack/react-router'
 import { requireRole } from '@/lib/auth'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Megaphone, PlusCircle, Search, Calendar, Eye, Archive, Pencil, X } from 'lucide-react'
-import { useState } from 'react'
+import { Megaphone, PlusCircle, Search, Calendar, Eye, Archive, Pencil, X, Loader2 } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { useModalA11y } from '@/lib/use-modal-a11y'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { fetchJson } from '@/lib/http/fetch-json'
+import { getApiErrorMessage } from '@/lib/http/api-error'
+import { clientEnv } from '@/lib/env'
+import { getAccessToken } from '@/lib/auth'
+import type { CampanhaRecord, ListCampanhasResponse, CreateCampanhaRequest } from '@ecobairro/contracts'
 
 export const Route = createFileRoute('/_layoutmain/campanhas')({
   beforeLoad: requireRole(['tecnico_autarquia']),
   component: CampanhasPage,
 })
 
-type Estado = 'rascunho' | 'publicada' | 'expirada'
-
-interface Mensagem {
-  id: number
-  titulo: string
-  corpo: string
-  estado: Estado
-  dataCriacao: string
-  dataValidade: string
-  autor: string
-}
+type Estado = CampanhaRecord['estado']
 
 const estadoConfig: Record<Estado, { label: string; color: string; bg: string }> = {
   rascunho:  { label: 'Rascunho',  color: '#94a3b8', bg: 'bg-slate-100 dark:bg-slate-800'  },
   publicada: { label: 'Publicada', color: 'oklch(0.55 0.18 150)', bg: 'bg-emerald-50 dark:bg-emerald-950/30' },
   expirada:  { label: 'Expirada',  color: '#94a3b8', bg: 'bg-slate-50 dark:bg-slate-900'   },
 }
-
-const mockMensagens: Mensagem[] = [
-  { id: 1, titulo: 'Recolha especial de REEE — Janeiro 2026', corpo: 'No dia 15 de Janeiro haverá uma recolha especial de resíduos elétricos e eletrónicos em todos os bairros do concelho. Deixe os seus equipamentos junto ao ecoponto habitual até às 9h.', estado: 'publicada', dataCriacao: '02 Jan 2026', dataValidade: '16 Jan 2026', autor: 'Câmara de Aveiro' },
-  { id: 2, titulo: 'Campanha "Aveiro Recicla Mais" — Fevereiro', corpo: 'Junte-se à campanha de reciclagem do mês de Fevereiro. Cada tonelada de papel reciclado poupa 17 árvores! Participe e ganhe pontos ecoBairro.', estado: 'publicada', dataCriacao: '28 Jan 2026', dataValidade: '28 Fev 2026', autor: 'Câmara de Aveiro' },
-  { id: 3, titulo: 'Manutenção ecopontos Zona Norte — Aviso', corpo: 'Informamos que os ecopontos da Zona Norte estarão temporariamente sem serviço nos dias 10 e 11 de Janeiro para manutenção programada.', estado: 'expirada', dataCriacao: '08 Jan 2026', dataValidade: '11 Jan 2026', autor: 'Câmara de Aveiro' },
-  { id: 4, titulo: 'Novo horário de recolha — Bairro do Liceu', corpo: 'A partir de Fevereiro, a recolha de resíduos no Bairro do Liceu passa para as terças e sextas-feiras, entre as 22h e as 2h. Pedimos que coloque os contentores no passeio após as 21h.', estado: 'rascunho', dataCriacao: '25 Jan 2026', dataValidade: '28 Fev 2026', autor: 'Câmara de Aveiro' },
-  { id: 5, titulo: 'Obras na Av. Central — Alteração de ecopontos', corpo: 'Devido às obras em curso na Av. Central, os ecopontos foram temporariamente relocalizados para a Rua de Viseu, em frente ao nº 45.', estado: 'publicada', dataCriacao: '20 Jan 2026', dataValidade: '20 Mar 2026', autor: 'Câmara de Aveiro' },
-]
 
 const filtros: { label: string; value: Estado | 'todas' }[] = [
   { label: 'Todas',     value: 'todas'     },
@@ -51,31 +39,51 @@ const mensagemSchema = z.object({
   corpo: z.string().min(10, 'Mensagem obrigatória (mín. 10 caracteres)'),
   dataValidade: z.string().min(1, 'Data de validade obrigatória'),
 })
-
 type MensagemForm = z.infer<typeof mensagemSchema>
 
 function CampanhasPage() {
   const [filtro, setFiltro] = useState<Estado | 'todas'>('todas')
   const [pesquisa, setPesquisa] = useState('')
-  const [mensagens, setMensagens] = useState<Mensagem[]>(mockMensagens)
+  const [campanhas, setCampanhas] = useState<CampanhaRecord[]>([])
+  const [total, setTotal] = useState(0)
+  const [loading, setLoading] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
   const [modalAberto, setModalAberto] = useState(false)
-  const [editando, setEditando] = useState<Mensagem | null>(null)
+  const [editando, setEditando] = useState<CampanhaRecord | null>(null)
+  const [listError, setListError] = useState<string | null>(null)
+  const [submitError, setSubmitError] = useState<string | null>(null)
+  const modalRef = useRef<HTMLDivElement>(null)
+  useModalA11y(modalAberto, modalRef, () => setModalAberto(false))
+
+  const headers = { Authorization: `Bearer ${getAccessToken() ?? ''}` }
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<MensagemForm>({
     resolver: zodResolver(mensagemSchema),
   })
 
-  const lista = mensagens.filter((m) => {
-    const matchFiltro = filtro === 'todas' || m.estado === filtro
-    const matchSearch = pesquisa === '' || m.titulo.toLowerCase().includes(pesquisa.toLowerCase())
-    return matchFiltro && matchSearch
-  })
-
-  const contagens = {
-    publicada: mensagens.filter(m => m.estado === 'publicada').length,
-    rascunho:  mensagens.filter(m => m.estado === 'rascunho').length,
-    expirada:  mensagens.filter(m => m.estado === 'expirada').length,
+  async function load() {
+    setLoading(true)
+    setListError(null)
+    try {
+      const params = new URLSearchParams({ page: '1', pageSize: '50' })
+      if (filtro !== 'todas') params.set('estado', filtro)
+      if (pesquisa) params.set('q', pesquisa)
+      const res = await fetchJson<ListCampanhasResponse>(`/v1/campanhas?${params}`, {
+        baseUrl: clientEnv.apiBaseUrl,
+        headers,
+      })
+      setCampanhas(res.campanhas)
+      setTotal(res.total)
+    } catch (err) {
+      setCampanhas([])
+      setTotal(0)
+      setListError(getApiErrorMessage(err, 'Não foi possível carregar as campanhas.'))
+    } finally {
+      setLoading(false)
+    }
   }
+
+  useEffect(() => { void load() }, [filtro, pesquisa])
 
   function abrirNova() {
     setEditando(null)
@@ -83,46 +91,85 @@ function CampanhasPage() {
     setModalAberto(true)
   }
 
-  function abrirEditar(m: Mensagem) {
+  function abrirEditar(m: CampanhaRecord) {
     setEditando(m)
-    reset({ titulo: m.titulo, corpo: m.corpo, dataValidade: m.dataValidade })
+    reset({ titulo: m.titulo, corpo: m.corpo, dataValidade: '' })
     setModalAberto(true)
   }
 
-  function onSubmit(data: MensagemForm) {
-    if (editando) {
-      setMensagens(prev => prev.map(m => m.id === editando.id ? { ...m, ...data } : m))
-    } else {
-      const nova: Mensagem = {
-        id: Date.now(),
-        titulo: data.titulo,
-        corpo: data.corpo,
-        estado: 'rascunho',
-        dataCriacao: new Date().toLocaleDateString('pt-PT', { day: '2-digit', month: 'short', year: 'numeric' }),
-        dataValidade: data.dataValidade,
-        autor: 'Câmara de Aveiro',
+  async function onSubmit(data: MensagemForm) {
+    setSubmitting(true)
+    setSubmitError(null)
+    try {
+      if (editando) {
+        await fetchJson<CampanhaRecord>(`/v1/campanhas/${editando.id}`, {
+          baseUrl: clientEnv.apiBaseUrl,
+          headers,
+          method: 'PATCH',
+          body: JSON.stringify({ titulo: data.titulo, corpo: data.corpo, dataValidade: data.dataValidade }),
+        })
+      } else {
+        const body: CreateCampanhaRequest = {
+          titulo: data.titulo,
+          corpo: data.corpo,
+          dataValidade: data.dataValidade,
+        }
+        await fetchJson<CampanhaRecord>('/v1/campanhas', {
+          baseUrl: clientEnv.apiBaseUrl,
+          headers,
+          method: 'POST',
+          body: JSON.stringify(body),
+        })
       }
-      setMensagens(prev => [nova, ...prev])
+      setModalAberto(false)
+      await load()
+    } catch (err) {
+      setSubmitError(getApiErrorMessage(err, 'Não foi possível guardar a campanha.'))
+    } finally {
+      setSubmitting(false)
     }
-    setModalAberto(false)
   }
 
-  function publicar(id: number) {
-    setMensagens(prev => prev.map(m => m.id === id ? { ...m, estado: 'publicada' } : m))
+  async function publicar(id: string) {
+    await fetchJson<CampanhaRecord>(`/v1/campanhas/${id}`, {
+      baseUrl: clientEnv.apiBaseUrl,
+      headers,
+      method: 'PATCH',
+      body: JSON.stringify({ estado: 'publicada' }),
+    })
+    await load()
   }
 
-  function arquivar(id: number) {
-    setMensagens(prev => prev.map(m => m.id === id ? { ...m, estado: 'expirada' } : m))
+  async function arquivar(id: string) {
+    await fetchJson<CampanhaRecord>(`/v1/campanhas/${id}`, {
+      baseUrl: clientEnv.apiBaseUrl,
+      headers,
+      method: 'PATCH',
+      body: JSON.stringify({ estado: 'expirada' }),
+    })
+    await load()
+  }
+
+  const contagens = {
+    publicada: campanhas.filter(m => m.estado === 'publicada').length,
+    rascunho:  campanhas.filter(m => m.estado === 'rascunho').length,
+    expirada:  campanhas.filter(m => m.estado === 'expirada').length,
   }
 
   return (
     <div className="flex flex-col gap-8 pb-12">
 
-      {/* Cabeçalho */}
+      {listError && (
+        <div role="alert" aria-live="polite" className="rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive flex items-center justify-between gap-3">
+          <span>{listError}</span>
+          <button onClick={() => void load()} className="text-xs font-medium underline-offset-2 hover:underline">Tentar novamente</button>
+        </div>
+      )}
+
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-bold text-foreground">Mensagens Institucionais</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">{mensagens.length} mensagens no total</p>
+          <p className="text-sm text-muted-foreground mt-0.5">{total} mensagens no total</p>
         </div>
         <Button size="sm" className="gap-2 bg-[var(--primary)] hover:opacity-90 transition-opacity self-start sm:self-auto" onClick={abrirNova}>
           <PlusCircle className="w-4 h-4" />
@@ -130,7 +177,6 @@ function CampanhasPage() {
         </Button>
       </div>
 
-      {/* Resumo */}
       <div className="grid grid-cols-3 gap-3">
         {[
           { label: 'Publicadas', value: contagens.publicada, color: 'oklch(0.55 0.18 150)' },
@@ -140,13 +186,12 @@ function CampanhasPage() {
           <Card key={s.label} className="border border-border/70 shadow-sm rounded-xl">
             <CardContent className="pt-4 pb-3">
               <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">{s.label}</p>
-              <p className="text-2xl font-bold mt-1" style={{ color: s.color }}>{s.value}</p>
+              <p className="text-2xl font-bold mt-1" style={{ color: s.color }}>{loading ? '-' : s.value}</p>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      {/* Filtros + Pesquisa */}
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
         <div className="flex gap-2 flex-wrap">
           {filtros.map((f) => (
@@ -175,8 +220,11 @@ function CampanhasPage() {
         </div>
       </div>
 
-      {/* Lista */}
-      {lista.length === 0 ? (
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="w-5 h-5 animate-spin text-[var(--primary)]" />
+        </div>
+      ) : campanhas.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
           <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
             <Megaphone className="w-5 h-5 text-muted-foreground" />
@@ -186,7 +234,7 @@ function CampanhasPage() {
         </div>
       ) : (
         <div className="flex flex-col gap-3">
-          {lista.map((m) => {
+          {campanhas.map((m) => {
             const cfg = estadoConfig[m.estado]
             return (
               <Card key={m.id} className="border border-border/70 shadow-sm rounded-xl hover:shadow-md transition-all">
@@ -204,8 +252,8 @@ function CampanhasPage() {
                       </div>
                       <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{m.corpo}</p>
                       <div className="flex items-center gap-3 mt-2 text-[11px] text-muted-foreground">
-                        <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />Criada {m.dataCriacao}</span>
-                        <span className="flex items-center gap-1"><Eye className="w-3 h-3" />Válida até {m.dataValidade}</span>
+                        <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />Criada {m.data_criacao}</span>
+                        <span className="flex items-center gap-1"><Eye className="w-3 h-3" />Válida até {m.data_validade}</span>
                       </div>
                       <div className="flex gap-2 mt-3">
                         <button onClick={() => abrirEditar(m)} className="flex items-center gap-1 text-xs font-medium text-[var(--primary)] hover:underline">
@@ -231,15 +279,19 @@ function CampanhasPage() {
         </div>
       )}
 
-      {/* Modal criar/editar */}
       {modalAberto && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40" onClick={() => setModalAberto(false)} />
-          <div className="relative z-10 w-full max-w-lg bg-card rounded-2xl shadow-2xl border border-border p-6 flex flex-col gap-4">
+          <div ref={modalRef} role="dialog" aria-modal="true" aria-labelledby="campanhas-modal-title" tabIndex={-1} className="relative z-10 w-full max-w-lg bg-card rounded-2xl shadow-2xl border border-border p-6 flex flex-col gap-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-base font-bold text-foreground">{editando ? 'Editar Mensagem' : 'Nova Mensagem'}</h2>
-              <button onClick={() => setModalAberto(false)} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
+              <h2 id="campanhas-modal-title" className="text-base font-bold text-foreground">{editando ? 'Editar Mensagem' : 'Nova Mensagem'}</h2>
+              <button type="button" aria-label="Fechar modal" onClick={() => setModalAberto(false)} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
             </div>
+            {submitError && (
+              <div role="alert" className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                {submitError}
+              </div>
+            )}
             <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-3">
               <div>
                 <label className="text-xs font-medium text-muted-foreground mb-1 block">Título</label>
@@ -272,7 +324,8 @@ function CampanhasPage() {
               </div>
               <div className="flex gap-2 justify-end">
                 <Button type="button" variant="outline" size="sm" onClick={() => setModalAberto(false)}>Cancelar</Button>
-                <Button type="submit" size="sm" className="bg-[var(--primary)] hover:opacity-90 transition-opacity">
+                <Button type="submit" size="sm" className="bg-[var(--primary)] hover:opacity-90 transition-opacity" disabled={submitting}>
+                  {submitting ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : null}
                   {editando ? 'Guardar' : 'Criar Rascunho'}
                 </Button>
               </div>

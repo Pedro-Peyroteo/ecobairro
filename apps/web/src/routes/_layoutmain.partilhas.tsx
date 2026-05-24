@@ -4,24 +4,45 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
   Package, PlusCircle, Search, MapPin, Users,
-  ArrowRight, Upload, X, ImageIcon
+  ArrowRight, Upload, X, ImageIcon, Loader,
+  CircleEllipsis, Sofa, Lamp, Book, Shirt
 } from 'lucide-react'
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
+import { useModalA11y } from '@/lib/use-modal-a11y'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { PaginationBar } from '@/components/ui/pagination-bar'
-import { categorias, partilhasMock } from '@/mocks/partilhasMocks'
+import { fetchJson } from '@/lib/http/fetch-json'
+import { getApiErrorMessage } from '@/lib/http/api-error'
+import { clientEnv } from '@/lib/env'
+import { getAccessToken } from '@/lib/auth'
+import { fileToDataUrl } from '@/lib/image-upload'
+import type {
+  CreatePartilhaRequest,
+  ListPartilhasResponse,
+  PartilhaCategoria,
+  PartilhaRecord,
+} from '@ecobairro/contracts'
 
 export const Route = createFileRoute('/_layoutmain/partilhas')({
   component: PartilhasPage,
 })
 
-const categoriasIds = ['moveis', 'eletro', 'livros', 'roupa'] as const
+/* ─── Categorias (config UI) ─── */
+const categorias: { id: PartilhaCategoria | 'todos'; label: string; icon: React.ElementType }[] = [
+  { id: 'todos',  label: 'Tudo',   icon: CircleEllipsis },
+  { id: 'moveis', label: 'Móveis', icon: Sofa            },
+  { id: 'eletro', label: 'Eletro', icon: Lamp            },
+  { id: 'livros', label: 'Livros', icon: Book            },
+  { id: 'roupa',  label: 'Roupa',  icon: Shirt           },
+]
+
+const categoriaIds = ['moveis', 'eletro', 'livros', 'roupa'] as const
 
 const novaPartilhaSchema = z.object({
   titulo:    z.string().min(3, 'Título obrigatório (mín. 3 caracteres)'),
-  categoria: z.enum(categoriasIds, { message: 'Selecione uma categoria' }),
+  categoria: z.enum(categoriaIds, { message: 'Selecione uma categoria' }),
   zona:      z.string().min(2, 'Zona obrigatória'),
   imagem:    z.custom<FileList>()
     .refine(fl => fl && fl.length > 0, 'Fotografia obrigatória')
@@ -31,22 +52,34 @@ const novaPartilhaSchema = z.object({
 
 type NovaPartilhaForm = z.infer<typeof novaPartilhaSchema>
 
-const POR_PAGINA = 4
+const POR_PAGINA = 12
+
+function authHeaders(): Record<string, string> {
+  const tok = getAccessToken()
+  return tok ? { Authorization: `Bearer ${tok}` } : {}
+}
 
 function PartilhasPage() {
-  const [filtro, setFiltro] = useState('todos')
+  const [filtro, setFiltro]     = useState<PartilhaCategoria | 'todos'>('todos')
   const [pesquisa, setPesquisa] = useState('')
-  const [pagina, setPagina] = useState(1)
-  const [todasPartilhas, setTodasPartilhas] = useState(partilhasMock)
+  const [pagina, setPagina]     = useState(1)
+  const [partilhas, setPartilhas] = useState<PartilhaRecord[]>([])
+  const [total, setTotal]       = useState(0)
+  const [loading, setLoading]   = useState(true)
+  const [listError, setListError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
   const [modalAberto, setModalAberto] = useState(false)
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [previewUrl, setPreviewUrl]   = useState<string | null>(null)
+  const modalRef = useRef<HTMLDivElement>(null)
+  useModalA11y(modalAberto, modalRef, () => fecharModal())
 
   const { register, handleSubmit, watch, reset, formState: { errors } } = useForm<NovaPartilhaForm>({
     resolver: zodResolver(novaPartilhaSchema),
   })
 
   const imagemWatch = watch('imagem')
-  const imagemFile = imagemWatch?.[0]
+  const imagemFile  = imagemWatch?.[0]
 
   useEffect(() => {
     if (!imagemFile) { setPreviewUrl(null); return }
@@ -55,49 +88,75 @@ function PartilhasPage() {
     return () => URL.revokeObjectURL(url)
   }, [imagemFile])
 
-  const filtrados = useMemo(() => {
-    return todasPartilhas.filter(p => {
-      const matchCat  = filtro === 'todos' || p.categoria === filtro
-      const matchText = p.titulo.toLowerCase().includes(pesquisa.toLowerCase()) ||
-                        p.zona.toLowerCase().includes(pesquisa.toLowerCase())
-      return matchCat && matchText
-    })
-  }, [todasPartilhas, filtro, pesquisa])
+  const load = useCallback(async () => {
+    setLoading(true)
+    setListError(null)
+    try {
+      const params: Record<string, string | number> = { page: pagina, pageSize: POR_PAGINA }
+      if (filtro !== 'todos') params.categoria = filtro
+      if (pesquisa.trim())    params.q         = pesquisa.trim()
 
+      const resp = await fetchJson<ListPartilhasResponse>('/v1/partilhas', {
+        baseUrl: clientEnv.apiBaseUrl,
+        params,
+      })
+      setPartilhas(resp.partilhas)
+      setTotal(resp.total)
+    } catch (err) {
+      setPartilhas([])
+      setTotal(0)
+      setListError(getApiErrorMessage(err, 'Não foi possível carregar as partilhas.'))
+    } finally {
+      setLoading(false)
+    }
+  }, [pagina, filtro, pesquisa])
+
+  useEffect(() => { void load() }, [load])
   useEffect(() => { setPagina(1) }, [filtro, pesquisa])
 
-  const pageCount = Math.ceil(filtrados.length / POR_PAGINA)
-  const paginados = filtrados.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA)
+  const pageCount = Math.ceil(total / POR_PAGINA)
 
-  function abrirModal() {
-    reset()
-    setPreviewUrl(null)
-    setModalAberto(true)
-  }
+  function abrirModal() { reset(); setPreviewUrl(null); setSubmitError(null); setModalAberto(true) }
+  function fecharModal() { setModalAberto(false); setPreviewUrl(null); setSubmitError(null); reset() }
 
-  function fecharModal() {
-    setModalAberto(false)
-    setPreviewUrl(null)
-    reset()
-  }
-
-  function onSubmitPartilha(data: NovaPartilhaForm) {
-    const nova = {
-      id: Date.now(),
-      titulo: data.titulo,
-      categoria: data.categoria,
-      zona: data.zona,
-      user: 'Eu',
-      imagem: previewUrl!,
-      distancia: 'No seu bairro',
-      data: 'Agora',
+  async function onSubmitPartilha(data: NovaPartilhaForm) {
+    setSubmitting(true)
+    try {
+      const file = data.imagem?.[0]
+      const body: CreatePartilhaRequest = {
+        titulo:    data.titulo,
+        zona:      data.zona,
+        categoria: data.categoria,
+        ...(file ? { imagem_url: await fileToDataUrl(file) } : {}),
+      }
+      await fetchJson('/v1/partilhas', {
+        baseUrl: clientEnv.apiBaseUrl,
+        method:  'POST',
+        body:    JSON.stringify(body),
+        headers: authHeaders(),
+      })
+      fecharModal()
+      await load()
+    } catch (err) {
+      setSubmitError(getApiErrorMessage(err, 'Não foi possível submeter a partilha.'))
     }
-    setTodasPartilhas(prev => [nova, ...prev])
-    fecharModal()
+    finally { setSubmitting(false) }
   }
+
+  const catLabel = useMemo(
+    () => (id: string) => categorias.find(c => c.id === id)?.label ?? id,
+    [],
+  )
 
   return (
     <div className="flex flex-col gap-10 pb-12">
+
+      {listError && (
+        <div role="alert" aria-live="polite" className="rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive flex items-center justify-between gap-3">
+          <span>{listError}</span>
+          <button onClick={() => void load()} className="text-xs font-medium underline-offset-2 hover:underline">Tentar novamente</button>
+        </div>
+      )}
 
       {/* ── Cabeçalho ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
@@ -128,7 +187,7 @@ function PartilhasPage() {
         </div>
         <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-1 w-full md:w-auto">
           {categorias.map((cat) => {
-            const Icon = cat.icon
+            const Icon    = cat.icon
             const isActive = filtro === cat.id
             return (
               <button
@@ -155,10 +214,17 @@ function PartilhasPage() {
             <div className="w-1.5 h-4 bg-[var(--primary)] rounded-full" />
             <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">Disponíveis Perto de Si</h2>
           </div>
-          <p className="text-xs text-muted-foreground font-medium">{filtrados.length} resultado{filtrados.length !== 1 ? 's' : ''}</p>
+          <p className="text-xs text-muted-foreground font-medium">
+            {loading ? '…' : `${total} resultado${total !== 1 ? 's' : ''}`}
+          </p>
         </div>
 
-        {filtrados.length === 0 ? (
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-20 text-center gap-3">
+            <Loader className="w-6 h-6 text-muted-foreground animate-spin" />
+            <p className="text-sm text-muted-foreground">A carregar partilhas…</p>
+          </div>
+        ) : partilhas.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center gap-3">
             <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
               <Search className="w-8 h-8 text-muted-foreground/30" />
@@ -171,12 +237,18 @@ function PartilhasPage() {
         ) : (
           <>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {paginados.map((item) => (
+              {partilhas.map((item) => (
                 <Card key={item.id} className="group border border-border/70 shadow-sm rounded-xl overflow-hidden hover:shadow-md transition-all cursor-pointer">
                   <div className="aspect-[4/3] w-full relative overflow-hidden bg-muted">
-                    <img src={item.imagem} alt={item.titulo} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                    {item.imagem_url ? (
+                      <img src={item.imagem_url} alt={item.titulo} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Package className="w-10 h-10 text-muted-foreground/30" />
+                      </div>
+                    )}
                     <Badge className="absolute top-3 right-3 bg-black/50 backdrop-blur-md border-none text-white text-[10px] font-bold uppercase tracking-tight">
-                      {categorias.find(c => c.id === item.categoria)?.label}
+                      {catLabel(item.categoria)}
                     </Badge>
                   </div>
                   <CardContent className="p-4 space-y-3">
@@ -186,8 +258,6 @@ function PartilhasPage() {
                       </h3>
                       <div className="flex items-center gap-2 mt-1.5 text-[11px] text-muted-foreground">
                         <span className="flex items-center gap-1 font-medium"><MapPin className="w-3 h-3" /> {item.zona}</span>
-                        <span className="w-1 h-1 rounded-full bg-muted-foreground/30" />
-                        <span>{item.distancia}</span>
                       </div>
                     </div>
                     <div className="flex items-center justify-between pt-2 border-t border-border/50">
@@ -195,7 +265,7 @@ function PartilhasPage() {
                         <div className="w-6 h-6 rounded-full bg-[var(--primary)]/10 flex items-center justify-center">
                           <Users className="w-3 h-3 text-[var(--primary)]" />
                         </div>
-                        <p className="text-[10px] font-semibold text-foreground truncate max-w-[80px]">{item.user}</p>
+                        <p className="text-[10px] font-semibold text-foreground truncate max-w-[80px]">{item.autorNome}</p>
                       </div>
                       <button className="flex items-center gap-1 text-[10px] font-bold text-[var(--primary)] uppercase tracking-wider group/btn">
                         Tenho Interesse <ArrowRight className="w-3 h-3 transition-transform group-hover/btn:translate-x-0.5" />
@@ -206,7 +276,7 @@ function PartilhasPage() {
               ))}
             </div>
             <div className="flex items-center justify-between text-xs text-muted-foreground pt-2">
-              <span>A mostrar {(pagina - 1) * POR_PAGINA + 1}–{Math.min(pagina * POR_PAGINA, filtrados.length)} de {filtrados.length}</span>
+              <span>A mostrar {Math.min((pagina - 1) * POR_PAGINA + 1, total)}–{Math.min(pagina * POR_PAGINA, total)} de {total}</span>
               <span>Página {pagina} de {pageCount}</span>
             </div>
             <PaginationBar page={pagina} pageCount={pageCount} onPage={setPagina} />
@@ -218,14 +288,18 @@ function PartilhasPage() {
       {modalAberto && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40" onClick={fecharModal} />
-          <div className="relative z-10 w-full max-w-md bg-card rounded-2xl shadow-2xl border border-border p-6 flex flex-col gap-4 max-h-[90vh] overflow-y-auto">
+          <div ref={modalRef} role="dialog" aria-modal="true" aria-labelledby="partilhas-modal-title" tabIndex={-1} className="relative z-10 w-full max-w-md bg-card rounded-2xl shadow-2xl border border-border p-6 flex flex-col gap-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between">
-              <h2 className="text-base font-bold text-foreground">Partilhar Objeto</h2>
-              <button onClick={fecharModal} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
+              <h2 id="partilhas-modal-title" className="text-base font-bold text-foreground">Partilhar Objeto</h2>
+              <button type="button" aria-label="Fechar modal" onClick={fecharModal} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
             </div>
+            {submitError && (
+              <div role="alert" className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                {submitError}
+              </div>
+            )}
             <form onSubmit={handleSubmit(onSubmitPartilha)} className="flex flex-col gap-3">
 
-              {/* Fotografia — em destaque no topo */}
               <div>
                 <label className="text-xs font-medium text-muted-foreground mb-1 block">Fotografia</label>
                 {previewUrl ? (
@@ -233,7 +307,7 @@ function PartilhasPage() {
                     <img src={previewUrl} alt="Preview" className="w-full h-44 object-cover" />
                     <button
                       type="button"
-                      onClick={() => { reset({ ...watch(), imagem: undefined as any }); setPreviewUrl(null) }}
+                      onClick={() => { reset({ ...watch(), imagem: undefined as never }); setPreviewUrl(null) }}
                       className="absolute top-2 right-2 w-7 h-7 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-colors"
                     >
                       <X className="w-3.5 h-3.5" />
@@ -281,10 +355,10 @@ function PartilhasPage() {
               </div>
 
               <div className="flex gap-2 justify-end pt-1">
-                <Button type="button" variant="outline" size="sm" onClick={fecharModal}>Cancelar</Button>
-                <Button type="submit" size="sm" className="bg-[var(--primary)] hover:opacity-90 transition-opacity">
+                <Button type="button" variant="outline" size="sm" onClick={fecharModal} disabled={submitting}>Cancelar</Button>
+                <Button type="submit" size="sm" disabled={submitting} className="bg-[var(--primary)] hover:opacity-90 transition-opacity">
                   <ImageIcon className="w-3.5 h-3.5 mr-1.5" />
-                  Publicar Partilha
+                  {submitting ? 'A publicar…' : 'Publicar Partilha'}
                 </Button>
               </div>
             </form>
