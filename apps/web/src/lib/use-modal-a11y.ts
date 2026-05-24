@@ -3,14 +3,23 @@ import { useEffect, useRef } from 'react'
 const FOCUSABLE_SELECTOR =
   'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
+// Inputs/selects/textareas — preferidos para auto-focus inicial em vez do
+// botão "Fechar" (que seria o primeiro focável só por ordem do DOM).
+const PREFERRED_AUTOFOCUS_SELECTOR =
+  'input:not([disabled]):not([type="hidden"]), textarea:not([disabled]), select:not([disabled])'
+
 /**
  * Accessibility hook for custom (non-Radix) modals.
  *
  * When `open` is true:
- *  - Focuses the first focusable element inside the modal on mount
+ *  - Focuses the first input/select/textarea (or first focusable as fallback)
  *  - Traps Tab / Shift+Tab inside the modal
  *  - Closes the modal on Esc (calls `onClose`)
  *  - Restores focus to the previously focused element when closing
+ *
+ * The effect intentionally runs **only when `open` flips** (mount/unmount),
+ * not on every render — caller pode passar uma função inline `() => setX(false)`
+ * sem provocar reset do foco a cada keystroke.
  *
  * Usage:
  *   const modalRef = useRef<HTMLDivElement>(null)
@@ -23,17 +32,27 @@ export function useModalA11y(
   onClose: () => void,
 ): void {
   const previouslyFocused = useRef<HTMLElement | null>(null)
+  // Mantém a callback estável dentro do effect — sem isto, cada keystroke
+  // num input do modal re-criava onClose, o effect re-corria, o cleanup
+  // mexia no foco e o setTimeout puxava o foco de volta para o botão X.
+  const onCloseRef = useRef(onClose)
+  useEffect(() => {
+    onCloseRef.current = onClose
+  }, [onClose])
 
   useEffect(() => {
     if (!open) return
     previouslyFocused.current = document.activeElement as HTMLElement | null
 
-    // Defer focus until the modal is in the DOM
     const focusFirst = window.setTimeout(() => {
       const node = modalRef.current
       if (!node) return
-      const focusables = node.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)
-      const first = focusables[0]
+      const preferred = node.querySelector<HTMLElement>(PREFERRED_AUTOFOCUS_SELECTOR)
+      if (preferred) {
+        preferred.focus()
+        return
+      }
+      const first = node.querySelector<HTMLElement>(FOCUSABLE_SELECTOR)
       if (first) first.focus()
       else node.focus()
     }, 0)
@@ -41,7 +60,7 @@ export function useModalA11y(
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') {
         e.stopPropagation()
-        onClose()
+        onCloseRef.current()
         return
       }
       if (e.key !== 'Tab') return
@@ -71,5 +90,5 @@ export function useModalA11y(
       document.removeEventListener('keydown', onKeyDown)
       previouslyFocused.current?.focus?.()
     }
-  }, [open, modalRef, onClose])
+  }, [open, modalRef])
 }
