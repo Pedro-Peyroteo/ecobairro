@@ -65,6 +65,7 @@ function EcopontosPage() {
   useModalA11y(modal !== null, modalRef, () => setModal(null))
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<EcopontoForm>({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(ecopontoSchema) as any,
   })
 

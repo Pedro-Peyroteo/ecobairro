@@ -18,7 +18,7 @@ import { motion } from 'framer-motion'
 import { useEffect, useRef, useState, type ElementType, type ReactNode } from 'react'
 import { fetchJson } from '@/lib/http/fetch-json'
 import { clientEnv } from '@/lib/env'
-import { getAccessToken } from '@/lib/auth'
+import { getAccessToken, getUser } from '@/lib/auth'
 import type { HomeFeedResponse } from '@ecobairro/contracts'
 
 export const Route = createFileRoute('/_layoutpublic/home')({
@@ -982,10 +982,14 @@ function HeroBlob() {
 /* ─── Página ─── */
 function HomePage() {
   const token = getAccessToken()
+  const sessionUser = getUser()
   const greeting = getGreeting()
   const [feed, setFeed] = useState<HomeFeedResponse | null>(null)
-  const isGuest = !token || !feed?.viewer || feed.viewer.role !== 'CIDADAO'
-  const userDisplayName = feed?.viewer?.nome ?? feed?.viewer?.email ?? 'ecoBairro'
+  // isGuest decidido pelo sessionStorage (síncrono no 1º render) — não pelo
+  // feed que só chega depois do fetch resolver. Sem isto havia flash da
+  // landing pública entre o mount e o setFeed.
+  const isGuest = !token || !sessionUser || sessionUser.role !== 'cidadao'
+  const userDisplayName = feed?.viewer?.nome ?? feed?.viewer?.email ?? sessionUser?.name ?? 'ecoBairro'
   const firstName = isGuest ? 'ecoBairro' : userDisplayName.split(' ')[0]
 
   useEffect(() => {
