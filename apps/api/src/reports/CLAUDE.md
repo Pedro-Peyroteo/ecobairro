@@ -3,16 +3,22 @@
 ## Estrutura do diretório
 
 ```text
-reports/
+src/reports/
   reports.module.ts
   reports.controller.ts
   reports.service.ts
-  reports.service.test.ts
   dto/
     create-report.dto.ts
     list-reports.dto.ts
+    report-stats.dto.ts
     update-report-status.dto.ts
+
+tests/reports/
+  reports.service.test.ts
 ```
+
+> Convenção: todos os testes vivem em `apps/api/tests/<modulo>/`, espelhando
+> a estrutura de `src/`. Correm via `pnpm --filter @ecobairro/api test`.
 
 ## O que foi realizado
 

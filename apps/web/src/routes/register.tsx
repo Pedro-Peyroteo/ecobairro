@@ -15,7 +15,7 @@ import {
   toUiRole,
   updateCitizenProfile,
 } from '@/lib/api/auth'
-import { HttpError } from '@/lib/http/fetch-json'
+import { getApiErrorMessage } from '@/lib/http/api-error'
 import { cn } from '@/lib/utils'
 
 export const Route = createFileRoute('/register')({
@@ -89,18 +89,7 @@ function RegisterPage() {
 
       navigate({ to: '/home' })
     } catch (error) {
-      if (error instanceof HttpError && typeof error.body === 'object' && error.body !== null && 'message' in error.body) {
-        const message = error.body.message
-        if (typeof message === 'string') {
-          setSubmitError(message)
-        } else if (Array.isArray(message) && message.length > 0) {
-          setSubmitError(String(message[0]))
-        } else {
-          setSubmitError('Falha ao criar conta. Tente novamente.')
-        }
-      } else {
-        setSubmitError('Falha ao criar conta. Tente novamente.')
-      }
+      setSubmitError(getApiErrorMessage(error, 'Falha ao criar conta. Tente novamente.'))
     } finally {
       setLoading(false)
     }

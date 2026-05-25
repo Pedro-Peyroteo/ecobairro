@@ -4,11 +4,13 @@ import { MapContainer, TileLayer, Polygon, Popup } from 'react-leaflet'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Map as MapIcon, PlusCircle, Recycle, Pencil, X, Save, Loader } from 'lucide-react'
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
+import { useModalA11y } from '@/lib/use-modal-a11y'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { fetchJson } from '@/lib/http/fetch-json'
+import { getApiErrorMessage } from '@/lib/http/api-error'
 import { clientEnv } from '@/lib/env'
 import type { ListEcopontosResponse } from '@ecobairro/contracts'
 import 'leaflet/dist/leaflet.css'
@@ -66,9 +68,12 @@ type ZonaForm = z.infer<typeof zonaSchema>
 function ZonasPage() {
   const [zonas, setZonas]         = useState<ZonaView[]>([])
   const [loading, setLoading]     = useState(true)
+  const [listError, setListError] = useState<string | null>(null)
   const [selecionada, setSelecionada] = useState<ZonaView | null>(null)
   const [modal, setModal]         = useState(false)
   const [editando, setEditando]   = useState<ZonaView | null>(null)
+  const modalRef = useRef<HTMLDivElement>(null)
+  useModalA11y(modal, modalRef, () => setModal(false))
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<ZonaForm>({
     resolver: zodResolver(zonaSchema),
@@ -90,7 +95,10 @@ function ZonasPage() {
         }))
         setZonas(views)
       })
-      .catch(() => setZonas([]))
+      .catch((err) => {
+        setZonas([])
+        setListError(getApiErrorMessage(err, 'Não foi possível carregar as zonas.'))
+      })
       .finally(() => setLoading(false))
   }, [])
 
@@ -131,6 +139,11 @@ function ZonasPage() {
 
   return (
     <div className="flex flex-col gap-6 pb-12">
+      {listError && (
+        <div role="alert" aria-live="polite" className="rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {listError}
+        </div>
+      )}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-bold text-foreground">Gestão de Zonas</h1>
@@ -251,13 +264,13 @@ function ZonasPage() {
       {modal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40" onClick={() => setModal(false)} />
-          <div className="relative z-10 w-full max-w-sm bg-card rounded-2xl shadow-2xl border border-border p-6 flex flex-col gap-4">
+          <div ref={modalRef} role="dialog" aria-modal="true" aria-labelledby="zonas-modal-title" tabIndex={-1} className="relative z-10 w-full max-w-sm bg-card rounded-2xl shadow-2xl border border-border p-6 flex flex-col gap-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-base font-bold text-foreground flex items-center gap-2">
+              <h2 id="zonas-modal-title" className="text-base font-bold text-foreground flex items-center gap-2">
                 <MapIcon className="w-4 h-4 text-[var(--primary)]" />
                 {editando ? 'Editar Zona' : 'Nova Zona'}
               </h2>
-              <button onClick={() => setModal(false)} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
+              <button type="button" aria-label="Fechar modal" onClick={() => setModal(false)} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
             </div>
             <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-3">
               <div>

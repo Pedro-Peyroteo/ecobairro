@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { MapPin, Calendar, ChevronUp, ChevronDown, User, CheckCircle, Clock, AlertTriangle, Loader2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { fetchJson } from '@/lib/http/fetch-json'
+import { getApiErrorMessage } from '@/lib/http/api-error'
 import { clientEnv } from '@/lib/env'
 import type { TarefaRecord, ListFilaResponse } from '@ecobairro/contracts'
 
@@ -35,18 +36,23 @@ const operadores = ['Pedro Mendes', 'Sofia Lopes', 'Carlos Lima']
 function FilaPage() {
   const [tarefas, setTarefas] = useState<TarefaRecord[]>([])
   const [loading, setLoading] = useState(true)
+  const [listError, setListError] = useState<string | null>(null)
   const [filtroEstado, setFiltroEstado] = useState<EstadoTarefa | 'todos'>('todos')
 
   const headers = { Authorization: `Bearer ${getAccessToken() ?? ''}` }
 
   async function load() {
     setLoading(true)
+    setListError(null)
     try {
       const res = await fetchJson<ListFilaResponse>('/v1/fila', {
         baseUrl: clientEnv.apiBaseUrl,
         headers,
       })
       setTarefas(res.tarefas)
+    } catch (err) {
+      setTarefas([])
+      setListError(getApiErrorMessage(err, 'Não foi possível carregar a fila de tarefas.'))
     } finally {
       setLoading(false)
     }
@@ -101,6 +107,13 @@ function FilaPage() {
 
   return (
     <div className="flex flex-col gap-8 pb-12">
+
+      {listError && (
+        <div role="alert" aria-live="polite" className="rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive flex items-center justify-between gap-3">
+          <span>{listError}</span>
+          <button onClick={() => void load()} className="text-xs font-medium underline-offset-2 hover:underline">Tentar novamente</button>
+        </div>
+      )}
 
       <div>
         <h1 className="text-xl font-bold text-foreground">Fila de Prioridades</h1>

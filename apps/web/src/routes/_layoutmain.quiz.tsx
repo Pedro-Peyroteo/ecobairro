@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import React, { useEffect, useMemo, useState } from 'react'
 import { fetchJson } from '@/lib/http/fetch-json'
+import { getApiErrorMessage } from '@/lib/http/api-error'
 import { clientEnv } from '@/lib/env'
 import { getAccessToken, requireRole } from '@/lib/auth'
 import type { QuizAchievementKey, QuizMeResponse } from '@ecobairro/contracts'
@@ -38,6 +39,7 @@ const achMeta: Record<
 function QuizPage() {
   const [me, setMe] = useState<QuizMeResponse | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [listError, setListError] = useState<string | null>(null)
 
   useEffect(() => {
     const token = getAccessToken()
@@ -52,8 +54,11 @@ function QuizPage() {
       baseUrl: clientEnv.apiBaseUrl,
       headers,
     })
-      .then((data) => setMe(data))
-      .catch(() => setMe(null))
+      .then((data) => { setMe(data); setListError(null) })
+      .catch((err) => {
+        setMe(null)
+        setListError(getApiErrorMessage(err, 'Não foi possível carregar o quiz.'))
+      })
       .finally(() => setIsLoading(false))
   }, [])
 
@@ -86,7 +91,12 @@ function QuizPage() {
 
   return (
     <div className="flex flex-col gap-10 pb-12">
-      
+      {listError && (
+        <div role="alert" aria-live="polite" className="rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {listError}
+        </div>
+      )}
+
       {/* ── 1. Hero: Desafio Semanal ── */}
       <Card className="relative overflow-hidden border border-border/70 shadow-sm bg-card rounded-xl">
         {/* Subtil acento de cor à esquerda */}

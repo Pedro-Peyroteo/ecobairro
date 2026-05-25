@@ -4,9 +4,16 @@ import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { UserRole } from '@prisma/client';
 import bcrypt from 'bcrypt';
-import { AuthService } from './auth.service';
-import type { TestCase } from '../test/test-helpers';
-import { RegisterDto } from './dto/register.dto';
+import { AuthService } from '../../src/auth/auth.service';
+import type { TestCase } from '../test-helpers';
+import { RegisterDto } from '../../src/auth/dto/register.dto';
+
+class FakeMailService {
+  readonly sent: Array<{ template: string; to: string }> = [];
+  async send(template: string, options: { to: string }): Promise<void> {
+    this.sent.push({ template, to: options.to });
+  }
+}
 
 interface FakeUserRecord {
   id: string;
@@ -183,6 +190,7 @@ export const authServiceTests: TestCase[] = [
         prisma as never,
         new FakeRedisService(new FakeRedisClient()) as never,
         new FakeJwtService() as never,
+        new FakeMailService() as never,
       );
 
       const me = await service.me('user-11');
@@ -203,6 +211,7 @@ export const authServiceTests: TestCase[] = [
         prisma as never,
         new FakeRedisService(new FakeRedisClient()) as never,
         new FakeJwtService() as never,
+        new FakeMailService() as never,
       );
 
       const result = await service.register({
@@ -247,6 +256,7 @@ export const authServiceTests: TestCase[] = [
         prisma as never,
         new FakeRedisService(new FakeRedisClient()) as never,
         new FakeJwtService() as never,
+        new FakeMailService() as never,
       );
 
       await assert.rejects(
@@ -287,6 +297,7 @@ export const authServiceTests: TestCase[] = [
         prisma as never,
         new FakeRedisService(redis) as never,
         new FakeJwtService() as never,
+        new FakeMailService() as never,
       );
 
       const response = await service.forgotPassword({ email: 'citizen@example.com' });
@@ -320,6 +331,7 @@ export const authServiceTests: TestCase[] = [
         prisma as never,
         new FakeRedisService(redis) as never,
         new FakeJwtService() as never,
+        new FakeMailService() as never,
       );
 
       const login = await service.login({
@@ -374,6 +386,7 @@ export const authServiceTests: TestCase[] = [
         prisma as never,
         new FakeRedisService(redisClient) as never,
         new FakeJwtService() as never,
+        new FakeMailService() as never,
       );
 
       const loginResult = await service.login({
@@ -433,6 +446,7 @@ export const authServiceTests: TestCase[] = [
         prisma as never,
         new FakeRedisService(redisClient) as never,
         new FakeJwtService() as never,
+        new FakeMailService() as never,
       );
 
       const loginResult = await service.login({
@@ -482,6 +496,7 @@ export const authServiceTests: TestCase[] = [
         prisma as never,
         new FakeRedisService(new FakeRedisClient()) as never,
         new FakeJwtService() as never,
+        new FakeMailService() as never,
       );
 
       await assert.rejects(

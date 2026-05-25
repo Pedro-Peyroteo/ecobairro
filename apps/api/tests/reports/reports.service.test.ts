@@ -3,9 +3,9 @@ import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { ReportStatus } from '@prisma/client';
-import { ReportsService } from './reports.service';
-import type { TestCase } from '../test/test-helpers';
-import { CreateReportDto } from './dto/create-report.dto';
+import { ReportsService } from '../../src/reports/reports.service';
+import type { TestCase } from '../test-helpers';
+import { CreateReportDto } from '../../src/reports/dto/create-report.dto';
 
 interface FakeReportRecord {
   id: string;

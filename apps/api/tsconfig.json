@@ -3,10 +3,10 @@
   "compilerOptions": {
     "module": "nodenext",
     "moduleResolution": "nodenext",
-    "rootDir": "src",
+    "rootDir": ".",
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "noEmit": true
   },
-  "include": ["src/**/*.ts", "src/**/*.d.ts"]
+  "include": ["src/**/*.ts", "src/**/*.d.ts", "tests/**/*.ts"]
 }

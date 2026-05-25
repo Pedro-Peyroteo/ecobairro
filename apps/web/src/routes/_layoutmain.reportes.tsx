@@ -7,6 +7,7 @@ import {
   Upload, X, ImageIcon
 } from 'lucide-react'
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useModalA11y } from '@/lib/use-modal-a11y'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -15,6 +16,7 @@ import { fetchJson } from '@/lib/http/fetch-json'
 import { getApiErrorMessage } from '@/lib/http/api-error'
 import { clientEnv } from '@/lib/env'
 import { getAccessToken } from '@/lib/auth'
+import { fileToDataUrl } from '@/lib/image-upload'
 import type {
   CreateReportRequest,
   ListReportsResponse,
@@ -108,6 +110,8 @@ function ReportesPage() {
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [modalAberto, setModalAberto] = useState(false)
   const [previewUrl, setPreviewUrl]   = useState<string | null>(null)
+  const modalRef = useRef<HTMLDivElement>(null)
+  useModalA11y(modalAberto, modalRef, () => fecharModal())
 
   const { register, handleSubmit, watch, reset, formState: { errors } } = useForm<NovoReporteForm>({
     resolver: zodResolver(novoReporteSchema),
@@ -206,18 +210,19 @@ function ReportesPage() {
       local: search.local,
       tipo: search.tipo,
     })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search.novo, search.local, search.tipo])
 
   async function onSubmitReporte(data: NovoReporteForm) {
     setSubmitting(true)
     setSubmitError(null)
     try {
+      const file = data.imagem?.[0]
       const body: CreateReportRequest = {
         titulo: data.titulo,
         tipo: data.tipo,
         descricao: data.descricao,
         local: data.local,
+        ...(file ? { imagem: await fileToDataUrl(file) } : {}),
       }
       await fetchJson('/v1/reports', {
         baseUrl: clientEnv.apiBaseUrl,
@@ -406,10 +411,10 @@ function ReportesPage() {
       {modalAberto && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40" onClick={fecharModal} />
-          <div className="relative z-10 w-full max-w-lg bg-card rounded-2xl shadow-2xl border border-border p-6 flex flex-col gap-4 max-h-[90vh] overflow-y-auto">
+          <div ref={modalRef} role="dialog" aria-modal="true" aria-labelledby="reportes-modal-title" tabIndex={-1} className="relative z-10 w-full max-w-lg bg-card rounded-2xl shadow-2xl border border-border p-6 flex flex-col gap-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between">
-              <h2 className="text-base font-bold text-foreground">Novo Reporte</h2>
-              <button onClick={fecharModal} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
+              <h2 id="reportes-modal-title" className="text-base font-bold text-foreground">Novo Reporte</h2>
+              <button type="button" aria-label="Fechar modal" onClick={fecharModal} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
             </div>
             <form onSubmit={handleSubmit(onSubmitReporte)} className="flex flex-col gap-3">
               <div>

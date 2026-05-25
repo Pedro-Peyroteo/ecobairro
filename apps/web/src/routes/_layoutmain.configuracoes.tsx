@@ -8,6 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { getUser, getAccessToken } from '@/lib/auth'
 import { fetchJson } from '@/lib/http/fetch-json'
+import { getApiErrorMessage } from '@/lib/http/api-error'
 import { clientEnv } from '@/lib/env'
 import type { CitizenSelfProfileResponse, UpdateCitizenSelfProfileRequest } from '@ecobairro/contracts'
 
@@ -58,6 +59,7 @@ function ConfiguracoesPage() {
   const [loadingPerfil, setLoadingPerfil] = useState(isCidadao)
   const [guardado, setGuardado]   = useState(false)
   const [guardandoNotif, setGuardandoNotif] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   /* Load profile for citizens */
   useEffect(() => {
@@ -82,6 +84,7 @@ function ConfiguracoesPage() {
   }, [isCidadao])
 
   async function onSavePerfil(data: PerfilForm) {
+    setSaveError(null)
     if (isCidadao) {
       const body: UpdateCitizenSelfProfileRequest = {
         nome_completo: data.nome,
@@ -94,7 +97,10 @@ function ConfiguracoesPage() {
           body:    JSON.stringify(body),
           headers: authHeaders(),
         })
-      } catch { /* silently fail — still show toast */ }
+      } catch (err) {
+        setSaveError(getApiErrorMessage(err, 'Não foi possível guardar o perfil.'))
+        return
+      }
     }
     setGuardado(true)
     setTimeout(() => setGuardado(false), 2500)
@@ -104,6 +110,7 @@ function ConfiguracoesPage() {
     setNotificacoes(next)
     if (!isCidadao) return
     setGuardandoNotif(true)
+    setSaveError(null)
     try {
       await fetchJson('/v1/cidadaos/me', {
         baseUrl: clientEnv.apiBaseUrl,
@@ -111,7 +118,9 @@ function ConfiguracoesPage() {
         body:    JSON.stringify({ notificacao_prefs: next } satisfies UpdateCitizenSelfProfileRequest),
         headers: authHeaders(),
       })
-    } catch { /* ignore */ }
+    } catch (err) {
+      setSaveError(getApiErrorMessage(err, 'Não foi possível guardar as preferências de notificação.'))
+    }
     finally { setGuardandoNotif(false) }
   }
 
@@ -122,6 +131,12 @@ function ConfiguracoesPage() {
 
   return (
     <div className="flex flex-col gap-8 pb-12 max-w-2xl">
+
+      {saveError && (
+        <div role="alert" aria-live="polite" className="rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {saveError}
+        </div>
+      )}
 
       <div>
         <h1 className="text-xl font-bold text-foreground">Configurações</h1>

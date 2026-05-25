@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { ReportStatus, UserRole } from '@prisma/client';
-import { HomeService } from './home.service';
-import type { TestCase } from '../test/test-helpers';
+import { HomeService } from '../../src/home/home.service';
+import type { TestCase } from '../test-helpers';
 
 const ecoRow = {
   id: 'e1',
@@ -49,8 +49,14 @@ class FakePrismaService {
     }),
   };
 
-  readonly ecoponto = {
-    findMany: async () => [ecoRow],
+  readonly cidadaoEcopontoFavorito = {
+    findMany: async (args: {
+      where: { userId: string };
+      include: { ecoponto: true };
+    }) => {
+      assert.equal(args.where.userId, 'u1');
+      return [{ ecoponto: ecoRow }];
+    },
   };
 
   readonly partilha = {

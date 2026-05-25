@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { resetPasswordRequest } from '@/lib/api/auth'
-import { HttpError } from '@/lib/http/fetch-json'
+import { getApiErrorMessage } from '@/lib/http/api-error'
 import { cn } from '@/lib/utils'
 
 const searchSchema = z.object({
@@ -62,12 +62,7 @@ function ResetPasswordPage() {
       await resetPasswordRequest(data.token, data.newPassword)
       setSubmitted(true)
     } catch (error) {
-      if (error instanceof HttpError && typeof error.body === 'object' && error.body !== null && 'message' in error.body) {
-        const message = error.body.message
-        setSubmitError(typeof message === 'string' ? message : 'Falha ao redefinir password.')
-      } else {
-        setSubmitError('Falha ao redefinir password.')
-      }
+      setSubmitError(getApiErrorMessage(error, 'Falha ao redefinir password.'))
     } finally {
       setLoading(false)
     }

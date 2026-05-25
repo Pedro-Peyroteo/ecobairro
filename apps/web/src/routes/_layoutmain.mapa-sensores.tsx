@@ -8,6 +8,7 @@ import { Wifi, WifiOff, Radio, Battery, Thermometer, AlertTriangle, Loader2 } fr
 import { useEffect, useState } from 'react'
 import 'leaflet/dist/leaflet.css'
 import { fetchJson } from '@/lib/http/fetch-json'
+import { getApiErrorMessage } from '@/lib/http/api-error'
 import { clientEnv } from '@/lib/env'
 import { getAccessToken } from '@/lib/auth'
 import type { EcopontoRecord, ListEcopontosResponse, EcopontoSensor } from '@ecobairro/contracts'
@@ -39,6 +40,7 @@ function sensorIcon(estado: SensorEstado) {
 function MapaSensoresPage() {
   const [ecopontos, setEcopontos] = useState<EcopontoRecord[]>([])
   const [loading, setLoading] = useState(true)
+  const [listError, setListError] = useState<string | null>(null)
   const [selecionado, setSelecionado] = useState<EcopontoRecord | null>(null)
   const [filtroEstado, setFiltroEstado] = useState<SensorEstado | 'todos'>('todos')
 
@@ -51,6 +53,11 @@ function MapaSensoresPage() {
     })
       .then(res => {
         setEcopontos(res.ecopontos)
+        setListError(null)
+      })
+      .catch((err) => {
+        setEcopontos([])
+        setListError(getApiErrorMessage(err, 'Não foi possível carregar os sensores.'))
       })
       .finally(() => setLoading(false))
   }, [])
@@ -73,6 +80,11 @@ function MapaSensoresPage() {
 
   return (
     <div className="flex flex-col gap-6 pb-12">
+      {listError && (
+        <div role="alert" aria-live="polite" className="rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {listError}
+        </div>
+      )}
       <div>
         <h1 className="text-xl font-bold text-foreground">Mapa de Sensores IoT</h1>
         <p className="text-sm text-muted-foreground mt-0.5">{ecopontos.length} sensores instalados</p>

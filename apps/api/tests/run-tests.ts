@@ -1,11 +1,11 @@
-import { authServiceTests } from '../auth/auth.service.test';
-import { jwtAuthGuardTests } from '../auth/jwt-auth.guard.test';
-import { optionalJwtAuthGuardTests } from '../auth/optional-jwt-auth.guard.test';
-import { cidadaosServiceTests } from '../cidadaos/cidadaos.service.test';
-import { ecopontosServiceTests } from '../ecopontos/ecopontos.service.test';
-import { homeServiceTests } from '../home/home.service.test';
-import { recolhasServiceTests } from '../recolhas/recolhas.service.test';
-import { reportsServiceTests } from '../reports/reports.service.test';
+import { authServiceTests } from './auth/auth.service.test';
+import { jwtAuthGuardTests } from './auth/jwt-auth.guard.test';
+import { optionalJwtAuthGuardTests } from './auth/optional-jwt-auth.guard.test';
+import { cidadaosServiceTests } from './cidadaos/cidadaos.service.test';
+import { ecopontosServiceTests } from './ecopontos/ecopontos.service.test';
+import { homeServiceTests } from './home/home.service.test';
+import { recolhasServiceTests } from './recolhas/recolhas.service.test';
+import { reportsServiceTests } from './reports/reports.service.test';
 import { runSuite } from './test-helpers';
 
 async function main(): Promise<void> {

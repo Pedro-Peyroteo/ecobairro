@@ -3,9 +3,9 @@ import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { UserRole } from '@prisma/client';
-import { CidadaosService } from './cidadaos.service';
-import type { TestCase } from '../test/test-helpers';
-import { UpdateCidadaoProfileDto } from './dto/update-cidadao-profile.dto';
+import { CidadaosService } from '../../src/cidadaos/cidadaos.service';
+import type { TestCase } from '../test-helpers';
+import { UpdateCidadaoProfileDto } from '../../src/cidadaos/dto/update-cidadao-profile.dto';
 
 interface FakeCitizenUserRecord {
   id: string;
