@@ -11,6 +11,10 @@ export default [
       'src/routeTree.gen.ts',
       'src/@layouts/**',
       'src/mocks/**',
+      // Componentes vendored (adaptados de bibliotecas) — mantemos como veio
+      'src/components/ui/fluid-cursor.tsx',
+      'src/components/ui/orbital-globe.tsx',
+      'src/components/ui/spotlight.tsx',
     ],
   },
 ];

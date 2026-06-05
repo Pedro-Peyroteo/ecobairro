@@ -8,5 +8,9 @@
     "emitDecoratorMetadata": true,
     "noEmit": true
   },
-  "include": ["src/**/*.ts", "src/**/*.d.ts", "tests/**/*.ts"]
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.d.ts",
+    "tests/**/*.ts"
+  ]
 }

@@ -150,7 +150,7 @@ export const reportsServiceTests: TestCase[] = [
       });
 
       const errors = await validate(dto);
-      const fieldsWithErrors = errors.map((error) => error.property);
+      const fieldsWithErrors = errors.map((error: { property: string }) => error.property);
 
       assert.deepEqual(fieldsWithErrors.sort(), ['descricao', 'local', 'titulo']);
     },
@@ -199,7 +199,7 @@ export const reportsServiceTests: TestCase[] = [
             descricao: 'Descrição válida com tamanho mínimo',
             local: 'Aveiro',
           }),
-        (error: unknown) =>
+        (error: Error) =>
           error instanceof ForbiddenException &&
           error.message === 'Only citizens can access this route',
       );
@@ -292,7 +292,7 @@ export const reportsServiceTests: TestCase[] = [
             '00000000-0000-0000-0000-000000000006',
             { status: 'analise' },
           ),
-        (error: unknown) =>
+        (error: Error) =>
           error instanceof ForbiddenException &&
           error.message === 'Only operators and admins can update report status',
       );
@@ -310,7 +310,7 @@ export const reportsServiceTests: TestCase[] = [
             '00000000-0000-0000-0000-000000000007',
             { status: 'analise' },
           ),
-        (error: unknown) =>
+        (error: Error) =>
           error instanceof NotFoundException &&
           error.message === 'Report not found',
       );

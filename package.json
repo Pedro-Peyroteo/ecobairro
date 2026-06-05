@@ -5,6 +5,9 @@
   "scripts": {
     "lint": "pnpm --dir packages/config lint && pnpm --dir packages/contracts lint && pnpm --dir apps/web lint && pnpm --dir apps/api lint",
     "typecheck": "pnpm --dir packages/config typecheck && pnpm --dir packages/contracts typecheck && pnpm --dir apps/web typecheck && pnpm --dir apps/api typecheck",
+    "test": "pnpm --dir apps/api test && pnpm --dir apps/web test",
+    "test:api": "pnpm --dir apps/api test",
+    "test:web": "pnpm --dir apps/web test",
     "compose:config": "docker compose -f infra/compose/docker-compose.yml config",
     "compose:up": "docker compose -f infra/compose/docker-compose.yml up --build -d",
     "compose:down": "docker compose -f infra/compose/docker-compose.yml down",
