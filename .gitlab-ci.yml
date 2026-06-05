@@ -7,7 +7,7 @@ test_project:
   tags:
     - proxmox
   script:
-    - docker run --rm -v "$PWD":/app -w /app node:20-alpine sh -c "npm install -g pnpm && pnpm install && pnpm test"
+    - docker run --rm -v "$PWD":/app -w /app node:20-alpine sh -c "npm install -g pnpm && pnpm install && cd apps/api && pnpm prisma generate && cd ../.. && pnpm test"
   only:
     - main
 
