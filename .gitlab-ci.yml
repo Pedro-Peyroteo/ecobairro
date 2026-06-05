@@ -6,6 +6,11 @@ test_project:
   stage: test
   tags:
     - proxmox
+  variables:
+    GIT_CLEAN_FLAGS: none
+  before_script:
+    - docker run --rm -v "$PWD":/app -w /app alpine sh -c "chown -R $(id -u):$(id -g) ."
+    - git clean -ffdx
   script:
     - docker run --rm -v "$PWD":/app -w /app node:20-alpine sh -c "npm install -g pnpm && pnpm config set store-dir /tmp/.pnpm-store && pnpm install && cd apps/api && pnpm prisma generate && cd ../.. && pnpm test"
   after_script:
