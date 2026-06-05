@@ -243,6 +243,10 @@ function PublicNavbar() {
             <a
               key={item.label}
               href={item.href}
+              onClick={(e) => {
+                e.preventDefault()
+                document.getElementById(item.href.replace('#', ''))?.scrollIntoView({ behavior: 'smooth' })
+              }}
               className="text-sm text-white font-semibold hover:text-[var(--primary)] transition-colors"
               style={{ textShadow: '0 1px 4px rgba(0,0,0,0.9)' }}
             >

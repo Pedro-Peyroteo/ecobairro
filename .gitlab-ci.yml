@@ -1,5 +1,15 @@
 stages:
+  - test
   - deploy
+
+test_project:
+  stage: test
+  tags:
+    - proxmox
+  script:
+    - docker run --rm -v "$PWD":/app -w /app node:20-alpine sh -c "npm install -g pnpm && pnpm install && pnpm test"
+  only:
+    - main
 
 deploy_production:
   stage: deploy
