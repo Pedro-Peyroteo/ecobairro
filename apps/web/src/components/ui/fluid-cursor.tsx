@@ -32,7 +32,7 @@ const FluidCursorEffect = () => {
 
     let gl: WebGLRenderingContext | WebGL2RenderingContext | null = null;
     let ext: any;
-    let pointers = [
+    const pointers = [
       {
         id: -1,
         texcoordX: 0,
@@ -196,7 +196,7 @@ const FluidCursorEffect = () => {
 
     const getUniforms = (program: any) => {
       if (!gl) return {};
-      let uniforms: any = {};
+      const uniforms: any = {};
       const uniformCount = gl.getProgramParameter(program, gl.ACTIVE_UNIFORMS);
       for (let i = 0; i < uniformCount; i++) {
         const uniformInfo = gl.getActiveUniform(program, i);
@@ -654,7 +654,7 @@ const FluidCursorEffect = () => {
       const w = gl.drawingBufferWidth;
       const h = gl.drawingBufferHeight;
       const aspectRatio = w / h;
-      let aspect = aspectRatio < 1 ? 1 / aspectRatio : aspectRatio;
+      const aspect = aspectRatio < 1 ? 1 / aspectRatio : aspectRatio;
       const min = Math.round(resolution);
       const max = Math.round(resolution * aspect);
       if (w > h) {
