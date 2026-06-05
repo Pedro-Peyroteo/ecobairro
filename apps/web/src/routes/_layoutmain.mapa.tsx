@@ -4,11 +4,14 @@ import { divIcon } from 'leaflet'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { MapPin, Search, Navigation, X, AlertTriangle } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { MapPin, Search, Navigation, X, AlertTriangle, Star } from 'lucide-react'
+import { useState, useEffect, useCallback } from 'react'
 import 'leaflet/dist/leaflet.css'
 import { fetchJson } from '@/lib/http/fetch-json'
 import { clientEnv } from '@/lib/env'
+import { getAccessToken } from '@/lib/auth'
+import { addFavorito, listFavoritos, removeFavorito } from '@/lib/api/favoritos'
+import { getApiErrorMessage } from '@/lib/http/api-error'
 import type { EcopontoRecord, ListEcopontosResponse } from '@ecobairro/contracts'
 
 export const Route = createFileRoute('/_layoutmain/mapa')({
@@ -54,13 +57,51 @@ function MapaPage() {
   const [pesquisa, setPesquisa] = useState('')
   const [filtroNivel, setFiltroNivel] = useState<FiltroNivel>('todos')
   const [selected, setSelected] = useState<EcopontoRecord | null>(null)
+  const [favoritoIds, setFavoritoIds] = useState<Set<string>>(new Set())
+  const [favoritoBusy, setFavoritoBusy] = useState(false)
+  const [favoritoError, setFavoritoError] = useState<string | null>(null)
+  const isLoggedIn = Boolean(getAccessToken())
+
+  const loadFavoritos = useCallback(async () => {
+    if (!getAccessToken()) {
+      setFavoritoIds(new Set())
+      return
+    }
+    try {
+      const res = await listFavoritos()
+      setFavoritoIds(new Set(res.ecopontos.map((e) => e.id)))
+    } catch {
+      setFavoritoIds(new Set())
+    }
+  }, [])
 
   useEffect(() => {
     fetchJson<ListEcopontosResponse>('/v1/ecopontos', { baseUrl: clientEnv.apiBaseUrl })
       .then((res) => setEcopontos(res.ecopontos))
       .catch(() => setEcopontos([]))
       .finally(() => setLoading(false))
-  }, [])
+    void loadFavoritos()
+  }, [loadFavoritos])
+
+  async function toggleFavorito(ecopontoId: string) {
+    if (!isLoggedIn) {
+      setFavoritoError('Inicie sessão para guardar favoritos.')
+      return
+    }
+    setFavoritoBusy(true)
+    setFavoritoError(null)
+    try {
+      const isFav = favoritoIds.has(ecopontoId)
+      const res = isFav
+        ? await removeFavorito(ecopontoId)
+        : await addFavorito(ecopontoId)
+      setFavoritoIds(new Set(res.ecopontos.map((e) => e.id)))
+    } catch (error) {
+      setFavoritoError(getApiErrorMessage(error, 'Não foi possível atualizar o favorito.'))
+    } finally {
+      setFavoritoBusy(false)
+    }
+  }
 
   const filtered = ecopontos.filter((e) => {
     const matchNivel = filtroNivel === 'todos' || e.nivel === filtroNivel
@@ -196,13 +237,32 @@ function MapaPage() {
                         <MapPin className="w-3 h-3 shrink-0" />{selected.morada}
                       </p>
                     </div>
-                    <button
-                      onClick={() => setSelected(null)}
-                      className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center gap-1 shrink-0">
+                      {isLoggedIn && (
+                        <button
+                          type="button"
+                          disabled={favoritoBusy}
+                          onClick={() => void toggleFavorito(selected.id)}
+                          className="p-1 rounded-md text-muted-foreground hover:text-amber-500 transition-colors disabled:opacity-50"
+                          title={favoritoIds.has(selected.id) ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
+                        >
+                          <Star
+                            className={`w-4 h-4 ${favoritoIds.has(selected.id) ? 'fill-amber-400 text-amber-500' : ''}`}
+                          />
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setSelected(null)}
+                        className="text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
+                  {favoritoError && (
+                    <p className="text-[11px] text-destructive">{favoritoError}</p>
+                  )}
                   <div className="space-y-1">
                     <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
                       <div className="h-full rounded-full transition-all duration-500"

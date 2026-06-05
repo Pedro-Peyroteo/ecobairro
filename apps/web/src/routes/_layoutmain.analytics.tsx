@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { TrendingUp, BarChart3, MapPin, FileText, Users, Recycle, Loader } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { fetchJson } from '@/lib/http/fetch-json'
+import { getApiErrorMessage } from '@/lib/http/api-error'
 import { clientEnv } from '@/lib/env'
 import type { AnalyticsResponse } from '@ecobairro/contracts'
 
@@ -55,14 +56,18 @@ const TIPO_COLORS: Record<string, string> = {
 function AnalyticsPage() {
   const [data, setData]     = useState<AnalyticsResponse | null>(null)
   const [loading, setLoading] = useState(true)
+  const [listError, setListError] = useState<string | null>(null)
 
   useEffect(() => {
     fetchJson<AnalyticsResponse>('/v1/analytics', {
       baseUrl: clientEnv.apiBaseUrl,
       headers: authHeaders(),
     })
-      .then(setData)
-      .catch(() => setData(null))
+      .then(d => { setData(d); setListError(null) })
+      .catch((err) => {
+        setData(null)
+        setListError(getApiErrorMessage(err, 'Não foi possível carregar os dados de analytics.'))
+      })
       .finally(() => setLoading(false))
   }, [])
 
@@ -76,8 +81,8 @@ function AnalyticsPage() {
 
   if (!data) {
     return (
-      <div className="flex flex-col items-center justify-center py-32 gap-2 text-muted-foreground">
-        <p>Não foi possível carregar os dados de analytics.</p>
+      <div role="alert" aria-live="polite" className="flex flex-col items-center justify-center py-32 gap-2 text-muted-foreground">
+        <p>{listError ?? 'Não foi possível carregar os dados de analytics.'}</p>
       </div>
     )
   }

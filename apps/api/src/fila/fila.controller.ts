@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Inject,
   Param,
   Patch,
   Query,
@@ -15,7 +16,10 @@ import { UpdateTarefaDto } from './dto/update-tarefa.dto';
 @Controller('fila')
 @UseGuards(JwtAuthGuard)
 export class FilaController {
-  constructor(private readonly fila: FilaService) {}
+  private readonly fila: FilaService;
+  constructor(@Inject(FilaService) fila: FilaService) {
+    this.fila = fila;
+  }
 
   @Get()
   list(@Query() query: ListFilaDto) {

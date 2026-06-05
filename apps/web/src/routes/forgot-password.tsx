@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { forgotPasswordRequest } from '@/lib/api/auth'
-import { HttpError } from '@/lib/http/fetch-json'
+import { getApiErrorMessage } from '@/lib/http/api-error'
 import { cn } from '@/lib/utils'
 
 export const Route = createFileRoute('/forgot-password')({
@@ -49,12 +49,7 @@ function ForgotPasswordPage() {
       }
       setSubmitted(true)
     } catch (error) {
-      if (error instanceof HttpError && typeof error.body === 'object' && error.body !== null && 'message' in error.body) {
-        const message = error.body.message
-        setSubmitError(typeof message === 'string' ? message : 'Falha ao solicitar recuperação.')
-      } else {
-        setSubmitError('Falha ao solicitar recuperação.')
-      }
+      setSubmitError(getApiErrorMessage(error, 'Falha ao solicitar recuperação.'))
     } finally {
       setLoading(false)
     }
@@ -125,10 +120,24 @@ function ForgotPasswordPage() {
           </div>
 
           {submitted ? (
-            <div className="rounded-lg bg-primary/10 p-4 text-center">
+            <div className="rounded-lg bg-primary/10 p-4 text-center space-y-2">
               <p className="text-sm font-medium text-foreground">
-                Email enviado com sucesso! Verifique a sua caixa de entrada.
+                Se existir uma conta com este email, enviámos as instruções de recuperação.
               </p>
+              {import.meta.env.DEV && (
+                <p className="text-xs text-muted-foreground">
+                  Em desenvolvimento local, abra o{' '}
+                  <a
+                    href="http://localhost:8025"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-primary underline underline-offset-2"
+                  >
+                    Mailpit (localhost:8025)
+                  </a>{' '}
+                  para ver os emails capturados.
+                </p>
+              )}
             </div>
           ) : (
             <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-5">

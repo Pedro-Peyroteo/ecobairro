@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import type { CampanhaRecord } from '@ecobairro/contracts';
 import type { CreateCampanhaDto } from './dto/create-campanha.dto';
@@ -33,13 +33,21 @@ function mapRow(c: {
   };
 }
 
-function coerce(v: number | undefined, def: number): number {
-  return v && v > 0 ? v : def;
+function coerce(v: number | string | undefined, def: number): number {
+  if (typeof v === 'number' && Number.isInteger(v) && v > 0) return v;
+  if (typeof v === 'string') {
+    const n = Number.parseInt(v, 10);
+    if (Number.isInteger(n) && n > 0) return n;
+  }
+  return def;
 }
 
 @Injectable()
 export class CampanhasService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly prisma: PrismaService;
+  constructor(@Inject(PrismaService) prisma: PrismaService) {
+    this.prisma = prisma;
+  }
 
   async list(query: ListCampanhasDto) {
     const page = coerce(query.page, 1);

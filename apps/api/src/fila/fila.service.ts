@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import type { TarefaRecord } from '@ecobairro/contracts';
 import type { ListFilaDto } from './dto/list-fila.dto';
@@ -28,7 +28,10 @@ function mapRow(t: {
 
 @Injectable()
 export class FilaService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly prisma: PrismaService;
+  constructor(@Inject(PrismaService) prisma: PrismaService) {
+    this.prisma = prisma;
+  }
 
   async list(query: ListFilaDto) {
     const where =

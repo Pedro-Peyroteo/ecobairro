@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card'
 import { Search, Shield, CheckCircle, XCircle, ChevronDown, Loader } from 'lucide-react'
 import { useState, useEffect, useCallback } from 'react'
 import { fetchJson } from '@/lib/http/fetch-json'
+import { getApiErrorMessage } from '@/lib/http/api-error'
 import { clientEnv } from '@/lib/env'
 import type { ListUsersResponse, UserRecord } from '@ecobairro/contracts'
 
@@ -38,12 +39,14 @@ function UtilizadoresPage() {
   const [users, setUsers]           = useState<UserRecord[]>([])
   const [total, setTotal]           = useState(0)
   const [loading, setLoading]       = useState(true)
+  const [listError, setListError]   = useState<string | null>(null)
   const [pesquisa, setPesquisa]     = useState('')
   const [filtroPapel, setFiltroPapel] = useState<FrontRole | 'todos'>('todos')
   const [filtroAtivo, setFiltroAtivo] = useState<'todos' | 'ativo' | 'inativo'>('todos')
 
   const load = useCallback(async () => {
     setLoading(true)
+    setListError(null)
     try {
       const params: Record<string, string> = {}
       if (pesquisa.trim())         params['q']     = pesquisa.trim()
@@ -58,9 +61,10 @@ function UtilizadoresPage() {
       })
       setUsers(resp.users)
       setTotal(resp.total)
-    } catch {
+    } catch (err) {
       setUsers([])
       setTotal(0)
+      setListError(getApiErrorMessage(err, 'Não foi possível carregar os utilizadores.'))
     } finally {
       setLoading(false)
     }
@@ -83,6 +87,12 @@ function UtilizadoresPage() {
 
   return (
     <div className="flex flex-col gap-8 pb-12">
+      {listError && (
+        <div role="alert" aria-live="polite" className="rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive flex items-center justify-between gap-3">
+          <span>{listError}</span>
+          <button onClick={() => void load()} className="text-xs font-medium underline-offset-2 hover:underline">Tentar novamente</button>
+        </div>
+      )}
 
       {/* Cabeçalho */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">

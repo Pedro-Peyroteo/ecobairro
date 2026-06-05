@@ -8,8 +8,11 @@ import {
   Loader2, X, Camera, ImageIcon, ArrowLeft, Send
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
+import { useModalA11y } from '@/lib/use-modal-a11y'
 import { PaginationBar } from '@/components/ui/pagination-bar'
-import { fetchJson } from '@/lib/http/fetch-json'
+import { z } from 'zod'
+import { fetchJson, HttpError } from '@/lib/http/fetch-json'
+import { getApiErrorMessage } from '@/lib/http/api-error'
 import { clientEnv } from '@/lib/env'
 import { getAccessToken } from '@/lib/auth'
 import type { ListRecolhasResponse, RecolhaRecord, CreateRecolhaRequest, CreateRecolhaResponse } from '@ecobairro/contracts'
@@ -33,6 +36,13 @@ const statusConfig: Record<string, { label: string; icon: React.ElementType; col
 const tiposRecolha = ['Monos Volumosos', 'Entulho'] as const
 const POR_PAGINA = 5
 
+const agendarSchema = z.object({
+  tipo: z.string().min(2),
+  subtipo: z.string().min(2, 'Descreva o que pretende recolher (mín. 2 caracteres)'),
+  morada: z.string().min(5, 'Indique a morada completa (mín. 5 caracteres)'),
+  obs: z.string().optional(),
+})
+
 function formatarData(date: string) {
   if (!date) return 'A definir'
   return new Date(`${date}T00:00:00`).toLocaleDateString('pt-PT', {
@@ -55,6 +65,7 @@ function RecolhasPage() {
   const [enviado, setEnviado] = useState(false)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [imagemFile, setImagemFile] = useState<File | null>(null)
+  const [submitError, setSubmitError] = useState<string | null>(null)
   const [form, setForm] = useState({
     tipo: 'Monos Volumosos',
     subtipo: '',
@@ -62,6 +73,8 @@ function RecolhasPage() {
     data: '',
     obs: '',
   })
+  const modalRef = useRef<HTMLDivElement>(null)
+  useModalA11y(modalAberto, modalRef, () => setModalAberto(false))
 
   const headers = { Authorization: `Bearer ${getAccessToken() ?? ''}` }
 
@@ -122,14 +135,21 @@ function RecolhasPage() {
 
   async function onAgendar(e: React.FormEvent) {
     e.preventDefault()
-    if (!form.subtipo.trim() || !form.morada.trim()) return
+    setSubmitError(null)
+
+    const parsed = agendarSchema.safeParse(form)
+    if (!parsed.success) {
+      setSubmitError(parsed.error.issues[0]?.message ?? 'Verifique os campos do formulário.')
+      return
+    }
+
     setSubmitting(true)
     try {
       const body: CreateRecolhaRequest = {
-        tipo: form.tipo,
-        subtipo: form.subtipo,
-        morada: form.morada,
-        obs: form.obs || undefined,
+        tipo: parsed.data.tipo,
+        subtipo: parsed.data.subtipo.trim(),
+        morada: parsed.data.morada.trim(),
+        obs: parsed.data.obs?.trim() || undefined,
       }
       await fetchJson<CreateRecolhaResponse>('/v1/recolhas', {
         baseUrl: clientEnv.apiBaseUrl,
@@ -140,6 +160,14 @@ function RecolhasPage() {
       await load(1)
       setPagina(1)
       setEnviado(true)
+    } catch (error) {
+      if (error instanceof HttpError && error.status === 401) {
+        setSubmitError('Sessão expirada. Faça login novamente.')
+      } else {
+        setSubmitError(
+          getApiErrorMessage(error, 'Não foi possível agendar a recolha. Tente novamente.'),
+        )
+      }
     } finally {
       setSubmitting(false)
     }
@@ -322,12 +350,12 @@ function RecolhasPage() {
       {modalAberto && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40" onClick={fecharModal} />
-          <div className="relative z-10 w-full max-w-md bg-card rounded-2xl shadow-2xl border border-border overflow-hidden max-h-[92vh] flex flex-col">
+          <div ref={modalRef} role="dialog" aria-modal="true" aria-labelledby="recolhas-modal-title" tabIndex={-1} className="relative z-10 w-full max-w-md bg-card rounded-2xl shadow-2xl border border-border overflow-hidden max-h-[92vh] flex flex-col">
             <div className="px-5 py-4 border-b border-border flex items-center justify-between">
-              <button onClick={fecharModal} className="w-8 h-8 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center transition-colors">
+              <button type="button" aria-label="Fechar modal" onClick={fecharModal} className="w-8 h-8 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center transition-colors">
                 <X className="w-5 h-5" />
               </button>
-              <h2 className="text-base font-bold text-foreground">{enviado ? 'Enviado' : 'Agendamento'}</h2>
+              <h2 id="recolhas-modal-title" className="text-base font-bold text-foreground">{enviado ? 'Enviado' : 'Agendamento'}</h2>
               <div className="w-8" />
             </div>
 
@@ -513,6 +541,11 @@ function RecolhasPage() {
                 </div>
               )}
 
+              {submitError && (
+                <div className="px-5 pb-4">
+                  <p className="text-xs text-destructive">{submitError}</p>
+                </div>
+              )}
               <div className="sticky bottom-0 -mx-5 px-5 pt-4 pb-1 bg-card">
                 {enviado ? (
                   <Button type="button" onClick={fecharModal} className="w-full rounded-full bg-[var(--primary)] hover:opacity-90 transition-opacity">

@@ -41,6 +41,7 @@ model User {
   reports       Report[]
   partilhas     Partilha[]
   recolhas      Recolha[]
+  ecopontoFavoritos CidadaoEcopontoFavorito[]
 
   @@index([role])
   @@map("users")
@@ -103,7 +104,22 @@ model Ecoponto {
   ativo             Boolean  @default(true)
   criadoEm          DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
 
+  favoritos         CidadaoEcopontoFavorito[]
+
   @@map("ecopontos")
+}
+
+model CidadaoEcopontoFavorito {
+  userId     String   @map("user_id") @db.Uuid
+  ecopontoId String   @map("ecoponto_id") @db.Uuid
+  criadoEm   DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ecoponto Ecoponto @relation(fields: [ecopontoId], references: [id], onDelete: Cascade)
+
+  @@id([userId, ecopontoId])
+  @@index([userId])
+  @@map("cidadao_ecopontos_favoritos")
 }
 
 model Tarefa {

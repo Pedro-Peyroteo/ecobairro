@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Inject,
   Post,
   Query,
   UseGuards,
@@ -16,14 +17,18 @@ import { CreateRecolhaDto } from './dto/create-recolha.dto';
 @Controller('recolhas')
 @UseGuards(JwtAuthGuard)
 export class RecolhasController {
-  constructor(private readonly recolhas: RecolhasService) {}
+  private readonly recolhasService: RecolhasService;
+
+  constructor(@Inject(RecolhasService) recolhasService: RecolhasService) {
+    this.recolhasService = recolhasService;
+  }
 
   @Get()
   list(
     @CurrentUser() user: AuthenticatedUser,
     @Query() query: ListRecolhasDto,
   ) {
-    return this.recolhas.list(user.userId, query);
+    return this.recolhasService.list(user.userId, query);
   }
 
   @Post()
@@ -31,6 +36,6 @@ export class RecolhasController {
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto: CreateRecolhaDto,
   ) {
-    return this.recolhas.create(user.userId, dto);
+    return this.recolhasService.create(user.userId, dto);
   }
 }

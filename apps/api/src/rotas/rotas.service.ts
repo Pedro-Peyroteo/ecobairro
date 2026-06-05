@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import type { RotaRecord } from '@ecobairro/contracts';
 import type { UpdateRotaDto } from './dto/update-rota.dto';
@@ -29,7 +29,10 @@ function mapRow(r: {
 
 @Injectable()
 export class RotasService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly prisma: PrismaService;
+  constructor(@Inject(PrismaService) prisma: PrismaService) {
+    this.prisma = prisma;
+  }
 
   async list() {
     const rows = await this.prisma.rota.findMany({

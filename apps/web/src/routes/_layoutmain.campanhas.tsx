@@ -3,11 +3,13 @@ import { requireRole } from '@/lib/auth'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Megaphone, PlusCircle, Search, Calendar, Eye, Archive, Pencil, X, Loader2 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useModalA11y } from '@/lib/use-modal-a11y'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { fetchJson } from '@/lib/http/fetch-json'
+import { getApiErrorMessage } from '@/lib/http/api-error'
 import { clientEnv } from '@/lib/env'
 import { getAccessToken } from '@/lib/auth'
 import type { CampanhaRecord, ListCampanhasResponse, CreateCampanhaRequest } from '@ecobairro/contracts'
@@ -48,6 +50,10 @@ function CampanhasPage() {
   const [submitting, setSubmitting] = useState(false)
   const [modalAberto, setModalAberto] = useState(false)
   const [editando, setEditando] = useState<CampanhaRecord | null>(null)
+  const [listError, setListError] = useState<string | null>(null)
+  const [submitError, setSubmitError] = useState<string | null>(null)
+  const modalRef = useRef<HTMLDivElement>(null)
+  useModalA11y(modalAberto, modalRef, () => setModalAberto(false))
 
   const headers = { Authorization: `Bearer ${getAccessToken() ?? ''}` }
 
@@ -57,6 +63,7 @@ function CampanhasPage() {
 
   async function load() {
     setLoading(true)
+    setListError(null)
     try {
       const params = new URLSearchParams({ page: '1', pageSize: '50' })
       if (filtro !== 'todas') params.set('estado', filtro)
@@ -67,6 +74,10 @@ function CampanhasPage() {
       })
       setCampanhas(res.campanhas)
       setTotal(res.total)
+    } catch (err) {
+      setCampanhas([])
+      setTotal(0)
+      setListError(getApiErrorMessage(err, 'Não foi possível carregar as campanhas.'))
     } finally {
       setLoading(false)
     }
@@ -88,6 +99,7 @@ function CampanhasPage() {
 
   async function onSubmit(data: MensagemForm) {
     setSubmitting(true)
+    setSubmitError(null)
     try {
       if (editando) {
         await fetchJson<CampanhaRecord>(`/v1/campanhas/${editando.id}`, {
@@ -111,6 +123,8 @@ function CampanhasPage() {
       }
       setModalAberto(false)
       await load()
+    } catch (err) {
+      setSubmitError(getApiErrorMessage(err, 'Não foi possível guardar a campanha.'))
     } finally {
       setSubmitting(false)
     }
@@ -144,6 +158,13 @@ function CampanhasPage() {
 
   return (
     <div className="flex flex-col gap-8 pb-12">
+
+      {listError && (
+        <div role="alert" aria-live="polite" className="rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive flex items-center justify-between gap-3">
+          <span>{listError}</span>
+          <button onClick={() => void load()} className="text-xs font-medium underline-offset-2 hover:underline">Tentar novamente</button>
+        </div>
+      )}
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -261,11 +282,16 @@ function CampanhasPage() {
       {modalAberto && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40" onClick={() => setModalAberto(false)} />
-          <div className="relative z-10 w-full max-w-lg bg-card rounded-2xl shadow-2xl border border-border p-6 flex flex-col gap-4">
+          <div ref={modalRef} role="dialog" aria-modal="true" aria-labelledby="campanhas-modal-title" tabIndex={-1} className="relative z-10 w-full max-w-lg bg-card rounded-2xl shadow-2xl border border-border p-6 flex flex-col gap-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-base font-bold text-foreground">{editando ? 'Editar Mensagem' : 'Nova Mensagem'}</h2>
-              <button onClick={() => setModalAberto(false)} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
+              <h2 id="campanhas-modal-title" className="text-base font-bold text-foreground">{editando ? 'Editar Mensagem' : 'Nova Mensagem'}</h2>
+              <button type="button" aria-label="Fechar modal" onClick={() => setModalAberto(false)} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
             </div>
+            {submitError && (
+              <div role="alert" className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                {submitError}
+              </div>
+            )}
             <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-3">
               <div>
                 <label className="text-xs font-medium text-muted-foreground mb-1 block">Título</label>

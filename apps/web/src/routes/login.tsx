@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, Link } from '@tanstack/react-router'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -10,10 +10,12 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { setAuthSession } from '@/lib/auth'
 import { getCitizenProfile, getMe, loginRequest, toUiRole } from '@/lib/api/auth'
-import { HttpError } from '@/lib/http/fetch-json'
+import { fetchJson } from '@/lib/http/fetch-json'
+import { getApiErrorMessage } from '@/lib/http/api-error'
 import { cn } from '@/lib/utils'
 
 import { clientEnv } from '@/lib/env'
+import type { PublicStatsResponse } from '@ecobairro/contracts'
 
 const hasGoogleClientId = !!clientEnv.googleClientId
 
@@ -56,12 +58,26 @@ function GoogleIcon() {
   )
 }
 
+function formatCount(n: number): string {
+  if (n >= 1000) return `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k`
+  return String(n)
+}
+
 function LoginPage() {
   const navigate = useNavigate()
   const [showPassword, setShowPassword] = useState(false)
   const [rememberMe, setRememberMe] = useState(false)
   const [loading, setLoading] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [stats, setStats] = useState<PublicStatsResponse | null>(null)
+
+  useEffect(() => {
+    fetchJson<PublicStatsResponse>('/v1/home/public-stats', {
+      baseUrl: clientEnv.apiBaseUrl,
+    })
+      .then(setStats)
+      .catch(() => { /* deixa placeholder durante loading */ })
+  }, [])
 
   const {
     register,
@@ -107,12 +123,7 @@ function LoginPage() {
 
       navigate({ to: role === 'cidadao' ? '/home' : '/dashboard' })
     } catch (error) {
-      if (error instanceof HttpError && typeof error.body === 'object' && error.body !== null && 'message' in error.body) {
-        const message = error.body.message
-        setSubmitError(typeof message === 'string' ? message : 'Falha ao autenticar. Tente novamente.')
-      } else {
-        setSubmitError('Falha ao autenticar. Tente novamente.')
-      }
+      setSubmitError(getApiErrorMessage(error, 'Falha ao autenticar. Tente novamente.'))
     } finally {
       setLoading(false)
     }
@@ -150,20 +161,20 @@ function LoginPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-8 text-center">
+          <div className="flex items-center gap-8 text-center" aria-busy={stats === null}>
             <div>
-              <p className="text-2xl font-bold text-primary">248</p>
+              <p className="text-2xl font-bold text-primary">{stats ? stats.ecopontos_ativos : '—'}</p>
               <p className="text-xs text-muted-foreground">Ecopontos</p>
             </div>
             <div className="w-px h-10 bg-border" />
             <div>
-              <p className="text-2xl font-bold text-primary">1.2k</p>
-              <p className="text-xs text-muted-foreground">Utilizadores</p>
+              <p className="text-2xl font-bold text-primary">{stats ? formatCount(stats.cidadaos_total) : '—'}</p>
+              <p className="text-xs text-muted-foreground">Cidadãos</p>
             </div>
             <div className="w-px h-10 bg-border" />
             <div>
-              <p className="text-2xl font-bold text-primary">98%</p>
-              <p className="text-xs text-muted-foreground">Eficiência</p>
+              <p className="text-2xl font-bold text-primary">{stats ? `${stats.taxa_resolucao}%` : '—'}</p>
+              <p className="text-xs text-muted-foreground">Resolução</p>
             </div>
           </div>
         </div>

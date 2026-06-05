@@ -5,6 +5,7 @@ import { Calendar, Clock, ChevronRight, Search, Newspaper, Loader } from 'lucide
 import { useState, useEffect, useCallback } from 'react'
 import { PaginationBar } from '@/components/ui/pagination-bar'
 import { fetchJson } from '@/lib/http/fetch-json'
+import { getApiErrorMessage } from '@/lib/http/api-error'
 import { clientEnv } from '@/lib/env'
 import type { ListNoticiasResponse, NoticiaRecord } from '@ecobairro/contracts'
 
@@ -34,9 +35,11 @@ function NoticiasPage() {
   const [noticias, setNoticias] = useState<NoticiaRecord[]>([])
   const [total, setTotal]       = useState(0)
   const [loading, setLoading]   = useState(true)
+  const [listError, setListError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
+    setListError(null)
     try {
       const params: Record<string, string | number> = { page: pagina, pageSize: POR_PAGINA }
       if (pesquisa.trim()) params.q = pesquisa.trim()
@@ -47,9 +50,10 @@ function NoticiasPage() {
       })
       setNoticias(resp.noticias)
       setTotal(resp.total)
-    } catch {
+    } catch (err) {
       setNoticias([])
       setTotal(0)
+      setListError(getApiErrorMessage(err, 'Não foi possível carregar as notícias.'))
     } finally {
       setLoading(false)
     }
@@ -66,6 +70,13 @@ function NoticiasPage() {
 
   return (
     <div className="flex flex-col gap-6 pb-10">
+
+      {listError && (
+        <div role="alert" aria-live="polite" className="rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive flex items-center justify-between gap-3">
+          <span>{listError}</span>
+          <button onClick={() => void load()} className="text-xs font-medium underline-offset-2 hover:underline">Tentar novamente</button>
+        </div>
+      )}
 
       {/* ── Cabeçalho ── */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-4 justify-between">

@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import { UnauthorizedException } from '@nestjs/common';
 import type { ExecutionContext } from '@nestjs/common';
-import { JwtAuthGuard } from './jwt-auth.guard';
-import type { AuthenticatedRequest, JwtPayload } from './auth.types';
-import type { TestCase } from '../test/test-helpers';
+import { JwtAuthGuard } from '../../src/auth/jwt-auth.guard';
+import type { AuthenticatedRequest, JwtPayload } from '../../src/auth/auth.types';
+import type { TestCase } from '../test-helpers';
 
 class FakeJwtService {
   constructor(private readonly payload: JwtPayload | null) {}

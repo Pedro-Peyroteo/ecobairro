@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Inject,
   Param,
   Patch,
   UseGuards,
@@ -13,7 +14,10 @@ import { UpdateRotaDto } from './dto/update-rota.dto';
 @Controller('rotas')
 @UseGuards(JwtAuthGuard)
 export class RotasController {
-  constructor(private readonly rotas: RotasService) {}
+  private readonly rotas: RotasService;
+  constructor(@Inject(RotasService) rotas: RotasService) {
+    this.rotas = rotas;
+  }
 
   @Get()
   list() {

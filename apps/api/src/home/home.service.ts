@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { ReportStatus, UserRole } from '@prisma/client';
-import type { HomeFeedResponse } from '@ecobairro/contracts';
+import type { HomeFeedResponse, PublicStatsResponse } from '@ecobairro/contracts';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { PrismaService } from '../database/prisma.service';
 
@@ -18,6 +18,27 @@ export class HomeService {
     this.prisma = prisma;
   }
 
+  async getPublicStats(): Promise<PublicStatsResponse> {
+    const [ecopontosAtivos, cidadaosTotal, totalReports, resolvidos] =
+      await this.prisma.$transaction([
+        this.prisma.ecoponto.count({ where: { ativo: true } }),
+        this.prisma.user.count({
+          where: { role: UserRole.CIDADAO, eliminadoEm: null },
+        }),
+        this.prisma.report.count(),
+        this.prisma.report.count({ where: { status: ReportStatus.RESOLVIDO } }),
+      ]);
+
+    const taxaResolucao =
+      totalReports > 0 ? Math.round((resolvidos / totalReports) * 100) : 0;
+
+    return {
+      ecopontos_ativos: ecopontosAtivos,
+      cidadaos_total: cidadaosTotal,
+      taxa_resolucao: taxaResolucao,
+    };
+  }
+
   async getFeed(user: AuthenticatedUser | null): Promise<HomeFeedResponse> {
     const isCitizen = user?.role === 'CIDADAO';
     const currentUser =
@@ -29,10 +50,15 @@ export class HomeService {
           });
 
     const [ecopontos, partilhas, noticias, comunidadePax] = await Promise.all([
-      this.prisma.ecoponto.findMany({
-        where: { ativo: true },
-        orderBy: { ordem: 'asc' },
-      }),
+      isCitizen && user
+        ? this.prisma.cidadaoEcopontoFavorito
+            .findMany({
+              where: { userId: user.userId, ecoponto: { ativo: true } },
+              include: { ecoponto: true },
+              orderBy: { criadoEm: 'asc' },
+            })
+            .then((rows) => rows.map((row) => row.ecoponto))
+        : Promise.resolve([]),
       this.prisma.partilha.findMany({
         where:
           user == null

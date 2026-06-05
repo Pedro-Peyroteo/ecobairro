@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
-import { RecolhasService } from './recolhas.service';
-import type { TestCase } from '../test/test-helpers';
+import { RecolhasService } from '../../src/recolhas/recolhas.service';
+import type { TestCase } from '../test-helpers';
 
 interface FakeRecolhaRow {
   id: string;
