@@ -39,6 +39,12 @@ Foram utilizados os princípios de `shadcn/ui` (Radix UI e Tailwind) para criar 
 - **Descrição:** Sempre que a equipa precisar de incorporar vídeos (YouTube, Vimeo) ou mapas de terceiros via `<iframe>`, deve importar este componente em vez de usar a tag HTML padrão (`<iframe />`).
 - **Como funciona:** Ele avalia se a categoria "Marketing & Redes Sociais" foi aceite. Se sim, carrega o `<iframe />` original. Se não, bloqueia o carregamento para prevenir rastreio não autorizado e apresenta uma caixa a informar o utilizador de que precisa de aceitar os cookies para ver o conteúdo.
 
+### 5. Prova de Consentimento (Audit Trail) - Backend e Base de Dados
+Para efeitos de auditoria legal (ex: CNPD), implementámos um registo centralizado das escolhas dos utilizadores, equiparando esta solução às plataformas comerciais:
+- **Frontend (`cookie-consent.ts`)**: Gera um `deviceId` anónimo (UUID) e guarda-o no `localStorage`. Sempre que as preferências são guardadas, envia um `POST` para `/v1/cookies/consent`.
+- **Backend (`apps/api/src/cookies/`)**: Um módulo NestJS (`CookiesModule`, `CookiesController`, `CookiesService`) que recebe o pedido, ofusca/anonimiza o endereço de IP (`ipHash`) usando criptografia (SHA-256) e guarda a entrada de forma segura.
+- **Base de Dados (`schema.prisma`)**: Tabela `CookieConsentLog` (`cookie_consent_logs`) que associa as opções marcadas (`analytics`, `marketing`, `preferences`) ao `deviceId` ou `userId` (caso o cidadão tenha feito login), gravando um registo a cada nova escolha.
+
 ---
 
 ## 🔗 Integração na Aplicação

@@ -16,7 +16,7 @@ export const defaultPreferences: CookiePreferences = {
 
 import { clientEnv } from './env';
 import { fetchJson } from './http/fetch-json';
-import { getUser } from './api/auth';
+import { getUser } from './auth';
 
 const COOKIE_CONSENT_KEY = 'ecobairro-cookie-consent';
 const COOKIE_DEVICE_ID_KEY = 'ecobairro-device-id';
