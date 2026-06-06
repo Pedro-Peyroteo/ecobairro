@@ -26,6 +26,22 @@ enum ReportStatus {
   REJEITADO
 }
 
+enum TwoFactorType {
+  NONE
+  TOTP_APP
+  EMAIL
+}
+
+enum SecurityEventType {
+  LOGIN_SUCCESS
+  LOGIN_FAILED
+  PASSWORD_CHANGED
+  TWO_FACTOR_ENABLED
+  TWO_FACTOR_DISABLED
+  ACCOUNT_LOCKED
+  DEVICE_REVOKED
+}
+
 model User {
   id            String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   email         String         @unique
@@ -37,14 +53,55 @@ model User {
   atualizadoEm  DateTime       @updatedAt @map("atualizado_em") @db.Timestamptz(6)
   eliminadoEm   DateTime?      @map("eliminado_em") @db.Timestamptz(6)
 
+  // 2FA & recuperação
+  twoFactorEnabled Boolean       @default(false) @map("two_factor_enabled")
+  twoFactorType    TwoFactorType @default(NONE) @map("two_factor_type")
+  twoFactorSecret  String?       @map("two_factor_secret")
+  backupCodes      String[]      @default([]) @map("backup_codes")
+
+  // Proteção de conta
+  failedLoginAttempts Int       @default(0) @map("failed_login_attempts")
+  lockedUntil         DateTime? @map("locked_until") @db.Timestamptz(6)
+
   cidadaoPerfil CidadaoPerfil?
   reports       Report[]
   partilhas     Partilha[]
   recolhas      Recolha[]
   ecopontoFavoritos CidadaoEcopontoFavorito[]
+  securityLogs    SecurityLog[]
+  activeSessions  ActiveSession[]
 
   @@index([role])
   @@map("users")
+}
+
+model SecurityLog {
+  id        String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String            @map("user_id") @db.Uuid
+  event     SecurityEventType
+  ipAddress String            @map("ip_address")
+  userAgent String?           @map("user_agent")
+  criadoEm  DateTime          @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, criadoEm])
+  @@map("security_logs")
+}
+
+model ActiveSession {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  refreshToken String   @unique @map("refresh_token")
+  ipAddress    String   @map("ip_address")
+  userAgent    String?  @map("user_agent")
+  expiresAt    DateTime @map("expires_at") @db.Timestamptz(6)
+  criadoEm     DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("active_sessions")
 }
 
 model CidadaoPerfil {
@@ -88,6 +145,7 @@ model Ecoponto {
   nome              String
   codigo            String?
   morada            String   @default("")
+  codigoPostal      String?  @map("codigo_postal")
   zona              String?
   distanciaLabel    String   @default("") @map("distancia_label")
   ocupacao          Int
