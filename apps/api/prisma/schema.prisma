@@ -236,3 +236,18 @@ model QuizDesafio {
 
   @@map("quiz_desafios")
 }
+
+model CookieConsentLog {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  deviceId    String   @map("device_id")
+  userId      String?  @map("user_id") @db.Uuid
+  analytics   Boolean
+  marketing   Boolean
+  preferences Boolean
+  ipHash      String?  @map("ip_hash")
+  criadoEm    DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  @@index([deviceId])
+  @@index([userId])
+  @@map("cookie_consent_logs")
+}

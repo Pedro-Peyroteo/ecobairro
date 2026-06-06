@@ -14,7 +14,22 @@ export const defaultPreferences: CookiePreferences = {
   preferences: false,
 };
 
+import { clientEnv } from './env';
+import { fetchJson } from './http/fetch-json';
+import { getUser } from './api/auth';
+
 const COOKIE_CONSENT_KEY = 'ecobairro-cookie-consent';
+const COOKIE_DEVICE_ID_KEY = 'ecobairro-device-id';
+
+export function getOrCreateDeviceId(): string {
+  if (typeof window === 'undefined') return 'server';
+  let deviceId = localStorage.getItem(COOKIE_DEVICE_ID_KEY);
+  if (!deviceId) {
+    deviceId = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 15);
+    localStorage.setItem(COOKIE_DEVICE_ID_KEY, deviceId);
+  }
+  return deviceId;
+}
 
 export function getCookiePreferences(): CookiePreferences | null {
   if (typeof window === 'undefined') return null;
@@ -33,6 +48,24 @@ export function saveCookiePreferences(preferences: CookiePreferences) {
   if (typeof window === 'undefined') return;
   localStorage.setItem(COOKIE_CONSENT_KEY, JSON.stringify(preferences));
   updateGoogleConsentMode(preferences);
+
+  // Registo na Base de Dados (Audit Trail)
+  const deviceId = getOrCreateDeviceId();
+  const sessionUser = getUser();
+
+  fetchJson('/v1/cookies/consent', {
+    method: 'POST',
+    baseUrl: clientEnv.apiBaseUrl,
+    body: JSON.stringify({
+      deviceId,
+      userId: sessionUser?.id,
+      analytics: preferences.analytics,
+      marketing: preferences.marketing,
+      preferences: preferences.preferences,
+    }),
+  }).catch((err) => {
+    console.error('Failed to save cookie consent log', err);
+  });
 }
 
 // Google Consent Mode v2 integration

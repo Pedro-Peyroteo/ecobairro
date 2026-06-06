@@ -18,6 +18,7 @@ import { RecolhasModule } from './recolhas/recolhas.module';
 import { CampanhasModule } from './campanhas/campanhas.module';
 import { AuditModule } from './audit/audit.module';
 import { RotasModule } from './rotas/rotas.module';
+import { CookiesModule } from './cookies/cookies.module';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { RotasModule } from './rotas/rotas.module';
     CampanhasModule,
     AuditModule,
     RotasModule,
+    CookiesModule,
   ],
   controllers: [HealthController],
   providers: [HealthService],
