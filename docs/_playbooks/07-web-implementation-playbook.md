@@ -46,7 +46,7 @@ Hoje a app tem tres areas principais de rotas:
 
 - `/` para a pagina de entrada neutra
 - `/app/*` para paginas viradas para o cidadao
-- `/admin/*` para paginas de operador/admin
+- `/admin/*` para paginas de gestor/admin
 
 Exemplos:
 

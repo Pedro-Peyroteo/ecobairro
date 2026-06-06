@@ -1,5 +1,7 @@
 # Arquitectura de Dados e API REST — Entidades Restantes
 
+> Parte de [[Home]] · [[07-Modelo-de-Dados]]. Domínio operacional: reports, recolhas, comunicação, frota e rotas.
+
 ## EcoBairro Digital · Design Document — Domínios Reports, Recolhas, Comunicação e Operacional
 
 ### PARTE I — REPORTS (RF-08 a RF-12)
@@ -29,8 +31,12 @@
 [[6.1 Schema PostgreSQL — campanhas_beneficio]]
 [[6.2 Endpoints REST — Campanhas de Benefício]]
 
-### PARTE VII — ROTAS OPERACIONAIS (RF-05)
+### PARTE VII — FROTA, EQUIPAS E ROTAS OPERACIONAIS (RF-05, RF-28, RF-29, RF-30)
 [[7.1 Schema PostgreSQL — rotas_execucao]]
+[[7.2 Schema PostgreSQL — carrinhas]]
+[[7.3 Schema PostgreSQL — equipas_rota]]
+[[Gestão de Frota e Equipas (Gestor)]] — endpoints REST (Gestor)
+[[Execução de Rota (Operador)]] — endpoints REST (Operador, terreno)
 
 ### PARTE VIII — AUDIT LOG (RNF-SEG-03)
 [[8.1 Schema PostgreSQL — audit_log]]
