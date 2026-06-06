@@ -3,7 +3,8 @@ import * as Dialog from '@radix-ui/react-dialog';
 import * as SwitchPrimitives from '@radix-ui/react-switch';
 import { X } from 'lucide-react';
 import { useCookieConsent } from './CookieConsentProvider';
-import { CookiePreferences, defaultPreferences } from '../../lib/cookie-consent';
+import { defaultPreferences } from '../../lib/cookie-consent';
+import type { CookiePreferences } from '../../lib/cookie-consent';
 
 const Switch = React.forwardRef<
   React.ElementRef<typeof SwitchPrimitives.Root>,
