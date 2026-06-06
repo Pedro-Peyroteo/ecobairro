@@ -4,6 +4,8 @@ import { GoogleOAuthProvider } from '@react-oauth/google'
 import { MapPin } from 'lucide-react'
 
 import { clientEnv } from '@/lib/env'
+import { CookieConsentProvider } from '@/components/cookie-consent/CookieConsentProvider'
+import { CookieBanner } from '@/components/cookie-consent/CookieBanner'
 
 const GOOGLE_CLIENT_ID = clientEnv.googleClientId
 
@@ -35,7 +37,10 @@ export const Route = createRootRoute({
   component: () => {
     const content = (
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-        <Outlet />
+        <CookieConsentProvider>
+          <Outlet />
+          <CookieBanner />
+        </CookieConsentProvider>
       </ThemeProvider>
     )
 

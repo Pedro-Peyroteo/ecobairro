@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
+import { useCookieConsent } from '@/components/cookie-consent/CookieConsentProvider'
 
 // import { OrbitalGlobe } from '@/components/ui/orbital-globe'
 import FluidCursorEffect from '@/components/ui/fluid-cursor'
@@ -860,6 +861,7 @@ function CTASection() {
 /* ─── Footer Público ─── */
 function PublicFooter() {
   const year = new Date().getFullYear()
+  const { setIsSettingsOpen } = useCookieConsent()
   return (
     <footer className="w-full border-t border-border/60 bg-card">
       <div className="max-w-[1280px] mx-auto px-6 md:px-10 py-12">
@@ -920,12 +922,21 @@ function PublicFooter() {
               <ul className="space-y-2.5">
                 {col.links.map((l) => (
                   <li key={l.label}>
-                    <a
-                      href={l.href}
-                      className="text-sm text-muted-foreground hover:text-[var(--primary)] transition-colors"
-                    >
-                      {l.label}
-                    </a>
+                    {l.label === 'Cookies' ? (
+                      <button
+                        onClick={() => setIsSettingsOpen(true)}
+                        className="text-sm text-muted-foreground hover:text-[var(--primary)] transition-colors cursor-pointer text-left"
+                      >
+                        {l.label}
+                      </button>
+                    ) : (
+                      <a
+                        href={l.href}
+                        className="text-sm text-muted-foreground hover:text-[var(--primary)] transition-colors"
+                      >
+                        {l.label}
+                      </a>
+                    )}
                   </li>
                 ))}
               </ul>
