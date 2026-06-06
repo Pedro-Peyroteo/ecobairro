@@ -1,8 +1,11 @@
+> Parte de [[Home]] · [[07-Modelo-de-Dados]]. Domínio de ecopontos, zonas, badges e quiz.
+> Requisitos: [[02-Requisitos/M01-Mapa-Ecopontos|Módulo 1 — Mapa de Ecopontos]] · [[02-Requisitos/M06-Gamificacao|Módulo 6 — Gamificação]].
+
 ## 1.1 Endpoints REST — Zonas
 
-**Convenções de acesso:** Zonas são entidades de gestão operacional. Cidadãos acedem apenas à lista simplificada (para saber a sua zona). Operadores e técnicos gerem zonas. Admins têm acesso total.
+**Convenções de acesso:** Zonas são entidades de gestão operacional. Cidadãos acedem apenas à lista simplificada (para saber a sua zona). Gestores gerem zonas. Admins têm acesso total.
 [[Consulta (todos os perfis autenticados)]]
-[[Gestão (operadores e superiores)]]
+[[Gestão (gestores e superiores)]]
 
 
 ## 1.2 Schema PostgreSQL — `zonas`
@@ -10,7 +13,7 @@
 
 ## 2.1 Endpoints REST — Ecopontos
 
-Ecopontos têm dois perfis de acesso distintos: o cidadão consulta o mapa e reporta; o operador e técnico gerem o catálogo e o estado.
+Ecopontos têm dois perfis de acesso distintos: o cidadão consulta o mapa e reporta; o gestor gere o catálogo e o estado.
 [[Consulta pública e cidadão]]
 [[Gestão do catálogo]]
 [[Ingestão IoT (RF-04)]]
@@ -75,6 +78,42 @@ quizzes (1)
 ---
 
 ## 6 — Separação de fluxos — resumo executivo completo
+
+```mermaid
+flowchart LR
+    subgraph W["Escrita (NestJS → PG primário)"]
+        direction TB
+        WZ["POST /zonas · PUT /ecopontos"]
+        WI["POST /iot/telemetria (202 → BullMQ)"]
+        WQ["POST /admin/quiz · /quiz/sessao/resp."]
+    end
+    subgraph RD["Leitura (NestJS → Redis | PG réplica)"]
+        direction TB
+        RZ["GET /zonas/:id · /ecopontos/:id"]
+        RB["GET /badges · /quiz/disponivel"]
+    end
+    subgraph AN["Analytics (FastAPI → Redis | PG réplica)"]
+        direction TB
+        AE["GET /ecopontos (ST_Within) · /proximos (ST_DWithin)"]
+        AR["GET /quiz/ranking/zona · /zonas/:id/kpis"]
+    end
+
+    PGP[("PG Primário")]
+    PGR[("PG Réplica")]
+    REDIS[("Redis")]
+
+    W --> PGP -->|NOTIFY DEL| REDIS
+    PGP == replicação ==> PGR
+    RD --> REDIS
+    RD -.->|miss| PGR
+    AN --> REDIS
+    AN -.->|miss| PGR
+
+    classDef store fill:#1B5E20,color:#fff,stroke:#1B5E20;
+    class PGP,PGR,REDIS store;
+```
+
+Detalhe textual por endpoint:
 
 ```
 ESCRITA — NestJS → PG primário → Redis invalidado

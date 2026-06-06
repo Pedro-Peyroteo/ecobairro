@@ -1,5 +1,8 @@
 ## EcoBairro Digital - Design Document
 
+> Parte de [[Home]] · [[07-Modelo-de-Dados]]. Domínio de identidade, perfis e autenticação.
+> Requisitos: [[02-Requisitos/M09-Utilizadores-Perfis|Módulo 9 — Utilizadores e Perfis]] (RF-24/RF-25).
+
 ### Mapeamento de Endpoints REST
 ### Convenções gerais
 
@@ -9,7 +12,7 @@ Base URL FastAPI: /analytics/v1
 
 Autenticação:
   Bearer JWT em Authorization header
-  Roles: CIDADAO | OPERADOR_VEOLIA | TECNICO_AUTARQUIA | TECNICO_CCDR | ADMIN
+  Roles: CIDADAO | OPERADOR | GESTOR | ADMIN
 
 Fluxo padrão:
   Escrita  → NestJS → PostgreSQL (primário) → NOTIFY → Redis invalidado
@@ -25,7 +28,8 @@ Fluxo padrão:
 [[1.6 Reports (perspectiva do Cidadão)]]
 [[1.7 Pedidos de Recolha de Monos]]
 [[1.8 Gamificação (RF-18, RF-19, RF-20)]]
-[[1.9 Perfil do Operador]]
+[[1.9 Perfil do Gestor]]
+[[1.10 Perfil do Operador (terreno)]]
 
 ###  2 — Esquema de Base de Dados
 
@@ -43,11 +47,15 @@ Fluxo padrão:
 │   Contém: dados pessoais, preferências, RGPD, gamificação opt-in           │
 │   Relação: 1:1 com users WHERE role = 'CIDADAO'                            │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│ Camada 2B — Perfil do operador (extensão de users)                         │
-│   tabela: operador_perfis                                                   │
+│ Camada 2B — Perfil do gestor (extensão de users)                           │
+│   tabela: gestor_perfis                                                     │
 │   Contém: entidade empregadora, zona(s) de responsabilidade, cargo         │
-│   Relação: 1:1 com users WHERE role IN (OPERADOR_VEOLIA,                   │
-│             TECNICO_AUTARQUIA, TECNICO_CCDR, ADMIN)                        │
+│   Relação: 1:1 com users WHERE role IN ('GESTOR','ADMIN')                  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Camada 2C — Perfil do operador de terreno (extensão de users)              │
+│   tabela: operador_perfis                                                   │
+│   Contém: carta de condução, zona-base, disponibilidade                    │
+│   Relação: 1:1 com users WHERE role = 'OPERADOR'                           │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -68,9 +76,8 @@ Fluxo padrão:
 │ role                     │ VARCHAR(50)          │ NOT NULL                  │
 │                          │                      │ CHECK IN (                │
 │                          │                      │  'CIDADAO',               │
-│                          │                      │  'OPERADOR_VEOLIA',       │
-│                          │                      │  'TECNICO_AUTARQUIA',     │
-│                          │                      │  'TECNICO_CCDR',          │
+│                          │                      │  'OPERADOR',              │
+│                          │                      │  'GESTOR',                │
 │                          │                      │  'ADMIN')                 │
 │ 2fa_enabled              │ BOOLEAN              │ NOT NULL, DEFAULT false   │
 │ 2fa_secret               │ VARCHAR              │ nullable, cifrado repouso │
@@ -85,12 +92,13 @@ Fluxo padrão:
 ```
 
 Notas de design críticas:
-	A tabela `users` contém APENAS dados de identidade e autenticação. Dados de perfil, PII e preferências vivem nas tabelas de extensão (`cidadao_perfis`, `operador_perfis`).
+	A tabela `users` contém APENAS dados de identidade e autenticação. Dados de perfil, PII e preferências vivem nas tabelas de extensão (`cidadao_perfis`, `gestor_perfis`).
 	nif_cifrado e morada_cifrada (em `cidadao_perfis`) guardam o valor cifrado em AES-256 pela camada de aplicação antes de escrever no PostgreSQL. O banco de dados nunca vê o valor em claro, isto garante que mesmo um dump do PostgreSQL não expõe PII, alinhado com RNF-PRIV-01. A busca por NIF (admin) passa pela camada app que calcula HMAC-SHA256(nif, chave_secreta_app) e compara com o hash indexado na coluna `cidadao_perfis.nif_hash`.
 	eliminado_em (em `users`) implementa soft delete. Um job BullMQ agendado pela eliminação anonimiza os registos em `users` e `cidadao_perfis` (apaga nome, email → anonimizado_{id}@ecobairro.deleted, hash, PII) mantendo o UUID para referências de integridade em reports históricos.
 
 [[2.9 Schema PostgreSQL — cidadao_perfis]]
-[[2.10 Schema PostgreSQL — operador_perfis]]
+[[2.10 Schema PostgreSQL — gestor_perfis]]
+[[2.11 Schema PostgreSQL — operador_perfis]]
 [[2.7 Índices estratégicos]]
 [[2.8 Mapa de relacionamentos]]
 
@@ -131,12 +139,12 @@ A extensão do PostgreSQL `'pg_trgm'` com índice GIN sobre o `nome_completo` su
 ```
 Padrão de acesso:
   - Cidadão: "os meus reports" → filtra por cidadao_id (PK scan)
-  - Operador: "reports desta zona" → filtra por zona_id + estado
+  - Gestor: "reports desta zona" → filtra por zona_id + estado
   - FastAPI: "heatmap de reports" → agregação por zona + data
 
 Solução PostgreSQL:
   reports (zona_id, estado, criado_em) → índice BTREE composto
-  + Redis cache dos resultados (TTL 5min para operador)
+  + Redis cache dos resultados (TTL 5min para gestor)
   + PostGIS para queries de proximidade quando zona é radius
 
 Volume: 10.000 msg/min de telemetria IoT NÃO é reports de cidadãos.
@@ -150,6 +158,27 @@ Neste caso não existe motivos para o uso do Mongo nos reports. O PostgreSQL com
 #### 4.1 Gargalos identificados e mitigações
 
 **Gargalo 1 — Login com 2FA: duas viagens ao Redis + uma ao PG**
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as Utilizador
+    participant N as NestJS
+    participant PG as PG (users)
+    participant R as Redis
+
+    U->>N: POST /auth/login (email, password)
+    N->>PG: verify password_hash (bcrypt)
+    alt 2FA ativo
+        N->>R: SET pre_auth:{user} (TTL curto)
+        N-->>U: desafio 2FA
+        U->>N: POST /auth/2fa/verify (código)
+        N->>R: GET pre_auth + DEL
+        N-->>U: JWT (role)
+    else sem 2FA
+        N-->>U: JWT (role)
+    end
+```
 
 ```
 Fluxo normal:   POST /auth/login → PG (password verify) → Redis (set pre_auth)
@@ -222,7 +251,7 @@ ESCRITA (NestJS → PG primário → Redis invalidado)
 POST /auth/register          → PG write users + cidadao_perfis
 POST /auth/login             → PG read users (verify hash) → Redis set session
 PUT  /cidadaos/me            → PG write cidadao_perfis → NOTIFY → Redis DEL
-PUT  /operadores/me          → PG write operador_perfis → NOTIFY → Redis DEL
+PUT  /gestores/me          → PG write gestor_perfis → NOTIFY → Redis DEL
 POST /cidadaos/me/consent.   → PG write append-only
 POST /reports                → Redis INCR antispam → PG write → BullMQ
 PUT  /gamificacao/quiz/resp. → PG write quiz_sessoes → Redis DEL gamif
@@ -230,7 +259,7 @@ PUT  /gamificacao/quiz/resp. → PG write quiz_sessoes → Redis DEL gamif
 LEITURA (NestJS → Redis hit | PG réplica miss)
 ──────────────────────────────────────────────────
 GET /cidadaos/me             → Redis:cidadao:profile ou PG réplica (join users+cidadao_perfis)
-GET /operadores/me           → Redis:operador:profile ou PG réplica (join users+operador_perfis)
+GET /gestores/me           → Redis:gestor:profile ou PG réplica (join users+gestor_perfis)
 GET /cidadaos/me/favoritos   → Redis:favoritos (ids) + PG réplica (estado)
 GET /cidadaos/me/notif/pref  → Redis:notif_prefs ou PG réplica
 Verificação RBAC por pedido  → Redis:user:rbac (TTL 5min) ou PG
@@ -255,13 +284,13 @@ GET /cidadaos/me/consentimentos → SEMPRE PG réplica, NUNCA Redis
 ☐ PgBouncer em modo transaction entre NestJS e PG (elimina overhead de conn.)
 ☐ Índice GIN em notificacao_prefs JSONB (se queries por campo de preferência)
 ☐ Índice GIN em dashboard_widgets JSONB (se queries por widget específico)
-☐ pg_trgm activado + índice GIN trgm em cidadao_perfis.nome_completo e operador_perfis.nome_completo
+☐ pg_trgm activado + índice GIN trgm em cidadao_perfis.nome_completo e gestor_perfis.nome_completo
 ☐ GIST em cidadao_perfis.localizacao_ultima (geography)
 ☐ Partial index em users WHERE eliminado_em IS NULL (todas as queries normais)
 ☐ Redis connection pool no NestJS (ioredis com pool size ≥ 10)
-☐ NOTIFY triggers separados em users, cidadao_perfis e operador_perfis (não em audit_updated_at)
+☐ NOTIFY triggers separados em users, cidadao_perfis e gestor_perfis (não em audit_updated_at)
 ☐ BullMQ workers separados do processo NestJS principal (Swarm service dedicado)
 ☐ Job de anonimização (eliminado_em) processado async no BullMQ — nunca no req/resp
 ```
 
-Continuação das rotas e arquitetura [[Arquitetura de Dados e API REST/Ecopontos, Zonas, Badges e Quiz/Init|Init]]
+Continuação das rotas e arquitetura [[Ecopontos, Zonas, Badges e Quiz/Init|Init]] · voltar a [[Home]]
