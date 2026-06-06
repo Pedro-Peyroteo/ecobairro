@@ -1,11 +1,11 @@
 
 |#|Método|Rota|Descrição|Auth|Fluxo|
 |---|---|---|---|---|---|
-|Z6|`POST`|`/zonas`|Criar nova zona|TECNICO_AUTARQUIA, ADMIN|NestJS → PG write → NOTIFY → Redis invalidar|
-|Z7|`PUT`|`/zonas/:id`|Actualizar dados e configuração da zona|TECNICO_AUTARQUIA, ADMIN|NestJS → PG write → NOTIFY → Redis del `zona:{id}` + `zonas:ativas:lista`|
+|Z6|`POST`|`/zonas`|Criar nova zona|GESTOR, ADMIN|NestJS → PG write → NOTIFY → Redis invalidar|
+|Z7|`PUT`|`/zonas/:id`|Actualizar dados e configuração da zona|GESTOR, ADMIN|NestJS → PG write → NOTIFY → Redis del `zona:{id}` + `zonas:ativas:lista`|
 |Z8|`PATCH`|`/zonas/:id/geometria`|Actualizar só a geometria (operação pesada — separada)|ADMIN|NestJS → PG write → NOTIFY → del tudo relacionado com zona|
 |Z9|`DELETE`|`/zonas/:id`|Soft delete (só se não tiver ecopontos activos)|ADMIN|NestJS → verifica dependências → PG write ativa=false|
-|Z10|`PUT`|`/zonas/:id/alertas`|Actualizar configuração de alertas e limiar anti-spam|TECNICO_AUTARQUIA, ADMIN|NestJS → PG write → NOTIFY|
+|Z10|`PUT`|`/zonas/:id/alertas`|Actualizar configuração de alertas e limiar anti-spam|GESTOR, ADMIN|NestJS → PG write → NOTIFY|
 |Z11|`GET`|`/zonas/:id/kpis`|KPIs da zona: enchimento médio, reports, tempo resolução (RF-23)|
 **Corpo de Z6 (criar zona):**
 

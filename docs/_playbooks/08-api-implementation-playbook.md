@@ -21,7 +21,7 @@ O backend implementa atualmente a primeira fatia utilizavel da Fase 1:
 - criacao de report por cidadao
 - listagem de reports do proprio cidadao
 - listagem operacional de reports com filtros
-- atualizacao de estado de report para operador/admin
+- atualizacao de estado de report para gestor/admin
 - readiness checks para PostgreSQL e Redis
 
 Ainda nao implementado:
@@ -29,7 +29,7 @@ Ainda nao implementado:
 - verificacao de email
 - forgot/reset password
 - 2FA
-- fluxos de operador/admin
+- fluxos de gestor/admin
 - fluxos de dados sensiveis
 - workers BullMQ
 - audit logging
@@ -261,7 +261,7 @@ Rota:
 Comportamento:
 
 - requer autenticacao JWT
-- permite perfis `OPERADOR_VEOLIA`, `ADMIN`, `TECNICO_AUTARQUIA`, `TECNICO_CCDR`
+- permite perfis `GESTOR`, `ADMIN`
 - devolve reports globais com filtros e paginacao
 
 ### Atualizar status de report
@@ -273,7 +273,7 @@ Rota:
 Comportamento:
 
 - requer autenticacao JWT
-- permite apenas `OPERADOR_VEOLIA` e `ADMIN`
+- permite apenas `GESTOR` e `ADMIN`
 - atualiza status entre `pendente`, `analise`, `resolvido`, `rejeitado`
 
 Regra pratica:
@@ -655,7 +655,7 @@ Estas areas continuam reservadas para fases futuras:
 - fluxo de verificacao de email
 - forgot/reset password
 - 2FA
-- fluxos de perfil de operador/admin
+- fluxos de perfil de gestor/admin
 - encriptacao de PII e endpoints de dados sensiveis
 - audit logging
 - async jobs e workers

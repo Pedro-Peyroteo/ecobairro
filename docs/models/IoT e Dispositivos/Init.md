@@ -1,3 +1,6 @@
+> Parte de [[Home]] · [[07-Modelo-de-Dados]] · [[06-Arquitetura]]. Domínio IoT e dispositivos.
+> Requisitos: [[02-Requisitos/M02-IoT-Operacoes|Módulo 2 — Sensores IoT e Operações]] · [[02-Requisitos/M10-Acesso-Inclusivo-IoT|Módulo 10 — Acesso inclusivo (IoT)]].
+
 ## Nota de contexto
 Este documento cobre o domínio IoT completo: dispositivos físicos, ingestão de telemetria, pipeline de processamento, alertas, gestão de zonas prioritárias e o circuito de tolerância a falhas de sensores (RNF-CONF-02). Complementa os documentos anteriores — as tabelas `sensor_leituras` e `ecoponto_estado_atual` foram esboçadas anteriormente mas são aqui especificadas na íntegra com os campos em falta.
 
@@ -33,6 +36,43 @@ Lista de contactos para alertas SMS por zona (RF-27) — líderes locais e assoc
 # PIPELINE COMPLETO IoT
 
 ## 3.1 Pipeline de ingestão — fluxo detalhado
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant S as Sensor físico
+    participant GW as NestJS IoT Controller
+    participant R as Redis
+    participant W as Worker (iot.ingest)
+    participant PG as PG Primário
+    participant TC as Worker (threshold-check)
+    participant N as notification.dispatch
+
+    S->>GW: POST /iot/telemetria (X-Device-Key)
+    GW->>GW: 1. auth HMAC-SHA256 vs api_key_hash
+    alt key inválida / device != ATIVO
+        GW-->>S: 401 / 403 (+ iot_alertas DEVICE_DESATIVADO)
+    else válido
+        GW->>GW: 2. valida ecoponto_id, timestamp, nível 0–100
+        GW-->>S: 3. 202 Accepted (não espera processamento)
+        GW->>W: 4. enfileira iot.ingest
+        W->>W: a/b. normaliza nível + deteta anomalias (Δ>50% <5 min)
+        W->>PG: c. INSERT sensor_leituras (partição)
+        W->>PG: d. UPDATE iot_dispositivos (heartbeat, bateria, rssi)
+        W->>PG: e/f. determina estado + UPSERT ecoponto_estado_atual
+        PG-->>R: g. NOTIFY → DEL ecoponto + mapa:zona
+        W->>TC: h. iot.threshold-check
+        opt estado = CHEIO (sem alerta aberto)
+            TC->>PG: INSERT iot_alertas (ECOPONTO_CHEIO)
+            TC->>N: push Gestor + SMS contactos opt-in (RF-27)
+        end
+        opt bateria < limiar
+            TC->>PG: INSERT iot_alertas (BATERIA_FRACA)
+        end
+    end
+```
+
+Detalhe textual completo do pipeline (todos os passos a/h):
 
 ```
 SENSOR FÍSICO
@@ -111,7 +151,7 @@ SENSOR FÍSICO
                           │     Existe alerta ECOPONTO_CHEIO aberto? (PG check)
                           │     SE NÃO: INSERT iot_alertas tipo 'ECOPONTO_CHEIO'
                           │             → BullMQ 'notification.dispatch'
-                          │               → push ao operador da zona
+                          │               → push ao gestor da zona
                           │               → SMS aos contactos opt-in (RF-27)
                           │
                           ├── Se battery_pct < limiar_battery (default 20):
@@ -126,6 +166,25 @@ SENSOR FÍSICO
 ---
 
 ## 3.2 Job de detecção de offline — `iot.offline-detector`
+
+```mermaid
+flowchart TB
+    CRON["BullMQ repeatable<br/>cada 5 min"] --> LOOP["Para cada dispositivo ATIVO"]
+    LOOP --> CHK{"ultimo_heartbeat <<br/>now − timeout?"}
+    CHK -->|não| OK["mantém estado"]
+    CHK -->|sim| EST{"estado já<br/>OFFLINE?"}
+    EST -->|sim| OK
+    EST -->|não| UPD["UPDATE estado_atual = OFFLINE<br/>offline_desde = now()"]
+    UPD --> AL["INSERT iot_alertas SENSOR_OFFLINE"]
+    AL --> NT["NOTIFY → Redis DEL · WS update"]
+    NT --> DISP["notification.dispatch<br/>push Gestor/técnico"]
+    DISP --> ESC{"offline > 2× timeout?"}
+    ESC -->|sim| SMS["SMS contactos opt-in (RF-27)"]
+    ESC -->|não| OK
+
+    classDef store fill:#1B5E20,color:#fff,stroke:#1B5E20;
+    class UPD,AL store;
+```
 
 ```
 Execução: a cada 5 minutos (BullMQ repeatable job)
@@ -142,7 +201,7 @@ Para cada dispositivo WHERE estado = 'ATIVO':
       ├── INSERT iot_alertas tipo 'SENSOR_OFFLINE', severidade 'AVISO'
       ├── NOTIFY ecoponto_estado_updated (→ Redis invalidado, WS actualizado)
       └── BullMQ 'notification.dispatch'
-            → push ao operador e técnico
+            → push ao gestor e técnico
             → SMS contactos opt-in (RF-27) se offline > 2× timeout
 ```
 

@@ -1,7 +1,7 @@
 | #   | Método | Rota                | Descrição                                         | Auth                     | Fluxo                                                                                                    |
 | --- | ------ | ------------------- | ------------------------------------------------- | ------------------------ | -------------------------------------------------------------------------------------------------------- |
 | E11 | `POST` | `/iot/telemetria`   | Ingerir leitura de sensor (alta frequência)       | API Key (sensor)         | NestJS → valida device_id → INSERT sensor_leituras + UPSERT estado_atual → NOTIFY → BullMQ threshold job |
-| E12 | `GET`  | `/iot/dispositivos` | Listar dispositivos registados e último heartbeat | TECNICO_AUTARQUIA, ADMIN | NestJS → PG réplica                                                                                      |
+| E12 | `GET`  | `/iot/dispositivos` | Listar dispositivos registados e último heartbeat | GESTOR, ADMIN | NestJS → PG réplica                                                                                      |
 | E13 | `POST` | `/iot/dispositivos` | Registar novo dispositivo IoT                     | ADMIN                    | NestJS → PG write                                                                                        |
 **Corpo de E11 (leitura IoT):**
 

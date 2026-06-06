@@ -1,14 +1,16 @@
+> Parte de [[Home]] · ver também [[07-Modelo-de-Dados]] · [[02-Requisitos|Índice de Requisitos]]. Mapa completo de relacionamentos e fluxos entre todos os domínios.
+
 # Cidadão/User:
-[[Arquitetura de Dados e API REST/Cidadão/Init|Init]]
+[[Cidadão/Init|Init]]
 
 # Ecopontos, Zonas, Badges e Quiz
-[[Arquitetura de Dados e API REST/Ecopontos, Zonas, Badges e Quiz/Init|Init]]
+[[Ecopontos, Zonas, Badges e Quiz/Init|Init]]
 
 # IoT e Dispositivos
-[[Arquitetura de Dados e API REST/IoT e Dispositivos/Init|Init]]
+[[IoT e Dispositivos/Init|Init]]
 
 # Reports, Recolhas, Comunicação e Operacional
-[[Arquitetura de Dados e API REST/Reports, Recolhas, Comunicação e Operacional/init|init]]
+[[Reports, Recolhas, Comunicação e Operacional/init|init]]
 
 #  Mapa completo de relacionamentos
 
@@ -37,13 +39,62 @@ mensagens_institucionais referencia (N) zonas via zonas_destino[]
 campanhas_beneficio (N:1) zonas   FK: campanhas_beneficio.zona_id
 campanhas_beneficio (N:1) cidadaos FK: criado_por
 
+carrinhas (N:1) zonas             FK: carrinhas.zona_base_id
+equipas_rota (N:1) users          FK: equipas_rota.gestor_id
+equipas_rota (N:1) carrinhas      FK: equipas_rota.carrinha_id
+equipas_rota (N:M) users          via operadores[] (role = OPERADOR)
+equipas_rota (N:1) zonas          FK: equipas_rota.zona_id
 rotas_execucao (N:1) zonas        FK: rotas_execucao.zona_id
-rotas_execucao (N:1) cidadaos     FK: rotas_execucao.operador_id
+rotas_execucao (1:1) equipas_rota FK: rotas_execucao.equipa_id
+rotas_execucao (N:1) users        FK: rotas_execucao.aceite_por (operador)
 
 audit_log (N:1) cidadaos          FK: audit_log.actor_id (nullable)
 ```
 
 # Separação de fluxos — resumo completo do sistema
+
+```mermaid
+flowchart TB
+    subgraph CLI["Atores"]
+        C(["👤 Cidadão"])
+        O(["🚚 Operador"])
+        G(["🧑‍💼 Gestor"])
+        IOT(["📡 Sensor IoT"])
+    end
+
+    subgraph ESC["Escrita — NestJS → PG primário → NOTIFY/BullMQ"]
+        REP["reports · timeline · subscrições"]
+        REC["recolhas · partilhas"]
+        COM["notificações · mensagens · campanhas"]
+        OPS["equipas_rota · rotas_execucao"]
+    end
+    subgraph LEIT["Leitura — Redis | PG réplica"]
+        L["count notif · mensagens:zona · quota"]
+    end
+    subgraph ANA["Analytics — FastAPI → PG réplica"]
+        A["proximos · duplicados · kpis · elegibilidade"]
+    end
+
+    AUD[("audit_log (append-only)")]
+    PGP[("PG Primário")]
+    REDIS[("Redis")]
+
+    C --> REP & REC & COM
+    G --> COM & OPS
+    O --> OPS
+    IOT --> OPS
+    ESC --> PGP -->|NOTIFY DEL| REDIS
+    ESC -.->|operação sensível| AUD
+    LEIT --> REDIS
+    ANA -.->|miss| PGP
+
+    classDef store fill:#1B5E20,color:#fff,stroke:#1B5E20;
+    classDef cli fill:#C8E6C9,color:#000,stroke:#388E3C;
+    class PGP,REDIS,AUD store;
+    class C,O,G,IOT cli;
+```
+
+Detalhe textual por endpoint:
 
 ```
 ESCRITA — NestJS → PG primário → NOTIFY/BullMQ
@@ -59,8 +110,12 @@ PM7 POST /partilhas/mensagens  → PG write → BullMQ notif destinatário
 NF3 PATCH /notificacoes/lida   → PG write → Redis DEL unread count
 MI6 PATCH /mensagens/publicar  → PG write → BullMQ fan-out notif zona
 CB7 PATCH /campanhas/ativar    → PG write → BullMQ notif zona
-OP5 POST /rotas                → PG write rotas_execucao
-OP6 PATCH /rotas/concluir      → PG write + UPSERT ecoponto_estado_atual
+EQ2 POST /equipas              → valida carrinha/operadores disponíveis
+                                 → PG write equipas_rota + carrinha EM_ROTA
+                                 → BullMQ notif operadores (RF-29)
+OP3 POST /operador/rotas/aceitar → PG write rotas_execucao (RF-30)
+OP6 PATCH /operador/rotas/concluir → PG write + UPSERT ecoponto_estado_atual
+                                 + carrinha/operadores libertados
 
 LEITURA — NestJS → Redis → PG réplica
 ────────────────────────────────────────────────────────────────────
