@@ -12,7 +12,7 @@ import {
   MapPin, TrendingUp, ChevronRight, Star, AlertTriangle, Recycle, Users, Leaf,
   FileText, CheckCircle, Package, Gift, Newspaper, Calendar, Clock,
   PlusCircle, Truck, Trophy, LogIn, UserPlus, ArrowRight, ShieldCheck,
-  Zap, Mail, ChevronDown,
+  Zap, Mail, ChevronDown, ArrowUp,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 
@@ -203,27 +203,39 @@ const TESTIMONIALS = [
 
 
 /* ─── Public Navbar ─── */
-function PublicNavbar() {
+export function PublicNavbar({ alwaysSolid = false }: { alwaysSolid?: boolean } = {}) {
   const [scrolled, setScrolled] = useState(false)
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40)
     window.addEventListener('scroll', onScroll, { passive: true })
+    onScroll()
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
+
+  const isSolid = alwaysSolid || scrolled
 
   return (
     <nav
       className="fixed top-0 left-0 right-0 z-50 transition-all duration-300"
       style={{
-        background: scrolled ? 'rgba(8,12,11,0.65)' : 'transparent',
-        backdropFilter: scrolled ? 'blur(16px)' : 'none',
-        borderBottom: scrolled ? '1px solid rgba(255,255,255,0.05)' : '1px solid transparent',
+        background: isSolid ? 'rgba(8,12,11,0.65)' : 'transparent',
+        backdropFilter: isSolid ? 'blur(16px)' : 'none',
+        borderBottom: isSolid ? '1px solid rgba(255,255,255,0.05)' : '1px solid transparent',
       }}
     >
       {/* Usa o mesmo padding do hero para o logo ficar alinhado com o título */}
       <div className="w-full px-8 md:px-14 lg:px-20 xl:px-28 h-16 flex items-center justify-between">
         {/* Logo */}
-        <Link to="/home" className="flex items-center gap-2.5 group shrink-0">
+        <Link 
+          to="/home"
+          onClick={(e) => {
+             if (window.location.pathname === '/home' || window.location.pathname === '/') {
+               e.preventDefault()
+               window.scrollTo({ top: 0, behavior: 'smooth' })
+             }
+          }}
+          className="flex items-center gap-2.5 group shrink-0"
+        >
           <div className="w-8 h-8 rounded-lg bg-[var(--primary)]/20 border border-[var(--primary)]/30 flex items-center justify-center group-hover:bg-[var(--primary)]/30 transition-colors">
             <Leaf className="w-4 h-4 text-[var(--primary)]" />
           </div>
@@ -346,7 +358,7 @@ function GuestHero() {
       />
 
       {/* ── Left: text ── */}
-      <div className="relative flex flex-col gap-8 flex-1 px-8 md:px-14 lg:px-20 xl:px-28 pt-20" style={{ zIndex: 10 }}>
+      <div className="relative flex flex-col gap-6 md:gap-8 flex-1 px-6 sm:px-8 md:px-14 lg:px-20 xl:px-28 pt-24 md:pt-20" style={{ zIndex: 10 }}>
         {/* Category badge */}
         <div className="inline-flex items-center gap-2 rounded-full border border-[var(--primary)]/25 bg-[var(--primary)]/8 px-4 py-1.5 w-fit">
           <span
@@ -360,7 +372,7 @@ function GuestHero() {
 
         {/* Headline */}
         <div className="space-y-4">
-          <h1 className="text-5xl md:text-6xl lg:text-7xl font-black leading-[1.04] tracking-tight text-white">
+          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black leading-[1.04] tracking-tight text-white">
             O teu bairro<br />
             mais{' '}
             <span
@@ -873,7 +885,7 @@ function CTASection() {
 }
 
 /* ─── Footer Público ─── */
-function PublicFooter() {
+export function PublicFooter() {
   const year = new Date().getFullYear()
   const { setIsSettingsOpen } = useCookieConsent()
   return (
@@ -924,10 +936,10 @@ function PublicFooter() {
             {
               title: 'Legal',
               links: [
-                { label: 'Termos de Uso', href: '#' },
-                { label: 'Privacidade', href: '#' },
+                { label: 'Termos de Uso', href: '/termos' },
+                { label: 'Privacidade', href: '/privacidade' },
                 { label: 'Cookies', href: '#' },
-                { label: 'Acessibilidade', href: '#' },
+                { label: 'Acessibilidade', href: '/acessibilidade' },
               ],
             },
           ].map((col) => (
@@ -1005,6 +1017,27 @@ function HeroBlob() {
         <circle cx="195" cy="22" r="50" fill="currentColor" opacity="0.04" />
       </svg>
     </div>
+  )
+}
+
+function ScrollToTopButton() {
+  const [visible, setVisible] = useState(false)
+  useEffect(() => {
+    const onScroll = () => setVisible(window.scrollY > 400)
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
+  if (!visible) return null
+
+  return (
+    <button
+      onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+      className="fixed bottom-6 right-6 z-50 p-3.5 rounded-full bg-[var(--primary)] text-white shadow-xl hover:bg-[var(--primary)]/90 hover:scale-105 active:scale-95 transition-all duration-300"
+      aria-label="Voltar ao topo"
+    >
+      <ArrowUp className="w-5 h-5" />
+    </button>
   )
 }
 
@@ -1089,6 +1122,7 @@ function HomePage() {
         <NoticiasSection />
         <CTASection />
         <PublicFooter />
+        <ScrollToTopButton />
       </>
     )
   }
@@ -1402,6 +1436,7 @@ function HomePage() {
         </div>
       </section>
 
+      <ScrollToTopButton />
     </div>
   )
 }

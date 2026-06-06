@@ -16,7 +16,10 @@ import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as LayoutpublicRouteImport } from './routes/_layoutpublic'
 import { Route as LayoutmainRouteImport } from './routes/_layoutmain'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as LayoutpublicTermosRouteImport } from './routes/_layoutpublic.termos'
+import { Route as LayoutpublicPrivacidadeRouteImport } from './routes/_layoutpublic.privacidade'
 import { Route as LayoutpublicHomeRouteImport } from './routes/_layoutpublic.home'
+import { Route as LayoutpublicAcessibilidadeRouteImport } from './routes/_layoutpublic.acessibilidade'
 import { Route as LayoutmainZonasRouteImport } from './routes/_layoutmain.zonas'
 import { Route as LayoutmainUtilizadoresRouteImport } from './routes/_layoutmain.utilizadores'
 import { Route as LayoutmainRotasRouteImport } from './routes/_layoutmain.rotas'
@@ -68,11 +71,27 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LayoutpublicTermosRoute = LayoutpublicTermosRouteImport.update({
+  id: '/termos',
+  path: '/termos',
+  getParentRoute: () => LayoutpublicRoute,
+} as any)
+const LayoutpublicPrivacidadeRoute = LayoutpublicPrivacidadeRouteImport.update({
+  id: '/privacidade',
+  path: '/privacidade',
+  getParentRoute: () => LayoutpublicRoute,
+} as any)
 const LayoutpublicHomeRoute = LayoutpublicHomeRouteImport.update({
   id: '/home',
   path: '/home',
   getParentRoute: () => LayoutpublicRoute,
 } as any)
+const LayoutpublicAcessibilidadeRoute =
+  LayoutpublicAcessibilidadeRouteImport.update({
+    id: '/acessibilidade',
+    path: '/acessibilidade',
+    getParentRoute: () => LayoutpublicRoute,
+  } as any)
 const LayoutmainZonasRoute = LayoutmainZonasRouteImport.update({
   id: '/zonas',
   path: '/zonas',
@@ -182,7 +201,10 @@ export interface FileRoutesByFullPath {
   '/rotas': typeof LayoutmainRotasRoute
   '/utilizadores': typeof LayoutmainUtilizadoresRoute
   '/zonas': typeof LayoutmainZonasRoute
+  '/acessibilidade': typeof LayoutpublicAcessibilidadeRoute
   '/home': typeof LayoutpublicHomeRoute
+  '/privacidade': typeof LayoutpublicPrivacidadeRoute
+  '/termos': typeof LayoutpublicTermosRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -207,7 +229,10 @@ export interface FileRoutesByTo {
   '/rotas': typeof LayoutmainRotasRoute
   '/utilizadores': typeof LayoutmainUtilizadoresRoute
   '/zonas': typeof LayoutmainZonasRoute
+  '/acessibilidade': typeof LayoutpublicAcessibilidadeRoute
   '/home': typeof LayoutpublicHomeRoute
+  '/privacidade': typeof LayoutpublicPrivacidadeRoute
+  '/termos': typeof LayoutpublicTermosRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -235,7 +260,10 @@ export interface FileRoutesById {
   '/_layoutmain/rotas': typeof LayoutmainRotasRoute
   '/_layoutmain/utilizadores': typeof LayoutmainUtilizadoresRoute
   '/_layoutmain/zonas': typeof LayoutmainZonasRoute
+  '/_layoutpublic/acessibilidade': typeof LayoutpublicAcessibilidadeRoute
   '/_layoutpublic/home': typeof LayoutpublicHomeRoute
+  '/_layoutpublic/privacidade': typeof LayoutpublicPrivacidadeRoute
+  '/_layoutpublic/termos': typeof LayoutpublicTermosRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -262,7 +290,10 @@ export interface FileRouteTypes {
     | '/rotas'
     | '/utilizadores'
     | '/zonas'
+    | '/acessibilidade'
     | '/home'
+    | '/privacidade'
+    | '/termos'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -287,7 +318,10 @@ export interface FileRouteTypes {
     | '/rotas'
     | '/utilizadores'
     | '/zonas'
+    | '/acessibilidade'
     | '/home'
+    | '/privacidade'
+    | '/termos'
   id:
     | '__root__'
     | '/'
@@ -314,7 +348,10 @@ export interface FileRouteTypes {
     | '/_layoutmain/rotas'
     | '/_layoutmain/utilizadores'
     | '/_layoutmain/zonas'
+    | '/_layoutpublic/acessibilidade'
     | '/_layoutpublic/home'
+    | '/_layoutpublic/privacidade'
+    | '/_layoutpublic/termos'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -378,11 +415,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_layoutpublic/termos': {
+      id: '/_layoutpublic/termos'
+      path: '/termos'
+      fullPath: '/termos'
+      preLoaderRoute: typeof LayoutpublicTermosRouteImport
+      parentRoute: typeof LayoutpublicRoute
+    }
+    '/_layoutpublic/privacidade': {
+      id: '/_layoutpublic/privacidade'
+      path: '/privacidade'
+      fullPath: '/privacidade'
+      preLoaderRoute: typeof LayoutpublicPrivacidadeRouteImport
+      parentRoute: typeof LayoutpublicRoute
+    }
     '/_layoutpublic/home': {
       id: '/_layoutpublic/home'
       path: '/home'
       fullPath: '/home'
       preLoaderRoute: typeof LayoutpublicHomeRouteImport
+      parentRoute: typeof LayoutpublicRoute
+    }
+    '/_layoutpublic/acessibilidade': {
+      id: '/_layoutpublic/acessibilidade'
+      path: '/acessibilidade'
+      fullPath: '/acessibilidade'
+      preLoaderRoute: typeof LayoutpublicAcessibilidadeRouteImport
       parentRoute: typeof LayoutpublicRoute
     }
     '/_layoutmain/zonas': {
@@ -552,11 +610,17 @@ const LayoutmainRouteWithChildren = LayoutmainRoute._addFileChildren(
 )
 
 interface LayoutpublicRouteChildren {
+  LayoutpublicAcessibilidadeRoute: typeof LayoutpublicAcessibilidadeRoute
   LayoutpublicHomeRoute: typeof LayoutpublicHomeRoute
+  LayoutpublicPrivacidadeRoute: typeof LayoutpublicPrivacidadeRoute
+  LayoutpublicTermosRoute: typeof LayoutpublicTermosRoute
 }
 
 const LayoutpublicRouteChildren: LayoutpublicRouteChildren = {
+  LayoutpublicAcessibilidadeRoute: LayoutpublicAcessibilidadeRoute,
   LayoutpublicHomeRoute: LayoutpublicHomeRoute,
+  LayoutpublicPrivacidadeRoute: LayoutpublicPrivacidadeRoute,
+  LayoutpublicTermosRoute: LayoutpublicTermosRoute,
 }
 
 const LayoutpublicRouteWithChildren = LayoutpublicRoute._addFileChildren(
