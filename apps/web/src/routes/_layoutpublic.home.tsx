@@ -265,23 +265,39 @@ function GuestHero() {
   const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (videoRef.current) videoRef.current.playbackRate = 1.5
+    if (videoRef.current) videoRef.current.playbackRate = 0.9
+
+    let isIntersecting = false;
+
+    const handleVisibility = () => {
+      if (!videoRef.current) return
+      if (document.hidden) {
+        videoRef.current.pause()
+      } else if (isIntersecting) {
+        videoRef.current.play().catch(() => {})
+      }
+    }
 
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (!videoRef.current) return
-        if (entry.isIntersecting) {
+        isIntersecting = entry.isIntersecting;
+        if (entry.isIntersecting && !document.hidden) {
           videoRef.current.play().catch(() => {})
         } else {
           videoRef.current.pause()
         }
       },
-      { threshold: 0 }
+      { threshold: 0.1 }
     )
 
     if (containerRef.current) observer.observe(containerRef.current)
+    document.addEventListener("visibilitychange", handleVisibility)
 
-    return () => observer.disconnect()
+    return () => {
+      observer.disconnect()
+      document.removeEventListener("visibilitychange", handleVisibility)
+    }
   }, [])
 
   return (
