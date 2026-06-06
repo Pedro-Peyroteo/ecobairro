@@ -1,10 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { DatabaseService } from '../database/database.service';
+import { PrismaService } from '../database/prisma.service';
 import { CreateCookieLogDto } from './dto/create-cookie-log.dto';
 
 @Injectable()
 export class CookiesService {
-  constructor(private db: DatabaseService) {}
+  constructor(private db: PrismaService) {}
 
   async createLog(createLogDto: CreateCookieLogDto, ipHash?: string) {
     return this.db.cookieConsentLog.create({

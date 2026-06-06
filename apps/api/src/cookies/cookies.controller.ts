@@ -1,7 +1,7 @@
 import { Controller, Post, Body, Req } from '@nestjs/common';
 import { CookiesService } from './cookies.service';
 import { CreateCookieLogDto } from './dto/create-cookie-log.dto';
-import { Request } from 'express';
+import type { Request } from 'express';
 import * as crypto from 'crypto';
 
 @Controller('v1/cookies')

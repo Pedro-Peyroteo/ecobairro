@@ -1,7 +1,7 @@
 export class CreateCookieLogDto {
-  deviceId: string;
+  deviceId!: string;
   userId?: string;
-  analytics: boolean;
-  marketing: boolean;
-  preferences: boolean;
+  analytics!: boolean;
+  marketing!: boolean;
+  preferences!: boolean;
 }
