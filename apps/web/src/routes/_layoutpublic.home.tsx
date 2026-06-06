@@ -303,7 +303,7 @@ function GuestHero() {
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-svh overflow-hidden flex items-center"
+      className="relative w-full h-[100svh] md:h-auto md:aspect-video overflow-hidden flex items-center"
       style={{ background: 'linear-gradient(135deg, #080c0b 0%, #0d1117 45%, #0b0d1a 100%)' }}
     >
       {/* Background video */}
@@ -485,7 +485,7 @@ function StatsBar({ cidadaos }: { cidadaos: number }) {
 function HowItWorks() {
   const { ref, inView } = useInView()
   return (
-    <section id="como-funciona" className="w-full py-24 md:py-32">
+    <section id="como-funciona" className="w-full py-20 md:py-28">
       <div className="max-w-[1280px] mx-auto px-6 md:px-10">
         {/* Header */}
         <div className="text-center mb-16 space-y-4">
@@ -552,7 +552,7 @@ function HowItWorks() {
 function FeaturesSection() {
   const { ref, inView } = useInView()
   return (
-    <section id="funcionalidades" className="w-full py-12 md:py-20">
+    <section id="funcionalidades" className="w-full py-20 md:py-28">
       <div className="max-w-[1280px] mx-auto px-6 md:px-10">
         {/* Header */}
         <div className="text-center mb-14 space-y-4">
@@ -623,7 +623,7 @@ function SocialProof({ cidadaos }: { cidadaos: number }) {
   const { ref, inView } = useInView()
   return (
     <section
-      className="w-full py-24 md:py-32 relative overflow-hidden"
+      className="w-full py-20 md:py-28 relative overflow-hidden"
       style={{
         background: 'linear-gradient(135deg, #080c0b 0%, #0d1117 50%, #0b0d1a 100%)',
       }}
@@ -711,7 +711,7 @@ function NoticiasSection() {
     Relatório: '#a78bfa',
   }
   return (
-    <section id="noticias" className="w-full py-24 md:py-28">
+    <section id="noticias" className="w-full py-20 md:py-28">
       <div className="max-w-[1280px] mx-auto px-6 md:px-10">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-12">
@@ -802,7 +802,7 @@ function NoticiasSection() {
 function CTASection() {
   const { ref, inView } = useInView()
   return (
-    <section className="w-full py-16 md:py-20 px-6 md:px-10">
+    <section className="w-full py-20 md:py-28 px-6 md:px-10">
       <div className="max-w-[1280px] mx-auto">
         <div
           ref={ref}
