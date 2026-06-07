@@ -27,6 +27,7 @@ export class MailService {
   private readonly smtpPass = process.env.SMTP_PASS;
   private readonly smtpFrom = process.env.SMTP_FROM?.trim() ?? 'no-reply@ecobairro.local';
   private readonly smtpSecure = (process.env.SMTP_SECURE ?? 'false') === 'true';
+  private readonly appBaseUrl = (process.env.APP_BASE_URL ?? 'http://localhost:8080').replace(/\/$/, '');
 
   async send(
     template: MailTemplate,
@@ -47,6 +48,8 @@ export class MailService {
       ...options.variables,
       subject: options.subject,
       year: new Date().getFullYear(),
+      logoUrl: `${this.appBaseUrl}/favicon.svg`,
+      appBaseUrl: this.appBaseUrl,
     };
 
     const innerHtml = this.render(`${template}.html`, vars);
