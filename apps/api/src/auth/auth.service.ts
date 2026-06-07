@@ -80,7 +80,7 @@ export class AuthService {
     });
 
     if (existingUser) {
-      throw new ConflictException('Email already registered');
+      throw new ConflictException('Este email já está registado.');
     }
 
     const passwordHash = await bcrypt.hash(input.password, this.bcryptRounds);

@@ -241,7 +241,10 @@ function RegisterPage() {
               {loading ? 'A criar...' : 'Criar conta'}
             </Button>
             {submitError && (
-              <p className="text-xs text-destructive text-center">{submitError}</p>
+              <div role="alert" className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
+                <span className="mt-0.5 shrink-0">⚠</span>
+                <span>{submitError}</span>
+              </div>
             )}
 
             <p className="text-center text-sm text-muted-foreground mt-2">
