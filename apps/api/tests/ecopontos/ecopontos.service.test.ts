@@ -134,7 +134,7 @@ export const ecopontosServiceTests: TestCase[] = [
       ]);
       const service = new EcopontosService(prisma as never);
 
-      const res = await service.list(true);
+      const res = await service.list({});
       assert.equal(res.ecopontos.length, 1);
       assert.equal(res.ecopontos[0]!.id, 'a');
       assert.equal(res.ecopontos[0]!.nivel, 'cheio');
@@ -190,7 +190,7 @@ export const ecopontosServiceTests: TestCase[] = [
       const prisma = new FakePrismaEcopontos([baseRow({ id: 'z' })]);
       const service = new EcopontosService(prisma as never);
       await service.remove('TECNICO_AUTARQUIA', 'z');
-      const res = await service.list(true);
+      const res = await service.list({});
       assert.equal(res.ecopontos.length, 0);
     },
   },

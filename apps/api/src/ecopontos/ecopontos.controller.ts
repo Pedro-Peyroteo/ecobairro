@@ -14,6 +14,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import type {
+  EcopontoNivel,
   EcopontoRecord,
   ListEcopontosResponse,
 } from '@ecobairro/contracts';
@@ -34,14 +35,33 @@ export class EcopontosController {
     this.svc = svc;
   }
 
-  /** Lista pública (apenas ativos por defeito; ?todos=true mostra inativos). */
+  /**
+   * Lista ecopontos com filtros opcionais:
+   * ?q=texto          — pesquisa livre em nome, morada, código postal, zona
+   * ?zona=Bonfim      — filtro exacto por zona (case-insensitive)
+   * ?codigo_postal=38 — prefixo do código postal
+   * ?tipo=Papel       — tipo de resíduo (valor do array JSON)
+   * ?nivel=cheio      — nível de ocupação computado
+   * ?todos=true       — inclui inativos
+   */
   @Get()
   @UseGuards(OptionalJwtAuthGuard)
   list(
+    @Query('q') q?: string,
+    @Query('zona') zona?: string,
+    @Query('codigo_postal') codigoPostal?: string,
+    @Query('tipo') tipo?: string,
+    @Query('nivel') nivel?: string,
     @Query('todos') todos?: string,
   ): Promise<ListEcopontosResponse> {
-    const apenasAtivos = todos !== 'true';
-    return this.svc.list(apenasAtivos);
+    return this.svc.list({
+      q: q || undefined,
+      zona: zona || undefined,
+      codigo_postal: codigoPostal || undefined,
+      tipo: tipo || undefined,
+      nivel: (nivel as EcopontoNivel) || undefined,
+      todos: todos === 'true',
+    });
   }
 
   @Post()

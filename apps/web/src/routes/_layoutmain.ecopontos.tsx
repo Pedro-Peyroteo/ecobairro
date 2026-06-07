@@ -57,6 +57,8 @@ function EcopontosPage() {
   const [listError, setListError] = useState<string | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [pesquisa, setPesquisa] = useState('')
+  const [filtroCodigoPostal, setFiltroCodigoPostal] = useState('')
+  const [filtroZona, setFiltroZona] = useState('')
   const [filtroNivel, setFiltroNivel] = useState<NivelEnchimento | 'todos'>('todos')
   const [modal, setModal] = useState<'novo' | 'editar' | null>(null)
   const [editando, setEditando] = useState<EcopontoRecord | null>(null)
@@ -69,11 +71,24 @@ function EcopontosPage() {
     resolver: zodResolver(ecopontoSchema) as any,
   })
 
-  async function reload() {
+  async function reload(params?: {
+    q?: string; codigoPostal?: string; zona?: string; nivel?: NivelEnchimento | 'todos'
+  }) {
     setLoading(true)
     setListError(null)
     try {
-      const res = await fetchJson<ListEcopontosResponse>('/v1/ecopontos?todos=true', {
+      const q = params?.q ?? pesquisa
+      const cp = params?.codigoPostal ?? filtroCodigoPostal
+      const z = params?.zona ?? filtroZona
+      const n = params?.nivel ?? filtroNivel
+
+      const qs = new URLSearchParams({ todos: 'true' })
+      if (q.trim()) qs.set('q', q.trim())
+      if (cp.trim()) qs.set('codigo_postal', cp.trim())
+      if (z) qs.set('zona', z)
+      if (n !== 'todos') qs.set('nivel', n)
+
+      const res = await fetchJson<ListEcopontosResponse>(`/v1/ecopontos?${qs.toString()}`, {
         baseUrl: clientEnv.apiBaseUrl,
         headers: authHeaders(),
       })
@@ -86,15 +101,13 @@ function EcopontosPage() {
 
   useEffect(() => { void reload() }, [])
 
-  const lista = ecopontos.filter((e) => {
-    const matchSearch =
-      pesquisa === '' ||
-      (e.codigo ?? '').toLowerCase().includes(pesquisa.toLowerCase()) ||
-      e.morada.toLowerCase().includes(pesquisa.toLowerCase()) ||
-      (e.zona ?? '').toLowerCase().includes(pesquisa.toLowerCase())
-    const matchNivel = filtroNivel === 'todos' || e.nivel === filtroNivel
-    return matchSearch && matchNivel
-  })
+  // Pesquisa com debounce — re-carrega ao alterar texto
+  useEffect(() => {
+    const t = setTimeout(() => { void reload() }, 400)
+    return () => clearTimeout(t)
+  }, [pesquisa, filtroCodigoPostal, filtroZona, filtroNivel])
+
+  const lista = ecopontos
 
   function abrirNovo() {
     setEditando(null)
@@ -215,7 +228,8 @@ function EcopontosPage() {
       </div>
 
       {/* Filtros */}
-      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+      <div className="flex flex-col gap-3">
+        {/* Nível */}
         <div className="flex gap-2 flex-wrap">
           {(['todos', 'cheio', 'alto', 'medio', 'baixo'] as const).map((n) => (
             <button
@@ -231,15 +245,34 @@ function EcopontosPage() {
             </button>
           ))}
         </div>
-        <div className="relative sm:ml-auto w-full sm:w-64">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+
+        {/* Pesquisa textual + código postal + zona */}
+        <div className="flex flex-col sm:flex-row gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Pesquisar por nome ou rua…"
+              value={pesquisa}
+              onChange={(e) => setPesquisa(e.target.value)}
+              className="w-full pl-8 pr-3 py-2 text-sm rounded-xl border border-border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30 focus:border-[var(--primary)]/50 transition-all"
+            />
+          </div>
           <input
             type="text"
-            placeholder="Pesquisar código, morada ou zona..."
-            value={pesquisa}
-            onChange={(e) => setPesquisa(e.target.value)}
-            className="w-full pl-8 pr-3 py-2 text-sm rounded-xl border border-border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30 focus:border-[var(--primary)]/50 transition-all"
+            placeholder="Código postal (ex: 3810)"
+            value={filtroCodigoPostal}
+            onChange={(e) => setFiltroCodigoPostal(e.target.value)}
+            className="sm:w-44 px-3 py-2 text-sm rounded-xl border border-border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30 focus:border-[var(--primary)]/50 transition-all"
           />
+          <select
+            value={filtroZona}
+            onChange={(e) => setFiltroZona(e.target.value)}
+            className="sm:w-36 px-3 py-2 text-sm rounded-xl border border-border bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30 transition-all"
+          >
+            <option value="">Todas as zonas</option>
+            {zonas.map(z => <option key={z} value={z}>{z}</option>)}
+          </select>
         </div>
       </div>
 
@@ -275,7 +308,12 @@ function EcopontosPage() {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1 text-xs text-foreground">
                         <MapPin className="w-3 h-3 text-muted-foreground shrink-0" />
-                        <span className="truncate max-w-[160px]">{ep.morada}</span>
+                        <div className="truncate max-w-[160px]">
+                          <span>{ep.morada}</span>
+                          {ep.codigo_postal && (
+                            <span className="ml-1 text-[10px] text-muted-foreground">{ep.codigo_postal}</span>
+                          )}
+                        </div>
                       </div>
                     </td>
                     <td className="px-4 py-3 text-xs text-foreground">{ep.zona ?? '—'}</td>

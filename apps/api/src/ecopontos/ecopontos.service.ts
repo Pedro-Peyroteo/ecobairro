@@ -9,6 +9,7 @@ import type {
   EcopontoNivel,
   EcopontoRecord,
   EcopontoSensor,
+  ListEcopontosQuery,
   ListEcopontosResponse,
   UpdateEcopontoRequest,
   UserRole,
@@ -40,6 +41,7 @@ function mapRow(row: {
   nome: string;
   codigo: string | null;
   morada: string;
+  codigoPostal: string | null;
   zona: string | null;
   distanciaLabel: string;
   ocupacao: number;
@@ -60,6 +62,7 @@ function mapRow(row: {
     nome: row.nome,
     codigo: row.codigo,
     morada: row.morada,
+    codigo_postal: row.codigoPostal,
     zona: row.zona,
     distancia_label: row.distanciaLabel,
     ocupacao: row.ocupacao,
@@ -85,12 +88,46 @@ export class EcopontosService {
     this.prisma = prisma;
   }
 
-  async list(apenasAtivos = true): Promise<ListEcopontosResponse> {
+  async list(query: ListEcopontosQuery = {}): Promise<ListEcopontosResponse> {
+    const { q, zona, codigo_postal, tipo, nivel, todos } = query;
+    const apenasAtivos = !todos;
+
+    // Condições dinâmicas
+    const where: Record<string, unknown> = {};
+    if (apenasAtivos) where['ativo'] = true;
+
+    if (zona) where['zona'] = { equals: zona, mode: 'insensitive' };
+
+    if (codigo_postal) {
+      where['codigoPostal'] = { startsWith: codigo_postal, mode: 'insensitive' };
+    }
+
+    if (q) {
+      const contains = { contains: q, mode: 'insensitive' };
+      where['OR'] = [
+        { nome: contains },
+        { morada: contains },
+        { codigoPostal: contains },
+        { zona: contains },
+      ];
+    }
+
     const rows = await this.prisma.ecoponto.findMany({
-      where: apenasAtivos ? { ativo: true } : undefined,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      where: where as any,
       orderBy: { ordem: 'asc' },
     });
-    return { ecopontos: rows.map(mapRow) };
+
+    // Filtro em memória para tipos (JSON array) e nível (computado)
+    let filtered = rows.map(mapRow);
+    if (tipo) {
+      filtered = filtered.filter(r => r.tipos.includes(tipo));
+    }
+    if (nivel) {
+      filtered = filtered.filter(r => r.nivel === nivel);
+    }
+
+    return { ecopontos: filtered, total: filtered.length };
   }
 
   async create(

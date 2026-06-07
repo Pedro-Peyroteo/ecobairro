@@ -192,6 +192,7 @@ export interface EcopontoRecord {
   nome: string
   codigo: string | null
   morada: string
+  codigo_postal: string | null
   zona: string | null
   distancia_label: string
   ocupacao: number
@@ -208,8 +209,24 @@ export interface EcopontoRecord {
   ordem: number
 }
 
+export interface ListEcopontosQuery {
+  /** Pesquisa de texto livre: nome, morada, código postal, zona */
+  q?: string
+  /** Filtrar por zona */
+  zona?: string
+  /** Filtrar por código postal (prefixo) */
+  codigo_postal?: string
+  /** Filtrar por tipo de resíduo */
+  tipo?: string
+  /** Filtrar por nível de ocupação */
+  nivel?: EcopontoNivel
+  /** Incluir inativos */
+  todos?: boolean
+}
+
 export interface ListEcopontosResponse {
   ecopontos: EcopontoRecord[]
+  total: number
 }
 
 export interface CreateEcopontoRequest {
