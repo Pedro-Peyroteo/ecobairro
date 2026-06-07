@@ -7,6 +7,7 @@ import type {
   ListSecurityLogsResponse,
   LoginRequest,
   LoginResponse,
+  RegisterRequest,
   RegenerateBackupCodesResponse,
   SetupTwoFactorResponse,
   TwoFactorStatusResponse,
@@ -21,6 +22,22 @@ export async function registerRequest(body: RegisterRequest) {
     baseUrl: clientEnv.apiBaseUrl,
     method: 'POST',
     body: JSON.stringify(body),
+  })
+}
+
+export async function verifyEmailRequest(token: string): Promise<void> {
+  return fetchJson('/v1/auth/verify-email', {
+    baseUrl: clientEnv.apiBaseUrl,
+    method: 'POST',
+    body: JSON.stringify({ token }),
+  })
+}
+
+export async function resendVerificationRequest(email: string): Promise<void> {
+  return fetchJson('/v1/auth/resend-verification', {
+    baseUrl: clientEnv.apiBaseUrl,
+    method: 'POST',
+    body: JSON.stringify({ email }),
   })
 }
 

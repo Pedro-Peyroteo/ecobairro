@@ -102,15 +102,9 @@ export class AuthService {
       }),
     );
 
-    // Enviar email de boas-vindas (best-effort, não bloqueia o registo)
+    // Enviar email de verificação (best-effort, não bloqueia o registo)
     if (this.isPasswordEmailConfigured()) {
-      this.mailService
-        .send('welcome', {
-          to: user.email,
-          subject: 'ecoBairro — Bem-vindo!',
-          variables: { appUrl: this.appBaseUrl },
-        })
-        .catch(() => undefined);
+      this.sendEmailVerification(user.id, user.email).catch(() => undefined);
     }
 
     return {
@@ -121,6 +115,38 @@ export class AuthService {
     };
   }
 
+  async verifyEmail(token: string): Promise<void> {
+    const redis = this.redisService.getClient();
+    const key = getEmailVerifyKey(token);
+    const userId = await redis.get(key);
+
+    if (!userId) {
+      throw new UnauthorizedException('Link de verificação inválido ou expirado.');
+    }
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { emailVerified: true },
+    });
+
+    await redis.del(key);
+  }
+
+  async resendVerificationEmail(email: string): Promise<void> {
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = await this.prisma.user.findUnique({
+      where: { email: normalizedEmail },
+      select: { id: true, emailVerified: true, eliminadoEm: true },
+    });
+
+    // Não revelar se o email existe ou não
+    if (!user || user.eliminadoEm || user.emailVerified) return;
+
+    if (this.isPasswordEmailConfigured()) {
+      await this.sendEmailVerification(user.id, normalizedEmail);
+    }
+  }
+
   async login(input: LoginDto, ctx: RequestContext): Promise<LoginResponse> {
     const normalizedEmail = input.email.trim().toLowerCase();
     const user = await this.prisma.user.findUnique({
@@ -129,6 +155,11 @@ export class AuthService {
 
     if (!user || user.eliminadoEm) {
       throw new UnauthorizedException('Email ou password incorrectos.');
+    }
+
+    // Bloqueia login se o email ainda não foi verificado
+    if (!user.emailVerified) {
+      throw new ForbiddenException('Verifica o teu email antes de iniciar sessão. Verifica a caixa de entrada.');
     }
 
     // Account lockout: rejeita imediatamente sem revelar se a password é boa
@@ -403,6 +434,24 @@ export class AuthService {
     return !!process.env.SMTP_HOST?.trim();
   }
 
+  private async sendEmailVerification(userId: string, email: string): Promise<void> {
+    const rawToken = randomBytes(24).toString('hex');
+    const ttlSeconds = 24 * 60 * 60; // 24 horas
+    await this.redisService
+      .getClient()
+      .set(getEmailVerifyKey(rawToken), userId, 'EX', ttlSeconds);
+
+    const verifyUrl = `${this.appBaseUrl}/verify-email?token=${encodeURIComponent(rawToken)}`;
+    await this.mailService.send('email-verification', {
+      to: email,
+      subject: 'ecoBairro — Confirma o teu email',
+      variables: {
+        verifyUrl,
+        expiresHours: 24,
+      },
+    });
+  }
+
   private async sendPasswordResetEmail(email: string, rawToken: string): Promise<void> {
     if (!this.isPasswordEmailConfigured()) {
       throw new ServiceUnavailableException(
@@ -437,6 +486,10 @@ function extractUserIdFromRefreshToken(token: string): string | null {
 
 function getPasswordResetKey(rawToken: string): string {
   return `user:reset:${hashToken(rawToken)}`;
+}
+
+function getEmailVerifyKey(rawToken: string): string {
+  return `user:verify:${hashToken(rawToken)}`;
 }
 
 function hashToken(token: string): string {

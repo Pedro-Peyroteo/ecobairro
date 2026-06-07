@@ -16,6 +16,7 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { RefreshDto } from './dto/refresh.dto';
 import { RegisterDto } from './dto/register.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { VerifyEmailDto } from './dto/verify-email.dto';
 import { VerifyTwoFactorDto } from './dto/verify-two-factor.dto';
 import { buildRequestContext } from '../security/request-context.helper';
 
@@ -75,6 +76,18 @@ export class AuthController {
   @HttpCode(HttpStatus.NO_CONTENT)
   async resetPassword(@Body() body: ResetPasswordDto): Promise<void> {
     await this.authService.resetPassword(body);
+  }
+
+  @Post('verify-email')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async verifyEmail(@Body() body: VerifyEmailDto): Promise<void> {
+    await this.authService.verifyEmail(body.token);
+  }
+
+  @Post('resend-verification')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async resendVerification(@Body() body: ForgotPasswordDto): Promise<void> {
+    await this.authService.resendVerificationEmail(body.email);
   }
 
   @Post('logout')

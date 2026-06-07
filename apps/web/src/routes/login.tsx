@@ -23,6 +23,7 @@ export const Route = createFileRoute('/login')({
   component: LoginPage,
   validateSearch: (search: Record<string, unknown>) => ({
     registered: search.registered === '1' ? '1' : undefined,
+    verified: search.verified === '1' ? '1' : undefined,
   }),
 })
 
@@ -68,7 +69,7 @@ function formatCount(n: number): string {
 
 function LoginPage() {
   const navigate = useNavigate()
-  const { registered } = Route.useSearch()
+  const { registered, verified } = Route.useSearch()
   const [showPassword, setShowPassword] = useState(false)
   const [rememberMe, setRememberMe] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -281,11 +282,19 @@ function LoginPage() {
                 <p className="text-sm text-muted-foreground mt-1">Inicia sessão para aceder à plataforma</p>
               </div>
 
-              {/* Banner de registo bem-sucedido */}
+              {/* Banner: registo bem-sucedido — pede verificação de email */}
               {registered === '1' && (
+                <div role="status" className="flex items-start gap-2 rounded-md border border-blue-500/40 bg-blue-500/10 px-3 py-2.5 text-sm text-blue-600 dark:text-blue-400">
+                  <span className="mt-0.5 shrink-0">✉</span>
+                  <span>Conta criada! Verifica o teu email e clica no link de confirmação antes de entrar.</span>
+                </div>
+              )}
+
+              {/* Banner: email verificado com sucesso */}
+              {verified === '1' && (
                 <div role="status" className="flex items-start gap-2 rounded-md border border-green-500/40 bg-green-500/10 px-3 py-2.5 text-sm text-green-600 dark:text-green-400">
                   <span className="mt-0.5 shrink-0">✓</span>
-                  <span>Conta criada com sucesso! Inicia sessão para entrar.</span>
+                  <span>Email verificado com sucesso! Já podes iniciar sessão.</span>
                 </div>
               )}
 
