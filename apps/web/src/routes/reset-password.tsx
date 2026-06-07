@@ -15,11 +15,16 @@ const searchSchema = z.object({
   token: z.string().optional(),
 })
 
+const PASSWORD_REGEX = /^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/
+
 const schema = z
   .object({
     token: z.string().min(10, 'Token inválido'),
-    newPassword: z.string().min(6, 'A password deve ter pelo menos 6 caracteres'),
-    confirmPassword: z.string().min(6, 'A confirmação deve ter pelo menos 6 caracteres'),
+    newPassword: z
+      .string()
+      .min(8, 'A password deve ter pelo menos 8 caracteres')
+      .regex(PASSWORD_REGEX, 'A password deve conter pelo menos 1 maiúscula, 1 número e 1 caractere especial'),
+    confirmPassword: z.string().min(1, 'Confirma a nova password'),
   })
   .refine((data) => data.newPassword === data.confirmPassword, {
     message: 'As passwords não coincidem',
@@ -88,7 +93,9 @@ function ResetPasswordPage() {
 
         <h1 className="text-2xl font-bold tracking-tight">Redefinir password</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Introduza o token de recuperação e a nova password.
+          {tokenFromUrl
+            ? 'Define a tua nova password.'
+            : 'Cola o token de recuperação recebido por email e define a nova password.'}
         </p>
 
         {submitted ? (
@@ -102,17 +109,23 @@ function ResetPasswordPage() {
           </div>
         ) : (
           <form onSubmit={handleSubmit(onSubmit)} noValidate className="mt-6 flex flex-col gap-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="token">Token</Label>
-              <Input
-                id="token"
-                type="text"
-                placeholder="Cole o token de recuperação"
-                className={cn(errors.token && 'border-destructive focus-visible:ring-destructive')}
-                {...register('token')}
-              />
-              {errors.token && <p className="text-xs text-destructive">{errors.token.message}</p>}
-            </div>
+            {/* Token: oculto se vier na URL; visível para colar manualmente */}
+            {tokenFromUrl ? (
+              <input type="hidden" {...register('token')} />
+            ) : (
+              <div className="space-y-1.5">
+                <Label htmlFor="token">Token de recuperação</Label>
+                <Input
+                  id="token"
+                  type="text"
+                  autoComplete="off"
+                  placeholder="Cole o token recebido por email"
+                  className={cn(errors.token && 'border-destructive focus-visible:ring-destructive')}
+                  {...register('token')}
+                />
+                {errors.token && <p className="text-xs text-destructive">{errors.token.message}</p>}
+              </div>
+            )}
 
             <div className="space-y-1.5">
               <Label htmlFor="newPassword">Nova password</Label>
