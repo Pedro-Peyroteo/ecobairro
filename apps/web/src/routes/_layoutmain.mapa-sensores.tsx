@@ -10,7 +10,6 @@ import 'leaflet/dist/leaflet.css'
 import { fetchJson } from '@/lib/http/fetch-json'
 import { getApiErrorMessage } from '@/lib/http/api-error'
 import { clientEnv } from '@/lib/env'
-import { getAccessToken } from '@/lib/auth'
 import type { EcopontoRecord, ListEcopontosResponse, EcopontoSensor } from '@ecobairro/contracts'
 
 export const Route = createFileRoute('/_layoutmain/mapa-sensores')({
@@ -44,7 +43,6 @@ function MapaSensoresPage() {
   const [selecionado, setSelecionado] = useState<EcopontoRecord | null>(null)
   const [filtroEstado, setFiltroEstado] = useState<SensorEstado | 'todos'>('todos')
 
-  const headers = { Authorization: `Bearer ${getAccessToken() ?? ''}` }
 
   useEffect(() => {
     fetchJson<ListEcopontosResponse>('/v1/ecopontos', {

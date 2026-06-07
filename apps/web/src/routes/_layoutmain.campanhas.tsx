@@ -11,7 +11,6 @@ import { z } from 'zod'
 import { fetchJson } from '@/lib/http/fetch-json'
 import { getApiErrorMessage } from '@/lib/http/api-error'
 import { clientEnv } from '@/lib/env'
-import { getAccessToken } from '@/lib/auth'
 import type { CampanhaRecord, ListCampanhasResponse, CreateCampanhaRequest } from '@ecobairro/contracts'
 
 export const Route = createFileRoute('/_layoutmain/campanhas')({
@@ -55,7 +54,6 @@ function CampanhasPage() {
   const modalRef = useRef<HTMLDivElement>(null)
   useModalA11y(modalAberto, modalRef, () => setModalAberto(false))
 
-  const headers = { Authorization: `Bearer ${getAccessToken() ?? ''}` }
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<MensagemForm>({
     resolver: zodResolver(mensagemSchema),

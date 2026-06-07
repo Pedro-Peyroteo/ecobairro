@@ -13,7 +13,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { getUser, getAccessToken } from '@/lib/auth'
+import { getUser } from '@/lib/auth'
 import { fetchJson } from '@/lib/http/fetch-json'
 import { getApiErrorMessage } from '@/lib/http/api-error'
 import { clientEnv } from '@/lib/env'
@@ -47,10 +47,6 @@ const DEFAULT_NOTIF: NotifState = {
   pushAlertas:   true,
   pushCampanhas: true,
 }
-
-function authHeaders(): Record<string, string> {
-  const tok = getAccessToken()
-  return tok ? { Authorization: `Bearer ${tok}` } : {}
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -114,7 +110,6 @@ function TwoFASetupModal({ open, onClose, onEnabled }: {
 
   useEffect(() => {
     if (!open) { setStep('qr'); setQr(null); setCode(''); setError(null); return }
-    const tok = getAccessToken()
     if (!tok) return
     setLoading(true)
     twoFactorSetup(tok)
@@ -124,7 +119,6 @@ function TwoFASetupModal({ open, onClose, onEnabled }: {
   }, [open])
 
   async function handleEnable() {
-    const tok = getAccessToken()
     if (!tok) return
     setError(null); setLoading(true)
     try {
@@ -228,7 +222,6 @@ function TwoFAActionModal({ open, onClose, mode, onDone }: {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    const tok = getAccessToken()
     if (!tok) return
     setError(null); setLoading(true)
     try {
@@ -306,7 +299,6 @@ function TwoFAActionModal({ open, onClose, mode, onDone }: {
 // Secção de Segurança
 // ─────────────────────────────────────────────────────────────────────────────
 function SecuritySection() {
-  const tok = getAccessToken()
 
   const [tfaStatus, setTfaStatus] = useState<TwoFactorStatusResponse | null>(null)
   const [setupOpen, setSetupOpen] = useState(false)
@@ -590,7 +582,6 @@ function ConfiguracoesPage() {
     if (!isCidadao) return
     fetchJson<CitizenSelfProfileResponse>('/v1/cidadaos/me', {
       baseUrl: clientEnv.apiBaseUrl,
-      headers: authHeaders(),
     })
       .then(data => {
         reset({
@@ -617,7 +608,6 @@ function ConfiguracoesPage() {
           baseUrl: clientEnv.apiBaseUrl,
           method:  'PUT',
           body:    JSON.stringify(body),
-          headers: authHeaders(),
         })
       } catch (err) {
         setSaveError(getApiErrorMessage(err, 'Não foi possível guardar o perfil.'))
@@ -637,7 +627,6 @@ function ConfiguracoesPage() {
         baseUrl: clientEnv.apiBaseUrl,
         method:  'PUT',
         body:    JSON.stringify({ notificacao_prefs: next } satisfies UpdateCitizenSelfProfileRequest),
-        headers: authHeaders(),
       })
     } catch (err) {
       setSaveError(getApiErrorMessage(err, 'Não foi possível guardar as preferências de notificação.'))

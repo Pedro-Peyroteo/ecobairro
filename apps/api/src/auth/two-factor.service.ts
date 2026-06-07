@@ -183,15 +183,20 @@ export class TwoFactorService {
     return raw;
   }
 
-  /** Consome o pre-auth token (one-time use). */
-  async consumePreAuthToken(token: string): Promise<string | null> {
+  /**
+   * Fix #4 — Lê o pre-auth token SEM o consumir (peek).
+   * Usar antes de validar o código 2FA — só consumir se o código for correto,
+   * para não forçar novo login em caso de dígito errado.
+   */
+  async peekPreAuthToken(token: string): Promise<string | null> {
     if (!token) return null;
-    const key = preAuthKey(token);
-    const client = this.redis.getClient();
-    const userId = await client.get(key);
-    if (!userId) return null;
-    await client.del(key);
-    return userId;
+    return this.redis.getClient().get(preAuthKey(token));
+  }
+
+  /** Consome o pre-auth token (one-time use). Chamar apenas após validação com sucesso. */
+  async consumePreAuthToken(token: string): Promise<void> {
+    if (!token) return;
+    await this.redis.getClient().del(preAuthKey(token));
   }
 }
 

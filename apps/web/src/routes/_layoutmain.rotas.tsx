@@ -10,7 +10,6 @@ import 'leaflet/dist/leaflet.css'
 import { fetchJson } from '@/lib/http/fetch-json'
 import { getApiErrorMessage } from '@/lib/http/api-error'
 import { clientEnv } from '@/lib/env'
-import { getAccessToken } from '@/lib/auth'
 import type { RotaRecord, ListRotasResponse } from '@ecobairro/contracts'
 
 export const Route = createFileRoute('/_layoutmain/rotas')({
@@ -42,7 +41,6 @@ function RotasPage() {
   const [listError, setListError] = useState<string | null>(null)
   const [rotaSelecionada, setRotaSelecionada] = useState<RotaRecord | null>(null)
 
-  const headers = { Authorization: `Bearer ${getAccessToken() ?? ''}` }
 
   async function load() {
     setLoading(true)

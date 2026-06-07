@@ -1,6 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { requireRole } from '@/lib/auth'
-import { getAccessToken } from '@/lib/auth'
 import { Card } from '@/components/ui/card'
 import { Search, Shield, CheckCircle, XCircle, ChevronDown, Loader } from 'lucide-react'
 import { useState, useEffect, useCallback } from 'react'
@@ -25,10 +24,6 @@ const papelConfig: Record<string, { label: string; color: string }> = {
 }
 
 const papeis: FrontRole[] = ['cidadao', 'operador', 'tecnico_autarquia', 'tecnico_ccdr', 'admin']
-
-function authHeaders(): Record<string, string> {
-  const tok = getAccessToken()
-  return tok ? { Authorization: `Bearer ${tok}` } : {}
 }
 
 function formatDate(iso: string) {
@@ -56,7 +51,6 @@ function UtilizadoresPage() {
 
       const resp = await fetchJson<ListUsersResponse>('/v1/users', {
         baseUrl: clientEnv.apiBaseUrl,
-        headers: authHeaders(),
         params,
       })
       setUsers(resp.users)

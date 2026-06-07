@@ -15,7 +15,6 @@ import { PaginationBar } from '@/components/ui/pagination-bar'
 import { fetchJson } from '@/lib/http/fetch-json'
 import { getApiErrorMessage } from '@/lib/http/api-error'
 import { clientEnv } from '@/lib/env'
-import { getAccessToken } from '@/lib/auth'
 import { fileToDataUrl } from '@/lib/image-upload'
 import type {
   CreateReportRequest,
@@ -83,10 +82,6 @@ const novoReporteSchema = z.object({
 type NovoReporteForm = z.infer<typeof novoReporteSchema>
 
 const POR_PAGINA = 5
-
-function authHeaders(): Record<string, string> {
-  const tok = getAccessToken()
-  return tok ? { Authorization: `Bearer ${tok}` } : {}
 }
 
 function formatDate(iso: string) {
@@ -129,7 +124,7 @@ function ReportesPage() {
 
   /* ─ Carregamento da lista (paginação no servidor) ─ */
   const load = useCallback(async () => {
-    if (!getAccessToken()) {
+    if (!getUser()) {
       setListError('Sessão inválida. Faça login novamente.')
       setLoading(false)
       return
@@ -146,7 +141,6 @@ function ReportesPage() {
 
       const resp = await fetchJson<ListReportsResponse>('/v1/reports/me', {
         baseUrl: clientEnv.apiBaseUrl,
-        headers: authHeaders(),
         params,
       })
       setReportes(resp.reports)
@@ -172,11 +166,10 @@ function ReportesPage() {
   const [totalGeral, setTotalGeral] = useState(0)
 
   const loadKpis = useCallback(async () => {
-    if (!getAccessToken()) return
+    if (!getUser()) return
     try {
       const stats = await fetchJson<ReportStatsResponse>('/v1/reports/stats', {
         baseUrl: clientEnv.apiBaseUrl,
-        headers: authHeaders(),
         params: { scope: 'me', recentLimit: 0 },
       })
       setContagens(stats.byStatus)
@@ -228,7 +221,6 @@ function ReportesPage() {
         baseUrl: clientEnv.apiBaseUrl,
         method: 'POST',
         body: JSON.stringify(body),
-        headers: authHeaders(),
       })
       fecharModal()
       await Promise.all([load(), loadKpis()])

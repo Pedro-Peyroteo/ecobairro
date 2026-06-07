@@ -6,7 +6,6 @@ import { useEffect, useState } from 'react'
 import { fetchJson } from '@/lib/http/fetch-json'
 import { getApiErrorMessage } from '@/lib/http/api-error'
 import { clientEnv } from '@/lib/env'
-import { getAccessToken } from '@/lib/auth'
 import type { AuditLogRecord, ListAuditLogsResponse } from '@ecobairro/contracts'
 
 export const Route = createFileRoute('/_layoutmain/audit')({
@@ -42,7 +41,6 @@ function AuditPage() {
   const [filtroAcao, setFiltroAcao] = useState<TipoAcao | 'todos' | 'login_logout'>('todos')
   const [pesquisa, setPesquisa] = useState('')
 
-  const headers = { Authorization: `Bearer ${getAccessToken() ?? ''}` }
 
   async function load() {
     setLoading(true)

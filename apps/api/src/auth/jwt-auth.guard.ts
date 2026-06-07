@@ -54,18 +54,15 @@ export class JwtAuthGuard implements CanActivate {
   }
 
   private extractBearerToken(request: Request): string | null {
+    // Fix #3: cookie HttpOnly tem prioridade (protegido contra XSS)
+    const cookieToken = (request as Request & { cookies?: Record<string, string> }).cookies?.['access_token'];
+    if (cookieToken) return cookieToken;
+
+    // Fallback: Authorization: Bearer (para clientes API / mobile)
     const header = request.header('authorization');
-
-    if (!header) {
-      return null;
-    }
-
+    if (!header) return null;
     const [scheme, token] = header.split(' ');
-
-    if (scheme !== 'Bearer' || !token) {
-      return null;
-    }
-
+    if (scheme !== 'Bearer' || !token) return null;
     return token;
   }
 }

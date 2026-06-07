@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { AlertCircle, Clock3, Download, FileText, Loader2, Search } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { requireRole, getAccessToken, getUser } from '@/lib/auth'
+import { requireRole, getUser } from '@/lib/auth'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { fetchJson } from '@/lib/http/fetch-json'
 import { getApiErrorMessage } from '@/lib/http/api-error'
@@ -27,10 +27,6 @@ const estadoBadge: Record<ReportStatus, { label: string; variant: 'default' | 's
 }
 
 const RECENT_LIMIT = 50
-
-function authHeaders(): Record<string, string> {
-  const tok = getAccessToken()
-  return tok ? { Authorization: `Bearer ${tok}` } : {}
 }
 
 function DashboardPage() {
@@ -53,7 +49,7 @@ function DashboardPage() {
   }, [pesquisa])
 
   const loadStats = useCallback(async () => {
-    if (!getAccessToken()) {
+    if (!getUser()) {
       setStatsError('Sessão inválida. Faça login novamente.')
       setStatsLoading(false)
       return
@@ -63,7 +59,6 @@ function DashboardPage() {
     try {
       const data = await fetchJson<ReportStatsResponse>('/v1/reports/stats', {
         baseUrl: clientEnv.apiBaseUrl,
-        headers: authHeaders(),
         params: { scope: 'global', recentLimit: 0 },
       })
       setStats(data)
@@ -75,7 +70,7 @@ function DashboardPage() {
   }, [])
 
   const loadReports = useCallback(async () => {
-    if (!getAccessToken()) {
+    if (!getUser()) {
       setListError('Sessão inválida. Faça login novamente.')
       setListLoading(false)
       return
@@ -92,7 +87,6 @@ function DashboardPage() {
 
       const data = await fetchJson<ListReportsResponse>('/v1/reports', {
         baseUrl: clientEnv.apiBaseUrl,
-        headers: authHeaders(),
         params,
       })
       setReports(data.reports)

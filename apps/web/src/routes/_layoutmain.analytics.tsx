@@ -1,6 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { requireRole } from '@/lib/auth'
-import { getAccessToken } from '@/lib/auth'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { TrendingUp, BarChart3, MapPin, FileText, Users, Recycle, Loader } from 'lucide-react'
 import { useState, useEffect } from 'react'
@@ -13,10 +12,6 @@ export const Route = createFileRoute('/_layoutmain/analytics')({
   beforeLoad: requireRole(['tecnico_autarquia', 'tecnico_ccdr', 'admin']),
   component: AnalyticsPage,
 })
-
-function authHeaders(): Record<string, string> {
-  const tok = getAccessToken()
-  return tok ? { Authorization: `Bearer ${tok}` } : {}
 }
 
 function BarChart({ data, color = 'var(--primary)' }: { data: { label: string; value: number }[]; color?: string }) {
@@ -61,7 +56,6 @@ function AnalyticsPage() {
   useEffect(() => {
     fetchJson<AnalyticsResponse>('/v1/analytics', {
       baseUrl: clientEnv.apiBaseUrl,
-      headers: authHeaders(),
     })
       .then(d => { setData(d); setListError(null) })
       .catch((err) => {

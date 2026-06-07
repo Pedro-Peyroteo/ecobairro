@@ -37,18 +37,14 @@ export class OptionalJwtAuthGuard implements CanActivate {
   }
 
   private extractBearerToken(request: Request): string | null {
+    // Cookie HttpOnly tem prioridade
+    const cookieToken = (request as Request & { cookies?: Record<string, string> }).cookies?.['access_token'];
+    if (cookieToken) return cookieToken;
+
     const header = request.header('authorization');
-
-    if (!header) {
-      return null;
-    }
-
+    if (!header) return null;
     const [scheme, value] = header.split(' ');
-
-    if (scheme !== 'Bearer' || !value) {
-      return null;
-    }
-
+    if (scheme !== 'Bearer' || !value) return null;
     return value;
   }
 }

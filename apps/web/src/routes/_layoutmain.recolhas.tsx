@@ -14,7 +14,6 @@ import { z } from 'zod'
 import { fetchJson, HttpError } from '@/lib/http/fetch-json'
 import { getApiErrorMessage } from '@/lib/http/api-error'
 import { clientEnv } from '@/lib/env'
-import { getAccessToken } from '@/lib/auth'
 import type { ListRecolhasResponse, RecolhaRecord, CreateRecolhaRequest, CreateRecolhaResponse } from '@ecobairro/contracts'
 
 interface RecolhasSearch {
@@ -76,7 +75,6 @@ function RecolhasPage() {
   const modalRef = useRef<HTMLDivElement>(null)
   useModalA11y(modalAberto, modalRef, () => setModalAberto(false))
 
-  const headers = { Authorization: `Bearer ${getAccessToken() ?? ''}` }
 
   async function load(pg = pagina) {
     setLoading(true)

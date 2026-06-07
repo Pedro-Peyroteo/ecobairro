@@ -1,3 +1,5 @@
+// Fix #3: tokens removidos de todos os pedidos — autenticação via cookies HttpOnly.
+// fetchJson já envia credentials:'include', o browser inclui o cookie access_token automaticamente.
 import type {
   AuthMeResponse,
   CitizenSelfProfileResponse,
@@ -49,36 +51,33 @@ export async function loginRequest(body: LoginRequest): Promise<LoginResponse> {
   })
 }
 
-export async function getMe(accessToken: string): Promise<AuthMeResponse> {
-  return fetchJson('/v1/auth/me', {
+export async function refreshRequest(): Promise<LoginResponse> {
+  return fetchJson('/v1/auth/refresh', {
     baseUrl: clientEnv.apiBaseUrl,
     method: 'POST',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
   })
 }
 
-export async function getCitizenProfile(accessToken: string): Promise<CitizenSelfProfileResponse> {
+export async function getMe(): Promise<AuthMeResponse> {
+  return fetchJson('/v1/auth/me', {
+    baseUrl: clientEnv.apiBaseUrl,
+    method: 'POST',
+  })
+}
+
+export async function getCitizenProfile(): Promise<CitizenSelfProfileResponse> {
   return fetchJson('/v1/cidadaos/me', {
     baseUrl: clientEnv.apiBaseUrl,
     method: 'GET',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
   })
 }
 
 export async function updateCitizenProfile(
-  accessToken: string,
   payload: { nome_completo?: string },
 ): Promise<CitizenSelfProfileResponse> {
   return fetchJson('/v1/cidadaos/me', {
     baseUrl: clientEnv.apiBaseUrl,
     method: 'PUT',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
     body: JSON.stringify(payload),
   })
 }
@@ -109,83 +108,73 @@ export async function verifyTwoFactorRequest(body: VerifyTwoFactorRequest): Prom
 
 // ─── 2FA ──────────────────────────────────────────────────────────────────
 
-export async function twoFactorStatus(token: string): Promise<TwoFactorStatusResponse> {
+export async function twoFactorStatus(): Promise<TwoFactorStatusResponse> {
   return fetchJson('/v1/auth/2fa/status', {
     baseUrl: clientEnv.apiBaseUrl,
-    headers: { Authorization: `Bearer ${token}` },
   })
 }
 
-export async function twoFactorSetup(token: string): Promise<SetupTwoFactorResponse> {
+export async function twoFactorSetup(): Promise<SetupTwoFactorResponse> {
   return fetchJson('/v1/auth/2fa/setup', {
     baseUrl: clientEnv.apiBaseUrl,
     method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
   })
 }
 
-export async function twoFactorEnable(token: string, code: string): Promise<EnableTwoFactorResponse> {
+export async function twoFactorEnable(code: string): Promise<EnableTwoFactorResponse> {
   return fetchJson('/v1/auth/2fa/enable', {
     baseUrl: clientEnv.apiBaseUrl,
     method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify({ code }),
   })
 }
 
-export async function twoFactorDisable(token: string, password: string): Promise<void> {
+export async function twoFactorDisable(password: string): Promise<void> {
   await fetchJson('/v1/auth/2fa/disable', {
     baseUrl: clientEnv.apiBaseUrl,
     method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify({ password }),
   })
 }
 
-export async function twoFactorRevealCodes(token: string, password: string): Promise<RegenerateBackupCodesResponse> {
+export async function twoFactorRevealCodes(password: string): Promise<RegenerateBackupCodesResponse> {
   return fetchJson('/v1/auth/2fa/backup-codes/reveal', {
     baseUrl: clientEnv.apiBaseUrl,
     method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify({ password }),
   })
 }
 
 // ─── Sessões ──────────────────────────────────────────────────────────────
 
-export async function listSessions(token: string): Promise<ListActiveSessionsResponse> {
+export async function listSessions(): Promise<ListActiveSessionsResponse> {
   return fetchJson('/v1/security/sessions', {
     baseUrl: clientEnv.apiBaseUrl,
-    headers: { Authorization: `Bearer ${token}` },
   })
 }
 
-export async function revokeSession(token: string, sessionId: string): Promise<void> {
+export async function revokeSession(sessionId: string): Promise<void> {
   await fetchJson(`/v1/security/sessions/${sessionId}`, {
     baseUrl: clientEnv.apiBaseUrl,
     method: 'DELETE',
-    headers: { Authorization: `Bearer ${token}` },
   })
 }
 
-export async function revokeAllSessions(token: string): Promise<void> {
+export async function revokeAllSessions(): Promise<void> {
   await fetchJson('/v1/security/sessions', {
     baseUrl: clientEnv.apiBaseUrl,
     method: 'DELETE',
-    headers: { Authorization: `Bearer ${token}` },
   })
 }
 
 // ─── Logs de segurança ─────────────────────────────────────────────────────
 
 export async function listSecurityLogs(
-  token: string,
   page = 1,
   pageSize = 20,
 ): Promise<ListSecurityLogsResponse> {
   return fetchJson(`/v1/security/logs?page=${page}&pageSize=${pageSize}`, {
     baseUrl: clientEnv.apiBaseUrl,
-    headers: { Authorization: `Bearer ${token}` },
   })
 }
 

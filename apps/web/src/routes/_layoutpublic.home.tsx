@@ -19,7 +19,7 @@ import { motion } from 'framer-motion'
 import { useEffect, useRef, useState, type ElementType, type ReactNode } from 'react'
 import { fetchJson } from '@/lib/http/fetch-json'
 import { clientEnv } from '@/lib/env'
-import { getAccessToken, getUser } from '@/lib/auth'
+import { getUser } from '@/lib/auth'
 import type { HomeFeedResponse } from '@ecobairro/contracts'
 
 export const Route = createFileRoute('/_layoutpublic/home')({
@@ -1043,7 +1043,6 @@ function ScrollToTopButton() {
 
 /* ─── Página ─── */
 function HomePage() {
-  const token = getAccessToken()
   const sessionUser = getUser()
   const greeting = getGreeting()
   const [feed, setFeed] = useState<HomeFeedResponse | null>(null)
@@ -1058,7 +1057,6 @@ function HomePage() {
   useEffect(() => {
     const headers: Record<string, string> = {}
     if (token) {
-      headers.Authorization = `Bearer ${token}`
     }
 
     const load = async () => {

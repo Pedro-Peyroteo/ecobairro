@@ -9,7 +9,6 @@ import { useState, useEffect, useCallback } from 'react'
 import 'leaflet/dist/leaflet.css'
 import { fetchJson } from '@/lib/http/fetch-json'
 import { clientEnv } from '@/lib/env'
-import { getAccessToken } from '@/lib/auth'
 import { addFavorito, listFavoritos, removeFavorito } from '@/lib/api/favoritos'
 import { getApiErrorMessage } from '@/lib/http/api-error'
 import type { EcopontoRecord, ListEcopontosResponse } from '@ecobairro/contracts'
@@ -60,10 +59,10 @@ function MapaPage() {
   const [favoritoIds, setFavoritoIds] = useState<Set<string>>(new Set())
   const [favoritoBusy, setFavoritoBusy] = useState(false)
   const [favoritoError, setFavoritoError] = useState<string | null>(null)
-  const isLoggedIn = Boolean(getAccessToken())
+  const isLoggedIn = Boolean(getUser())
 
   const loadFavoritos = useCallback(async () => {
-    if (!getAccessToken()) {
+    if (!getUser()) {
       setFavoritoIds(new Set())
       return
     }

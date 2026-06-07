@@ -1,11 +1,12 @@
 import { redirect } from '@tanstack/react-router'
 import type { User, UserRole } from '@/types'
 
-const ACCESS_TOKEN_KEY = 'access_token'
-const REFRESH_TOKEN_KEY = 'refresh_token'
+// Fix #3: tokens já não são guardados no frontend — estão em cookies HttpOnly.
+// Apenas o objeto User (sem dados sensíveis) fica em sessionStorage para UX.
+const USER_KEY = 'user'
 
 export function getUser(): User | null {
-  const stored = sessionStorage.getItem('user')
+  const stored = sessionStorage.getItem(USER_KEY)
   if (!stored) return null
   try {
     return JSON.parse(stored) as User
@@ -14,24 +15,12 @@ export function getUser(): User | null {
   }
 }
 
-export function setAuthSession(input: {
-  user: User
-  accessToken: string
-  refreshToken: string
-}) {
-  sessionStorage.setItem('user', JSON.stringify(input.user))
-  sessionStorage.setItem(ACCESS_TOKEN_KEY, input.accessToken)
-  sessionStorage.setItem(REFRESH_TOKEN_KEY, input.refreshToken)
+export function setAuthSession(input: { user: User }) {
+  sessionStorage.setItem(USER_KEY, JSON.stringify(input.user))
 }
 
 export function clearAuthSession() {
-  sessionStorage.removeItem('user')
-  sessionStorage.removeItem(ACCESS_TOKEN_KEY)
-  sessionStorage.removeItem(REFRESH_TOKEN_KEY)
-}
-
-export function getAccessToken(): string | null {
-  return sessionStorage.getItem(ACCESS_TOKEN_KEY)
+  sessionStorage.removeItem(USER_KEY)
 }
 
 export function requireAuth() {

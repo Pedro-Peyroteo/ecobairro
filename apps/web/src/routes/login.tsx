@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { setAuthSession } from '@/lib/auth'
 import { getCitizenProfile, getMe, loginRequest, toUiRole, verifyTwoFactorRequest } from '@/lib/api/auth'
+// Fix #3: tokens não são passados — autenticação via cookies HttpOnly
 import { fetchJson } from '@/lib/http/fetch-json'
 import { getApiErrorMessage } from '@/lib/http/api-error'
 import { cn } from '@/lib/utils'
@@ -97,20 +98,20 @@ function LoginPage() {
     resolver: zodResolver(schema),
   })
 
-  async function finishLogin(accessToken: string, refreshToken: string) {
-    const me = await getMe(accessToken)
+  // Fix #3: tokens não são recebidos no body — o servidor emite cookies HttpOnly.
+  // O frontend apenas guarda o objeto User para UX (nome, role, etc.)
+  async function finishLogin() {
+    const me = await getMe()
     const role = toUiRole(me.role)
     let displayName = me.email
     if (role === 'cidadao') {
       try {
-        const profile = await getCitizenProfile(accessToken)
+        const profile = await getCitizenProfile()
         if (profile.nome_completo?.trim()) displayName = profile.nome_completo
       } catch { /* non-critical */ }
     }
     setAuthSession({
       user: { id: me.id, name: displayName, email: me.email, role },
-      accessToken,
-      refreshToken,
     })
     navigate({ to: role === 'cidadao' ? '/home' : '/dashboard' })
   }
@@ -127,7 +128,7 @@ function LoginPage() {
         return
       }
 
-      await finishLogin(login.access_token, login.refresh_token)
+      await finishLogin()
     } catch (error) {
       setSubmitError(getApiErrorMessage(error, 'Falha ao autenticar. Tente novamente.'))
     } finally {
@@ -141,8 +142,8 @@ function LoginPage() {
     try {
       setSubmitError(null)
       setLoading(true)
-      const login = await verifyTwoFactorRequest({ pre_auth_token: preAuthToken, code: twoFaCode.trim() })
-      await finishLogin(login.access_token, login.refresh_token)
+      await verifyTwoFactorRequest({ pre_auth_token: preAuthToken, code: twoFaCode.trim() })
+      await finishLogin()
     } catch (error) {
       setSubmitError(getApiErrorMessage(error, 'Código inválido ou expirado.'))
     } finally {

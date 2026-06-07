@@ -12,6 +12,7 @@ export interface RequestContext {
 const MAX_FAILED_ATTEMPTS = readNumberEnv('ACCOUNT_LOCK_MAX_ATTEMPTS', 5);
 const LOCK_MINUTES = readNumberEnv('ACCOUNT_LOCK_MINUTES', 30);
 const ACCESS_TTL_SECONDS = readNumberEnv('JWT_ACCESS_TTL_MINUTES', 15) * 60;
+const IP_LOCK_TTL_SECONDS = LOCK_MINUTES * 60;
 
 /**
  * Núcleo de segurança: audit trail (SecurityLog), bloqueio de conta
@@ -64,26 +65,44 @@ export class SecurityService {
   }
 
   /**
-   * Regista uma tentativa falhada. Incrementa o contador e, ao atingir o
-   * limite, bloqueia a conta por LOCK_MINUTES. Devolve se ficou bloqueada
-   * agora (para enviar o email de aviso).
+   * Fix #1 — IP-based rate limiting (DoS mitigation).
+   *
+   * Regista uma tentativa falhada POR IP no Redis (em vez de na conta da vítima).
+   * Assim um atacante não consegue bloquear a conta de outra pessoa.
+   * Devolve { justThrottled: true } na primeira vez que o limite é atingido.
+   */
+  async registerFailedAttemptByIp(ip: string): Promise<{ justThrottled: boolean }> {
+    const key = ipFailsKey(ip);
+    const client = this.redis.getClient();
+    const count = await client.incr(key);
+    if (count === 1) {
+      // Primeira tentativa: inicializa TTL de 30 min
+      await client.expire(key, IP_LOCK_TTL_SECONDS);
+    }
+    return { justThrottled: count === MAX_FAILED_ATTEMPTS };
+  }
+
+  /** Verdadeiro se este IP já excedeu o limite de falhas. */
+  async isIpThrottled(ip: string): Promise<boolean> {
+    const v = await this.redis.getClient().get(ipFailsKey(ip));
+    return v != null && parseInt(v, 10) >= MAX_FAILED_ATTEMPTS;
+  }
+
+  /** Limpa o contador de falhas de IP (após login bem-sucedido). */
+  async clearIpFails(ip: string): Promise<void> {
+    await this.redis.getClient().del(ipFailsKey(ip));
+  }
+
+  /**
+   * @deprecated Mantido para compatibilidade com testes.
+   * A lógica de bloqueio passou a ser por IP (registerFailedAttemptByIp).
+   * Incrementa failedLoginAttempts na DB apenas para audit trail.
    */
   async registerFailedAttempt(userId: string): Promise<{ justLocked: boolean }> {
-    const user = await this.prisma.user.update({
+    await this.prisma.user.update({
       where: { id: userId },
       data: { failedLoginAttempts: { increment: 1 } },
-      select: { failedLoginAttempts: true },
     });
-
-    if (user.failedLoginAttempts >= MAX_FAILED_ATTEMPTS) {
-      const lockedUntil = new Date(Date.now() + LOCK_MINUTES * 60000);
-      await this.prisma.user.update({
-        where: { id: userId },
-        data: { lockedUntil, failedLoginAttempts: 0 },
-      });
-      return { justLocked: true };
-    }
-
     return { justLocked: false };
   }
 
@@ -148,4 +167,8 @@ export class SecurityService {
 
 function revokedUserKey(userId: string): string {
   return `revoked_user:${userId}`;
+}
+
+function ipFailsKey(ip: string): string {
+  return `login_fails:${ip}`;
 }

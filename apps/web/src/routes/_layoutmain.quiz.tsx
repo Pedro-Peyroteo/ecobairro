@@ -12,7 +12,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { fetchJson } from '@/lib/http/fetch-json'
 import { getApiErrorMessage } from '@/lib/http/api-error'
 import { clientEnv } from '@/lib/env'
-import { getAccessToken, requireRole } from '@/lib/auth'
+import { requireRole } from '@/lib/auth'
 import type { QuizAchievementKey, QuizMeResponse } from '@ecobairro/contracts'
 
 export const Route = createFileRoute('/_layoutmain/quiz')({
@@ -42,14 +42,12 @@ function QuizPage() {
   const [listError, setListError] = useState<string | null>(null)
 
   useEffect(() => {
-    const token = getAccessToken()
     if (!token) {
       setMe(null)
       setIsLoading(false)
       return
     }
 
-    const headers: Record<string, string> = { Authorization: `Bearer ${token}` }
     fetchJson<QuizMeResponse>('/v1/gamification/quiz/me', {
       baseUrl: clientEnv.apiBaseUrl,
       headers,

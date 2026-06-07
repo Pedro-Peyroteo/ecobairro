@@ -19,16 +19,28 @@ class FakeSecurityService {
   readonly logs: Array<{ userId: string; event: string }> = [];
   readonly revoked = new Set<string>();
   private failedAttempts = new Map<string, number>();
+  private ipAttempts = new Map<string, number>();
 
   isLocked(): boolean { return false; }
   minutesUntilUnlock(): number { return 0; }
   async log(userId: string, event: string): Promise<void> {
     this.logs.push({ userId, event });
   }
+  async isIpThrottled(ip: string): Promise<boolean> {
+    return (this.ipAttempts.get(ip) ?? 0) >= 5;
+  }
+  async registerFailedAttemptByIp(ip: string): Promise<{ justThrottled: boolean }> {
+    const n = (this.ipAttempts.get(ip) ?? 0) + 1;
+    this.ipAttempts.set(ip, n);
+    return { justThrottled: n === 5 };
+  }
+  async clearIpFails(ip: string): Promise<void> {
+    this.ipAttempts.delete(ip);
+  }
   async registerFailedAttempt(userId: string): Promise<{ justLocked: boolean }> {
     const n = (this.failedAttempts.get(userId) ?? 0) + 1;
     this.failedAttempts.set(userId, n);
-    return { justLocked: n >= 5 };
+    return { justLocked: false }; // IP-based now; DB counter é só para audit
   }
   async resetFailedAttempts(userId: string): Promise<void> {
     this.failedAttempts.delete(userId);
@@ -63,7 +75,8 @@ class FakeSessionService {
 
 class FakeTwoFactorService {
   async issuePreAuthToken(_userId: string): Promise<string> { return 'fake-pre-auth'; }
-  async consumePreAuthToken(_token: string): Promise<string | null> { return null; }
+  async peekPreAuthToken(_token: string): Promise<string | null> { return null; }
+  async consumePreAuthToken(_token: string): Promise<void> {}
   async verifyLoginCode(_userId: string, _code: string): Promise<boolean> { return false; }
   async enable(_userId: string, _code: string): Promise<{ backupCodes: string[] } | null> { return null; }
   async disable(_userId: string): Promise<void> {}
@@ -335,7 +348,7 @@ export const authServiceTests: TestCase[] = [
           }),
         (error: unknown) =>
           error instanceof ConflictException &&
-          error.message === 'Email already registered',
+          error.message === 'Este email já está registado.',
       );
     },
   },
@@ -389,7 +402,7 @@ export const authServiceTests: TestCase[] = [
         email: 'citizen@example.com',
         passwordHash: originalHash,
         phone: null,
-        emailVerified: false,
+        emailVerified: true,
         role: UserRole.CIDADAO,
         eliminadoEm: null,
         cidadaoPerfil: {
@@ -446,7 +459,7 @@ export const authServiceTests: TestCase[] = [
         email: 'citizen@example.com',
         passwordHash,
         phone: null,
-        emailVerified: false,
+        emailVerified: true,
         role: UserRole.CIDADAO,
         eliminadoEm: null,
         cidadaoPerfil: {
@@ -509,7 +522,7 @@ export const authServiceTests: TestCase[] = [
         email: 'citizen@example.com',
         passwordHash,
         phone: null,
-        emailVerified: false,
+        emailVerified: true,
         role: UserRole.CIDADAO,
         eliminadoEm: null,
         cidadaoPerfil: {
@@ -563,7 +576,7 @@ export const authServiceTests: TestCase[] = [
         email: 'citizen@example.com',
         passwordHash,
         phone: null,
-        emailVerified: false,
+        emailVerified: true,
         role: UserRole.CIDADAO,
         eliminadoEm: null,
         cidadaoPerfil: {

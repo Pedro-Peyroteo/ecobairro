@@ -162,11 +162,10 @@ export class AuthService {
       throw new ForbiddenException('Verifica o teu email antes de iniciar sessão. Verifica a caixa de entrada.');
     }
 
-    // Account lockout: rejeita imediatamente sem revelar se a password é boa
-    if (this.securityService.isLocked(user.lockedUntil)) {
-      const minutes = this.securityService.minutesUntilUnlock(user.lockedUntil);
+    // Fix #1 — IP-based lockout (previne DoS sobre contas alheias)
+    if (await this.securityService.isIpThrottled(ctx.ipAddress)) {
       throw new ForbiddenException(
-        `Conta bloqueada temporariamente. Tente novamente em ${minutes} minutos.`,
+        'Demasiadas tentativas falhadas. Tente novamente em 30 minutos.',
       );
     }
 
@@ -174,16 +173,19 @@ export class AuthService {
 
     if (!isPasswordValid) {
       await this.securityService.log(user.id, SecurityEventType.LOGIN_FAILED, ctx);
-      const { justLocked } = await this.securityService.registerFailedAttempt(user.id);
-      if (justLocked) {
+      const { justThrottled } = await this.securityService.registerFailedAttemptByIp(ctx.ipAddress);
+      // Mantém audit trail na DB (para fins de relatório), sem bloquear a conta
+      await this.securityService.registerFailedAttempt(user.id);
+      if (justThrottled) {
         await this.securityService.log(user.id, SecurityEventType.ACCOUNT_LOCKED, ctx);
         await this.sendAccountLockedEmail(user.email).catch(() => undefined);
       }
       throw new UnauthorizedException('Email ou password incorrectos.');
     }
 
-    // Login ok: audit + clear lockout + detectar novo dispositivo
+    // Login ok: audit + clear IP fails + detectar novo dispositivo
     const newDevice = await this.securityService.isNewDevice(user.id, ctx);
+    await this.securityService.clearIpFails(ctx.ipAddress);
     await this.securityService.resetFailedAttempts(user.id);
     await this.securityService.log(user.id, SecurityEventType.LOGIN_SUCCESS, ctx);
     await this.securityService.clearRevocation(user.id);
@@ -214,7 +216,9 @@ export class AuthService {
     input: VerifyTwoFactorDto,
     ctx: RequestContext,
   ): Promise<LoginResponse> {
-    const userId = await this.twoFactorService.consumePreAuthToken(
+    // Fix #4 — peek primeiro; só consumir se o código for válido.
+    // Assim um dígito errado não força novo login (o token fica activo).
+    const userId = await this.twoFactorService.peekPreAuthToken(
       input.pre_auth_token,
     );
     if (!userId) {
@@ -226,6 +230,9 @@ export class AuthService {
       await this.securityService.log(userId, SecurityEventType.LOGIN_FAILED, ctx);
       throw new UnauthorizedException('Código 2FA inválido.');
     }
+
+    // Código válido — agora sim consome o token (one-time use)
+    await this.twoFactorService.consumePreAuthToken(input.pre_auth_token);
 
     const user = await this.prisma.user.findUnique({
       where: { id: userId },

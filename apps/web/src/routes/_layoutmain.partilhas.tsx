@@ -16,7 +16,6 @@ import { PaginationBar } from '@/components/ui/pagination-bar'
 import { fetchJson } from '@/lib/http/fetch-json'
 import { getApiErrorMessage } from '@/lib/http/api-error'
 import { clientEnv } from '@/lib/env'
-import { getAccessToken } from '@/lib/auth'
 import { fileToDataUrl } from '@/lib/image-upload'
 import type {
   CreatePartilhaRequest,
@@ -53,10 +52,6 @@ const novaPartilhaSchema = z.object({
 type NovaPartilhaForm = z.infer<typeof novaPartilhaSchema>
 
 const POR_PAGINA = 12
-
-function authHeaders(): Record<string, string> {
-  const tok = getAccessToken()
-  return tok ? { Authorization: `Bearer ${tok}` } : {}
 }
 
 function PartilhasPage() {
@@ -133,7 +128,6 @@ function PartilhasPage() {
         baseUrl: clientEnv.apiBaseUrl,
         method:  'POST',
         body:    JSON.stringify(body),
-        headers: authHeaders(),
       })
       fecharModal()
       await load()

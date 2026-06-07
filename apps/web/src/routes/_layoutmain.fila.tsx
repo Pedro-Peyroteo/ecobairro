@@ -1,6 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { requireRole } from '@/lib/auth'
-import { getAccessToken } from '@/lib/auth'
 import { Card, CardContent } from '@/components/ui/card'
 import { MapPin, Calendar, ChevronUp, ChevronDown, User, CheckCircle, Clock, AlertTriangle, Loader2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
@@ -39,7 +38,6 @@ function FilaPage() {
   const [listError, setListError] = useState<string | null>(null)
   const [filtroEstado, setFiltroEstado] = useState<EstadoTarefa | 'todos'>('todos')
 
-  const headers = { Authorization: `Bearer ${getAccessToken() ?? ''}` }
 
   async function load() {
     setLoading(true)

@@ -61,7 +61,8 @@ export async function fetchJson<T = unknown>(
     headers.set('Accept', 'application/json')
   }
 
-  const response = await fetch(url.toString(), { ...init, headers })
+  // Fix #3: credentials:'include' envia cookies HttpOnly em todos os pedidos
+  const response = await fetch(url.toString(), { credentials: 'include', ...init, headers })
 
   if (!response.ok) {
     let body: unknown

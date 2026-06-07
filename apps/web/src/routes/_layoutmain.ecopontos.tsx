@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { requireRole, getAccessToken } from '@/lib/auth'
+import { requireRole } from '@/lib/auth'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Search, PlusCircle, MapPin, X, Save, Pencil, Trash2, Wifi, WifiOff } from 'lucide-react'
@@ -45,10 +45,6 @@ const ecopontoSchema = z.object({
 })
 
 type EcopontoForm = z.infer<typeof ecopontoSchema>
-
-function authHeaders(): Record<string, string> {
-  const tok = getAccessToken()
-  return tok ? { Authorization: `Bearer ${tok}` } : {}
 }
 
 function EcopontosPage() {
@@ -90,7 +86,6 @@ function EcopontosPage() {
 
       const res = await fetchJson<ListEcopontosResponse>(`/v1/ecopontos?${qs.toString()}`, {
         baseUrl: clientEnv.apiBaseUrl,
-        headers: authHeaders(),
       })
       setEcopontos(res.ecopontos)
     } catch (err) {
@@ -146,7 +141,6 @@ function EcopontosPage() {
           baseUrl: clientEnv.apiBaseUrl,
           method: 'PATCH',
           body: JSON.stringify(body),
-          headers: authHeaders(),
         })
       } else {
         const body: CreateEcopontoRequest = {
@@ -162,7 +156,6 @@ function EcopontosPage() {
           baseUrl: clientEnv.apiBaseUrl,
           method: 'POST',
           body: JSON.stringify(body),
-          headers: authHeaders(),
         })
       }
       setModal(null)
@@ -180,7 +173,6 @@ function EcopontosPage() {
       await fetchJson(`/v1/ecopontos/${id}`, {
         baseUrl: clientEnv.apiBaseUrl,
         method: 'DELETE',
-        headers: authHeaders(),
       })
       await reload()
     } catch (err) {
