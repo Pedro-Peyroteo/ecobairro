@@ -3,13 +3,13 @@ import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Eye, EyeOff, Leaf, Recycle, MapPin, BarChart3, X } from 'lucide-react'
+import { Eye, EyeOff, Leaf, Recycle, MapPin, BarChart3, X, ShieldCheck } from 'lucide-react'
 import { useGoogleLogin } from '@react-oauth/google'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { setAuthSession } from '@/lib/auth'
-import { getCitizenProfile, getMe, loginRequest, toUiRole } from '@/lib/api/auth'
+import { getCitizenProfile, getMe, loginRequest, toUiRole, verifyTwoFactorRequest } from '@/lib/api/auth'
 import { fetchJson } from '@/lib/http/fetch-json'
 import { getApiErrorMessage } from '@/lib/http/api-error'
 import { cn } from '@/lib/utils'
@@ -71,6 +71,11 @@ function LoginPage() {
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [stats, setStats] = useState<PublicStatsResponse | null>(null)
 
+  // Estado do fluxo 2-step
+  const [twoFaStep, setTwoFaStep] = useState(false)
+  const [preAuthToken, setPreAuthToken] = useState<string | null>(null)
+  const [twoFaCode, setTwoFaCode] = useState('')
+
   useEffect(() => {
     fetchJson<PublicStatsResponse>('/v1/home/public-stats', {
       baseUrl: clientEnv.apiBaseUrl,
@@ -87,43 +92,54 @@ function LoginPage() {
     resolver: zodResolver(schema),
   })
 
+  async function finishLogin(accessToken: string, refreshToken: string) {
+    const me = await getMe(accessToken)
+    const role = toUiRole(me.role)
+    let displayName = me.email
+    if (role === 'cidadao') {
+      try {
+        const profile = await getCitizenProfile(accessToken)
+        if (profile.nome_completo?.trim()) displayName = profile.nome_completo
+      } catch { /* non-critical */ }
+    }
+    setAuthSession({
+      user: { id: me.id, name: displayName, email: me.email, role },
+      accessToken,
+      refreshToken,
+    })
+    navigate({ to: role === 'cidadao' ? '/home' : '/dashboard' })
+  }
+
   const onSubmit = async (data: FormData) => {
     try {
       setSubmitError(null)
       setLoading(true)
-      const login = await loginRequest({
-        email: data.email,
-        password: data.password,
-      })
-      const me = await getMe(login.access_token)
-      const role = toUiRole(me.role)
-      let displayName = me.email
+      const login = await loginRequest({ email: data.email, password: data.password })
 
-      if (role === 'cidadao') {
-        try {
-          const profile = await getCitizenProfile(login.access_token)
-          if (profile.nome_completo?.trim()) {
-            displayName = profile.nome_completo
-          }
-        } catch {
-          // Keep login resilient even if profile fetch fails.
-        }
+      if (login.requires_2fa && login.pre_auth_token) {
+        setPreAuthToken(login.pre_auth_token)
+        setTwoFaStep(true)
+        return
       }
 
-      setAuthSession({
-        user: {
-          id: me.id,
-          name: displayName,
-          email: me.email,
-          role,
-        },
-        accessToken: login.access_token,
-        refreshToken: login.refresh_token,
-      })
-
-      navigate({ to: role === 'cidadao' ? '/home' : '/dashboard' })
+      await finishLogin(login.access_token, login.refresh_token)
     } catch (error) {
       setSubmitError(getApiErrorMessage(error, 'Falha ao autenticar. Tente novamente.'))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const onSubmit2FA = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!preAuthToken) return
+    try {
+      setSubmitError(null)
+      setLoading(true)
+      const login = await verifyTwoFactorRequest({ pre_auth_token: preAuthToken, code: twoFaCode.trim() })
+      await finishLogin(login.access_token, login.refresh_token)
+    } catch (error) {
+      setSubmitError(getApiErrorMessage(error, 'Código inválido ou expirado.'))
     } finally {
       setLoading(false)
     }
@@ -203,102 +219,157 @@ function LoginPage() {
         </button>
 
         <div className="flex flex-col gap-5 w-full max-w-sm mx-auto">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">Bem-vindo! </h1>
-            <p className="text-sm text-muted-foreground mt-1">Inicia sessão para aceder à plataforma</p>
-          </div>
 
-          {/* Google login */}
-          {hasGoogleClientId ? (
-            <GoogleLoginButton />
-          ) : (
-            <Button type="button" variant="outline" className="w-full gap-3" disabled title="Configure VITE_GOOGLE_CLIENT_ID para ativar">
-              <GoogleIcon />
-              Entrar com Google
-            </Button>
-          )}
+          {twoFaStep ? (
+            /* ── Passo 2: Verificação 2FA ─────────────────────────────── */
+            <>
+              <div className="flex flex-col items-center gap-3 text-center">
+                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                  <ShieldCheck className="w-6 h-6 text-primary" />
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold tracking-tight">Verificação em dois fatores</h1>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Abre a tua app autenticadora e introduz o código de 6 dígitos, ou usa um código de recuperação.
+                  </p>
+                </div>
+              </div>
 
-          {/* Divider */}
-          <div className="relative flex items-center gap-3">
-            <div className="flex-1 h-px bg-border" />
-            <span className="text-xs text-muted-foreground">ou</span>
-            <div className="flex-1 h-px bg-border" />
-          </div>
+              <form onSubmit={onSubmit2FA} noValidate className="flex flex-col gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="twofa-code">Código de verificação</Label>
+                  <Input
+                    id="twofa-code"
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="123456 ou XXXXX-XXXXX"
+                    autoFocus
+                    autoComplete="one-time-code"
+                    value={twoFaCode}
+                    onChange={(e) => setTwoFaCode(e.target.value)}
+                    maxLength={32}
+                    className="text-center text-lg tracking-widest font-mono"
+                  />
+                </div>
 
-          <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-4">
-            {/* Email */}
-            <div className="space-y-1.5">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="nome@exemplo.pt"
-                autoComplete="email"
-                autoFocus
-                className={cn(errors.email && 'border-destructive focus-visible:ring-destructive')}
-                {...register('email')}
-              />
-              {errors.email && (
-                <p className="text-xs text-destructive">{errors.email.message}</p>
-              )}
-            </div>
+                <Button type="submit" className="w-full" disabled={loading || twoFaCode.trim().length < 6}>
+                  {loading ? 'A verificar...' : 'Confirmar'}
+                </Button>
 
-            {/* Password */}
-            <div className="space-y-1.5">
-              <Label htmlFor="password">Password</Label>
-              <div className="relative">
-                <Input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="••••••••"
-                  autoComplete="current-password"
-                  className={cn('pr-10', errors.password && 'border-destructive focus-visible:ring-destructive')}
-                  {...register('password')}
-                />
+                {submitError && (
+                  <p className="text-xs text-destructive text-center" role="alert">{submitError}</p>
+                )}
+
                 <button
                   type="button"
-                  onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                  aria-label={showPassword ? 'Ocultar password' : 'Mostrar password'}
+                  onClick={() => { setTwoFaStep(false); setPreAuthToken(null); setTwoFaCode(''); setSubmitError(null); }}
+                  className="text-xs text-muted-foreground hover:underline mx-auto"
                 >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  Voltar ao login
                 </button>
+              </form>
+            </>
+          ) : (
+            /* ── Passo 1: Email + Password ────────────────────────────── */
+            <>
+              <div>
+                <h1 className="text-2xl font-bold tracking-tight">Bem-vindo! </h1>
+                <p className="text-sm text-muted-foreground mt-1">Inicia sessão para aceder à plataforma</p>
               </div>
-              {errors.password && (
-                <p className="text-xs text-destructive">{errors.password.message}</p>
+
+              {/* Google login */}
+              {hasGoogleClientId ? (
+                <GoogleLoginButton />
+              ) : (
+                <Button type="button" variant="outline" className="w-full gap-3" disabled title="Configure VITE_GOOGLE_CLIENT_ID para ativar">
+                  <GoogleIcon />
+                  Entrar com Google
+                </Button>
               )}
-            </div>
 
-            {/* Remember me + Forgot */}
-            <div className="flex items-center justify-between">
-              <label className="flex items-center gap-2 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="w-4 h-4 rounded border-border accent-primary"
-                />
-                <span className="text-sm text-muted-foreground">Lembrar-me</span>
-              </label>
-              <Link to="/forgot-password" className="text-sm text-primary hover:underline underline-offset-4">
-                Esqueceste a password?
-              </Link>
-            </div>
+              {/* Divider */}
+              <div className="relative flex items-center gap-3">
+                <div className="flex-1 h-px bg-border" />
+                <span className="text-xs text-muted-foreground">ou</span>
+                <div className="flex-1 h-px bg-border" />
+              </div>
 
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'A entrar...' : 'Entrar'}
-            </Button>
-            {submitError && (
-              <p className="text-xs text-destructive text-center">{submitError}</p>
-            )}
+              <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-4">
+                {/* Email */}
+                <div className="space-y-1.5">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="nome@exemplo.pt"
+                    autoComplete="email"
+                    autoFocus
+                    className={cn(errors.email && 'border-destructive focus-visible:ring-destructive')}
+                    {...register('email')}
+                  />
+                  {errors.email && (
+                    <p className="text-xs text-destructive">{errors.email.message}</p>
+                  )}
+                </div>
 
-            <p className="text-center text-sm text-muted-foreground">
-              Ainda não tens conta?{' '}
-              <Link to="/register" className="text-primary hover:underline underline-offset-4 font-medium">
-                Cria uma conta
-              </Link>
-            </p>
-          </form>
+                {/* Password */}
+                <div className="space-y-1.5">
+                  <Label htmlFor="password">Password</Label>
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder="••••••••"
+                      autoComplete="current-password"
+                      className={cn('pr-10', errors.password && 'border-destructive focus-visible:ring-destructive')}
+                      {...register('password')}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((v) => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                      aria-label={showPassword ? 'Ocultar password' : 'Mostrar password'}
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  {errors.password && (
+                    <p className="text-xs text-destructive">{errors.password.message}</p>
+                  )}
+                </div>
+
+                {/* Remember me + Forgot */}
+                <div className="flex items-center justify-between">
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
+                      className="w-4 h-4 rounded border-border accent-primary"
+                    />
+                    <span className="text-sm text-muted-foreground">Lembrar-me</span>
+                  </label>
+                  <Link to="/forgot-password" className="text-sm text-primary hover:underline underline-offset-4">
+                    Esqueceste a password?
+                  </Link>
+                </div>
+
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? 'A entrar...' : 'Entrar'}
+                </Button>
+                {submitError && (
+                  <p className="text-xs text-destructive text-center" role="alert">{submitError}</p>
+                )}
+
+                <p className="text-center text-sm text-muted-foreground">
+                  Ainda não tens conta?{' '}
+                  <Link to="/register" className="text-primary hover:underline underline-offset-4 font-medium">
+                    Cria uma conta
+                  </Link>
+                </p>
+              </form>
+            </>
+          )}
         </div>
 
         <p className="absolute bottom-6 left-0 right-0 text-center text-xs text-muted-foreground">
