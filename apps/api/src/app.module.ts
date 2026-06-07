@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { HealthController } from './health.controller';
 import { HealthService } from './health.service';
 import { DatabaseModule } from './database/database.module';
@@ -22,6 +23,16 @@ import { CookiesModule } from './cookies/cookies.module';
 
 @Module({
   imports: [
+    // Rate limiting: 10 tentativas / 15 min por IP em /auth/login e /auth/verify-2fa
+    ThrottlerModule.forRoot({
+      throttlers: [
+        {
+          name: 'login',
+          ttl: 15 * 60 * 1000, // 15 min em ms
+          limit: 10,
+        },
+      ],
+    }),
     DatabaseModule,
     RedisModule,
     AuthModule,

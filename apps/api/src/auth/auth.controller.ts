@@ -1,4 +1,5 @@
 import { Body, Controller, HttpCode, HttpStatus, Inject, Post, Req, UseGuards } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import type { Request } from 'express';
 import type {
   AuthMeResponse,
@@ -15,6 +16,7 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { RefreshDto } from './dto/refresh.dto';
 import { RegisterDto } from './dto/register.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { VerifyTwoFactorDto } from './dto/verify-two-factor.dto';
 import { buildRequestContext } from '../security/request-context.helper';
 
 @Controller('auth')
@@ -35,6 +37,7 @@ export class AuthController {
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
+  @Throttle({ login: { ttl: 15 * 60 * 1000, limit: 10 } })
   login(@Body() body: LoginDto, @Req() req: Request): Promise<LoginResponse> {
     return this.authService.login(body, buildRequestContext(req));
   }
@@ -43,6 +46,16 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   refresh(@Body() body: RefreshDto, @Req() req: Request): Promise<LoginResponse> {
     return this.authService.refresh(body, buildRequestContext(req));
+  }
+
+  @Post('verify-2fa')
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ login: { ttl: 15 * 60 * 1000, limit: 10 } })
+  verifyTwoFactor(
+    @Body() body: VerifyTwoFactorDto,
+    @Req() req: Request,
+  ): Promise<LoginResponse> {
+    return this.authService.verifyTwoFactor(body, buildRequestContext(req));
   }
 
   @Post('me')

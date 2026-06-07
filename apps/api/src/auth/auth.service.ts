@@ -29,6 +29,8 @@ import type { ResetPasswordDto } from './dto/reset-password.dto';
 import { MailService } from '../mail/mail.service';
 import { SecurityService, type RequestContext } from '../security/security.service';
 import { SessionService } from '../security/session.service';
+import { TwoFactorService } from './two-factor.service';
+import type { VerifyTwoFactorDto } from './dto/verify-two-factor.dto';
 
 interface StoredSession {
   refreshTokenHash: string;
@@ -50,6 +52,7 @@ export class AuthService {
   private readonly mailService: MailService;
   private readonly securityService: SecurityService;
   private readonly sessionService: SessionService;
+  private readonly twoFactorService: TwoFactorService;
 
   constructor(
     @Inject(PrismaService) prisma: PrismaService,
@@ -58,6 +61,7 @@ export class AuthService {
     @Inject(MailService) mailService: MailService,
     @Inject(SecurityService) securityService: SecurityService,
     @Inject(SessionService) sessionService: SessionService,
+    @Inject(TwoFactorService) twoFactorService: TwoFactorService,
   ) {
     this.prisma = prisma;
     this.redisService = redisService;
@@ -65,6 +69,7 @@ export class AuthService {
     this.mailService = mailService;
     this.securityService = securityService;
     this.sessionService = sessionService;
+    this.twoFactorService = twoFactorService;
   }
 
   async register(input: RegisterDto, _ctx?: RequestContext): Promise<RegisterResponse> {
@@ -155,6 +160,50 @@ export class AuthService {
       await this.sendNewDeviceEmail(user.email, ctx).catch(() => undefined);
     }
 
+    // 2FA: emite pre-auth token e devolve requires_2fa = true
+    if (user.twoFactorEnabled) {
+      const preAuthToken = await this.twoFactorService.issuePreAuthToken(user.id);
+      return {
+        access_token: '',
+        refresh_token: '',
+        requires_2fa: true,
+        pre_auth_token: preAuthToken,
+      };
+    }
+
+    return this.issueSession(user.id, user.role as ContractUserRole, ctx);
+  }
+
+  /**
+   * Segundo passo do login: consome o pre-auth token + verifica o
+   * código TOTP (ou backup code). Devolve sessão completa.
+   */
+  async verifyTwoFactor(
+    input: VerifyTwoFactorDto,
+    ctx: RequestContext,
+  ): Promise<LoginResponse> {
+    const userId = await this.twoFactorService.consumePreAuthToken(
+      input.pre_auth_token,
+    );
+    if (!userId) {
+      throw new UnauthorizedException('Sessão de 2FA expirada. Faça login novamente.');
+    }
+
+    const ok = await this.twoFactorService.verifyLoginCode(userId, input.code);
+    if (!ok) {
+      await this.securityService.log(userId, SecurityEventType.LOGIN_FAILED, ctx);
+      throw new UnauthorizedException('Código 2FA inválido.');
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, role: true, eliminadoEm: true, lockedUntil: true },
+    });
+    if (!user || user.eliminadoEm || this.securityService.isLocked(user.lockedUntil)) {
+      throw new UnauthorizedException('Sessão inválida. Faça login novamente.');
+    }
+
+    await this.securityService.log(userId, SecurityEventType.LOGIN_SUCCESS, ctx);
     return this.issueSession(user.id, user.role as ContractUserRole, ctx);
   }
 

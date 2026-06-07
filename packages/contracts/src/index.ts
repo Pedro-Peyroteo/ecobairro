@@ -646,3 +646,95 @@ export interface QuizMeResponse {
   conquistas: QuizAchievement[];
 }
 
+// ────────────────────────────────────────────────────────────────────────────
+// SEGURANÇA / 2FA / SESSÕES
+// ────────────────────────────────────────────────────────────────────────────
+
+export type TwoFactorType = 'NONE' | 'TOTP_APP' | 'EMAIL';
+
+export interface VerifyTwoFactorRequest {
+  pre_auth_token: string;
+  code: string;
+}
+
+export interface SetupTwoFactorResponse {
+  secret: string;
+  otpauth_url: string;
+  qr_code_data_url: string;
+}
+
+export interface EnableTwoFactorRequest {
+  code: string;
+}
+
+export interface EnableTwoFactorResponse {
+  enabled: true;
+  backup_codes: string[];
+}
+
+export interface DisableTwoFactorRequest {
+  password: string;
+}
+
+export interface RegenerateBackupCodesRequest {
+  password: string;
+}
+
+export interface RegenerateBackupCodesResponse {
+  backup_codes: string[];
+}
+
+export interface RevealBackupCodesRequest {
+  password: string;
+}
+
+export interface RevealBackupCodesResponse {
+  backup_codes: string[];
+}
+
+export interface TwoFactorStatusResponse {
+  enabled: boolean;
+  type: TwoFactorType;
+  backup_codes_remaining: number;
+}
+
+export interface ActiveSessionRecord {
+  id: string;
+  ip_address: string;
+  user_agent: string | null;
+  device: string | null;
+  browser: string | null;
+  os: string | null;
+  criado_em: string;
+  expires_at: string;
+  current: boolean;
+}
+
+export interface ListActiveSessionsResponse {
+  sessions: ActiveSessionRecord[];
+}
+
+export type SecurityEventType =
+  | 'LOGIN_SUCCESS'
+  | 'LOGIN_FAILED'
+  | 'PASSWORD_CHANGED'
+  | 'TWO_FACTOR_ENABLED'
+  | 'TWO_FACTOR_DISABLED'
+  | 'ACCOUNT_LOCKED'
+  | 'DEVICE_REVOKED';
+
+export interface SecurityLogRecord {
+  id: string;
+  event: SecurityEventType;
+  ip_address: string;
+  user_agent: string | null;
+  criado_em: string;
+}
+
+export interface ListSecurityLogsResponse {
+  logs: SecurityLogRecord[];
+  page: number;
+  pageSize: number;
+  total: number;
+}
+

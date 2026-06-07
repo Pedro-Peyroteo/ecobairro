@@ -61,6 +61,16 @@ class FakeSessionService {
   }
 }
 
+class FakeTwoFactorService {
+  async issuePreAuthToken(_userId: string): Promise<string> { return 'fake-pre-auth'; }
+  async consumePreAuthToken(_token: string): Promise<string | null> { return null; }
+  async verifyLoginCode(_userId: string, _code: string): Promise<boolean> { return false; }
+  async enable(_userId: string, _code: string): Promise<{ backupCodes: string[] } | null> { return null; }
+  async disable(_userId: string): Promise<void> {}
+  async regenerateBackupCodes(_userId: string): Promise<string[]> { return []; }
+  async backupCodesRemaining(_userId: string): Promise<number> { return 0; }
+}
+
 const FAKE_CTX = { ipAddress: '127.0.0.1', userAgent: 'test-agent' };
 
 interface FakeUserRecord {
@@ -241,6 +251,7 @@ export const authServiceTests: TestCase[] = [
         new FakeMailService() as never,
         new FakeSecurityService() as never,
         new FakeSessionService() as never,
+        new FakeTwoFactorService() as never,
       );
 
       const me = await service.me('user-11');
@@ -264,6 +275,7 @@ export const authServiceTests: TestCase[] = [
         new FakeMailService() as never,
         new FakeSecurityService() as never,
         new FakeSessionService() as never,
+        new FakeTwoFactorService() as never,
       );
 
       const result = await service.register({
@@ -311,6 +323,7 @@ export const authServiceTests: TestCase[] = [
         new FakeMailService() as never,
         new FakeSecurityService() as never,
         new FakeSessionService() as never,
+        new FakeTwoFactorService() as never,
       );
 
       await assert.rejects(
@@ -354,6 +367,7 @@ export const authServiceTests: TestCase[] = [
         new FakeMailService() as never,
         new FakeSecurityService() as never,
         new FakeSessionService() as never,
+        new FakeTwoFactorService() as never,
       );
 
       const response = await service.forgotPassword({ email: 'citizen@example.com' });
@@ -390,6 +404,7 @@ export const authServiceTests: TestCase[] = [
         new FakeMailService() as never,
         new FakeSecurityService() as never,
         new FakeSessionService() as never,
+        new FakeTwoFactorService() as never,
       );
 
       const login = await service.login({
@@ -447,6 +462,7 @@ export const authServiceTests: TestCase[] = [
         new FakeMailService() as never,
         new FakeSecurityService() as never,
         new FakeSessionService() as never,
+        new FakeTwoFactorService() as never,
       );
 
       const loginResult = await service.login({
@@ -509,6 +525,7 @@ export const authServiceTests: TestCase[] = [
         new FakeMailService() as never,
         new FakeSecurityService() as never,
         new FakeSessionService() as never,
+        new FakeTwoFactorService() as never,
       );
 
       const loginResult = await service.login({
@@ -561,6 +578,7 @@ export const authServiceTests: TestCase[] = [
         new FakeMailService() as never,
         new FakeSecurityService() as never,
         new FakeSessionService() as never,
+        new FakeTwoFactorService() as never,
       );
 
       await assert.rejects(
