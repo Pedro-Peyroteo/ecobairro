@@ -1,4 +1,5 @@
-import { Body, Controller, HttpCode, HttpStatus, Inject, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, HttpCode, HttpStatus, Inject, Post, Req, UseGuards } from '@nestjs/common';
+import type { Request } from 'express';
 import type {
   AuthMeResponse,
   ForgotPasswordResponse,
@@ -14,6 +15,7 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { RefreshDto } from './dto/refresh.dto';
 import { RegisterDto } from './dto/register.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { buildRequestContext } from '../security/request-context.helper';
 
 @Controller('auth')
 export class AuthController {
@@ -24,20 +26,23 @@ export class AuthController {
   }
 
   @Post('register')
-  register(@Body() body: RegisterDto): Promise<RegisterResponse> {
-    return this.authService.register(body);
+  register(
+    @Body() body: RegisterDto,
+    @Req() req: Request,
+  ): Promise<RegisterResponse> {
+    return this.authService.register(body, buildRequestContext(req));
   }
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  login(@Body() body: LoginDto): Promise<LoginResponse> {
-    return this.authService.login(body);
+  login(@Body() body: LoginDto, @Req() req: Request): Promise<LoginResponse> {
+    return this.authService.login(body, buildRequestContext(req));
   }
 
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
-  refresh(@Body() body: RefreshDto): Promise<LoginResponse> {
-    return this.authService.refresh(body);
+  refresh(@Body() body: RefreshDto, @Req() req: Request): Promise<LoginResponse> {
+    return this.authService.refresh(body, buildRequestContext(req));
   }
 
   @Post('me')

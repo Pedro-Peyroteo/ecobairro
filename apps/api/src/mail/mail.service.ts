@@ -5,7 +5,13 @@ import nodemailer from 'nodemailer';
 import type { Transporter } from 'nodemailer';
 import { readNumberEnv } from '@ecobairro/config';
 
-export type MailTemplate = 'password-reset' | 'email-verification';
+export type MailTemplate =
+  | 'password-reset'
+  | 'email-verification'
+  | 'welcome'
+  | 'account-locked'
+  | 'new-device-login'
+  | 'two-factor-code';
 
 const TEMPLATES_DIR = join(__dirname, 'templates');
 

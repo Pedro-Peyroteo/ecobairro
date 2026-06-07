@@ -15,6 +15,54 @@ class FakeMailService {
   }
 }
 
+class FakeSecurityService {
+  readonly logs: Array<{ userId: string; event: string }> = [];
+  readonly revoked = new Set<string>();
+  private failedAttempts = new Map<string, number>();
+
+  isLocked(): boolean { return false; }
+  minutesUntilUnlock(): number { return 0; }
+  async log(userId: string, event: string): Promise<void> {
+    this.logs.push({ userId, event });
+  }
+  async registerFailedAttempt(userId: string): Promise<{ justLocked: boolean }> {
+    const n = (this.failedAttempts.get(userId) ?? 0) + 1;
+    this.failedAttempts.set(userId, n);
+    return { justLocked: n >= 5 };
+  }
+  async resetFailedAttempts(userId: string): Promise<void> {
+    this.failedAttempts.delete(userId);
+  }
+  async revokeUser(userId: string): Promise<void> { this.revoked.add(userId); }
+  async clearRevocation(userId: string): Promise<void> { this.revoked.delete(userId); }
+  async isRevoked(userId: string): Promise<boolean> { return this.revoked.has(userId); }
+  async isNewDevice(): Promise<boolean> { return false; }
+}
+
+class FakeSessionService {
+  readonly created: Array<{ userId: string; refreshToken: string }> = [];
+  private sessions = new Map<string, string>(); // refreshToken → userId
+
+  async create(userId: string, refreshToken: string): Promise<string> {
+    this.created.push({ userId, refreshToken });
+    this.sessions.set(refreshToken, userId);
+    return 'session-' + this.created.length;
+  }
+  async rotate(refreshToken: string): Promise<{ userId: string } | null> {
+    const userId = this.sessions.get(refreshToken);
+    if (!userId) return null;
+    this.sessions.delete(refreshToken);
+    return { userId };
+  }
+  async revokeAll(userId: string): Promise<void> {
+    for (const [t, uid] of this.sessions.entries()) {
+      if (uid === userId) this.sessions.delete(t);
+    }
+  }
+}
+
+const FAKE_CTX = { ipAddress: '127.0.0.1', userAgent: 'test-agent' };
+
 interface FakeUserRecord {
   id: string;
   email: string;
@@ -191,6 +239,8 @@ export const authServiceTests: TestCase[] = [
         new FakeRedisService(new FakeRedisClient()) as never,
         new FakeJwtService() as never,
         new FakeMailService() as never,
+        new FakeSecurityService() as never,
+        new FakeSessionService() as never,
       );
 
       const me = await service.me('user-11');
@@ -212,6 +262,8 @@ export const authServiceTests: TestCase[] = [
         new FakeRedisService(new FakeRedisClient()) as never,
         new FakeJwtService() as never,
         new FakeMailService() as never,
+        new FakeSecurityService() as never,
+        new FakeSessionService() as never,
       );
 
       const result = await service.register({
@@ -257,6 +309,8 @@ export const authServiceTests: TestCase[] = [
         new FakeRedisService(new FakeRedisClient()) as never,
         new FakeJwtService() as never,
         new FakeMailService() as never,
+        new FakeSecurityService() as never,
+        new FakeSessionService() as never,
       );
 
       await assert.rejects(
@@ -298,6 +352,8 @@ export const authServiceTests: TestCase[] = [
         new FakeRedisService(redis) as never,
         new FakeJwtService() as never,
         new FakeMailService() as never,
+        new FakeSecurityService() as never,
+        new FakeSessionService() as never,
       );
 
       const response = await service.forgotPassword({ email: 'citizen@example.com' });
@@ -332,12 +388,14 @@ export const authServiceTests: TestCase[] = [
         new FakeRedisService(redis) as never,
         new FakeJwtService() as never,
         new FakeMailService() as never,
+        new FakeSecurityService() as never,
+        new FakeSessionService() as never,
       );
 
       const login = await service.login({
         email: 'citizen@example.com',
         password: 'Password123!',
-      });
+      }, FAKE_CTX);
       assert.ok(await redis.get('user:session:user-19'));
 
       const forgot = await service.forgotPassword({ email: 'citizen@example.com' });
@@ -353,10 +411,10 @@ export const authServiceTests: TestCase[] = [
         () =>
           service.refresh({
             refresh_token: login.refresh_token,
-          }),
+          }, FAKE_CTX),
         (error: unknown) =>
           error instanceof UnauthorizedException &&
-          error.message === 'Invalid refresh token',
+          error.message === 'Sessão inválida. Faça login novamente.',
       );
     },
   },
@@ -387,12 +445,14 @@ export const authServiceTests: TestCase[] = [
         new FakeRedisService(redisClient) as never,
         new FakeJwtService() as never,
         new FakeMailService() as never,
+        new FakeSecurityService() as never,
+        new FakeSessionService() as never,
       );
 
       const loginResult = await service.login({
         email: 'CITIZEN@example.com',
         password: 'Password123!',
-      });
+      }, FAKE_CTX);
 
       assert.equal(loginResult.access_token, 'access-token-1');
       assert.equal(loginResult.requires_2fa, false);
@@ -404,7 +464,7 @@ export const authServiceTests: TestCase[] = [
 
       const refreshResult = await service.refresh({
         refresh_token: loginResult.refresh_token,
-      });
+      }, FAKE_CTX);
 
       assert.equal(refreshResult.access_token, 'access-token-2');
       assert.notEqual(refreshResult.refresh_token, loginResult.refresh_token);
@@ -413,10 +473,10 @@ export const authServiceTests: TestCase[] = [
         () =>
           service.refresh({
             refresh_token: loginResult.refresh_token,
-          }),
+          }, FAKE_CTX),
         (error: unknown) =>
           error instanceof UnauthorizedException &&
-          error.message === 'Invalid refresh token',
+          error.message === 'Sessão inválida. Faça login novamente.',
       );
     },
   },
@@ -447,12 +507,14 @@ export const authServiceTests: TestCase[] = [
         new FakeRedisService(redisClient) as never,
         new FakeJwtService() as never,
         new FakeMailService() as never,
+        new FakeSecurityService() as never,
+        new FakeSessionService() as never,
       );
 
       const loginResult = await service.login({
         email: 'citizen@example.com',
         password: 'Password123!',
-      });
+      }, FAKE_CTX);
 
       assert.ok(await redisClient.get('user:session:user-77'));
 
@@ -464,10 +526,10 @@ export const authServiceTests: TestCase[] = [
         () =>
           service.refresh({
             refresh_token: loginResult.refresh_token,
-          }),
+          }, FAKE_CTX),
         (error: unknown) =>
           error instanceof UnauthorizedException &&
-          error.message === 'Invalid refresh token',
+          error.message === 'Sessão inválida. Faça login novamente.',
       );
     },
   },
@@ -497,6 +559,8 @@ export const authServiceTests: TestCase[] = [
         new FakeRedisService(new FakeRedisClient()) as never,
         new FakeJwtService() as never,
         new FakeMailService() as never,
+        new FakeSecurityService() as never,
+        new FakeSessionService() as never,
       );
 
       await assert.rejects(
@@ -504,10 +568,10 @@ export const authServiceTests: TestCase[] = [
           service.login({
             email: 'citizen@example.com',
             password: 'WrongPassword123!',
-          }),
+          }, FAKE_CTX),
         (error: unknown) =>
           error instanceof UnauthorizedException &&
-          error.message === 'Invalid credentials',
+          error.message === 'Email ou password incorrectos.',
       );
     },
   },

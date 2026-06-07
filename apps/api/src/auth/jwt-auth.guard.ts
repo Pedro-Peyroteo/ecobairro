@@ -8,13 +8,19 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import type { Request } from 'express';
 import type { AuthenticatedRequest, JwtPayload } from './auth.types';
+import { SecurityService } from '../security/security.service';
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
   private readonly jwtService: JwtService;
+  private readonly securityService: SecurityService;
 
-  constructor(@Inject(JwtService) jwtService: JwtService) {
+  constructor(
+    @Inject(JwtService) jwtService: JwtService,
+    @Inject(SecurityService) securityService: SecurityService,
+  ) {
     this.jwtService = jwtService;
+    this.securityService = securityService;
   }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -25,17 +31,26 @@ export class JwtAuthGuard implements CanActivate {
       throw new UnauthorizedException('Missing bearer token');
     }
 
+    let payload: JwtPayload;
     try {
-      const payload = await this.jwtService.verifyAsync<JwtPayload>(token);
-      request.authUser = {
-        userId: payload.sub,
-        role: payload.role,
-      };
-
-      return true;
+      payload = await this.jwtService.verifyAsync<JwtPayload>(token);
     } catch {
       throw new UnauthorizedException('Invalid bearer token');
     }
+
+    // Revogação imediata: se o utilizador foi bloqueado/eliminado/kicked,
+    // existe uma chave revoked_user:{id} no Redis (TTL = vida do access token).
+    // Leitura ultra-rápida em cada request.
+    if (await this.securityService.isRevoked(payload.sub)) {
+      throw new UnauthorizedException('Sessão revogada. Faça login novamente.');
+    }
+
+    request.authUser = {
+      userId: payload.sub,
+      role: payload.role,
+    };
+
+    return true;
   }
 
   private extractBearerToken(request: Request): string | null {

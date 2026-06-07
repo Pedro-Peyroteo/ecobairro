@@ -17,6 +17,13 @@ class FakeJwtService {
   }
 }
 
+class FakeSecurityService {
+  constructor(private readonly revoked = false) {}
+  async isRevoked(): Promise<boolean> {
+    return this.revoked;
+  }
+}
+
 export const jwtAuthGuardTests: TestCase[] = [
   {
     name: 'attaches the authenticated user when the bearer token is valid',
@@ -27,6 +34,7 @@ export const jwtAuthGuardTests: TestCase[] = [
           sub: 'user-1',
           role: 'CIDADAO',
         }) as never,
+        new FakeSecurityService() as never,
       );
 
       const result = await guard.canActivate(buildExecutionContext(request));
@@ -41,7 +49,10 @@ export const jwtAuthGuardTests: TestCase[] = [
   {
     name: 'rejects requests without a bearer token',
     run: async () => {
-      const guard = new JwtAuthGuard(new FakeJwtService(null) as never);
+      const guard = new JwtAuthGuard(
+        new FakeJwtService(null) as never,
+        new FakeSecurityService() as never,
+      );
 
       await assert.rejects(
         () => guard.canActivate(buildExecutionContext(buildRequest(null))),
@@ -59,6 +70,7 @@ export const jwtAuthGuardTests: TestCase[] = [
           sub: 'user-1',
           role: 'CIDADAO',
         }) as never,
+        new FakeSecurityService() as never,
       );
 
       await assert.rejects(

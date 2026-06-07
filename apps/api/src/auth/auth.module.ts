@@ -6,10 +6,12 @@ import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { OptionalJwtAuthGuard } from './optional-jwt-auth.guard';
 import { MailModule } from '../mail/mail.module';
+import { SecurityModule } from '../security/security.module';
 
 @Module({
   imports: [
     MailModule,
+    SecurityModule,
     JwtModule.register({
       secret: requireEnv('JWT_ACCESS_SECRET'),
       signOptions: {

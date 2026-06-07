@@ -1,12 +1,13 @@
 import {
   ConflictException,
+  ForbiddenException,
   Inject,
   Injectable,
   ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { UserRole } from '@prisma/client';
+import { SecurityEventType, UserRole } from '@prisma/client';
 import { readNumberEnv } from '@ecobairro/config';
 import type {
   AuthMeResponse,
@@ -26,6 +27,8 @@ import type { RefreshDto } from './dto/refresh.dto';
 import type { RegisterDto } from './dto/register.dto';
 import type { ResetPasswordDto } from './dto/reset-password.dto';
 import { MailService } from '../mail/mail.service';
+import { SecurityService, type RequestContext } from '../security/security.service';
+import { SessionService } from '../security/session.service';
 
 interface StoredSession {
   refreshTokenHash: string;
@@ -45,20 +48,26 @@ export class AuthService {
   private readonly returnResetToken =
     (process.env.PASSWORD_RESET_RETURN_TOKEN ?? 'false') === 'true';
   private readonly mailService: MailService;
+  private readonly securityService: SecurityService;
+  private readonly sessionService: SessionService;
 
   constructor(
     @Inject(PrismaService) prisma: PrismaService,
     @Inject(RedisService) redisService: RedisService,
     @Inject(JwtService) jwtService: JwtService,
     @Inject(MailService) mailService: MailService,
+    @Inject(SecurityService) securityService: SecurityService,
+    @Inject(SessionService) sessionService: SessionService,
   ) {
     this.prisma = prisma;
     this.redisService = redisService;
     this.jwtService = jwtService;
     this.mailService = mailService;
+    this.securityService = securityService;
+    this.sessionService = sessionService;
   }
 
-  async register(input: RegisterDto): Promise<RegisterResponse> {
+  async register(input: RegisterDto, _ctx?: RequestContext): Promise<RegisterResponse> {
     const normalizedEmail = input.email.trim().toLowerCase();
     const existingUser = await this.prisma.user.findUnique({
       where: { email: normalizedEmail },
@@ -87,6 +96,17 @@ export class AuthService {
       }),
     );
 
+    // Enviar email de boas-vindas (best-effort, não bloqueia o registo)
+    if (this.isPasswordEmailConfigured()) {
+      this.mailService
+        .send('welcome', {
+          to: user.email,
+          subject: 'ecoBairro — Bem-vindo!',
+          variables: { appUrl: this.appBaseUrl },
+        })
+        .catch(() => undefined);
+    }
+
     return {
       id: user.id,
       email: user.email,
@@ -95,61 +115,80 @@ export class AuthService {
     };
   }
 
-  async login(input: LoginDto): Promise<LoginResponse> {
+  async login(input: LoginDto, ctx: RequestContext): Promise<LoginResponse> {
     const normalizedEmail = input.email.trim().toLowerCase();
     const user = await this.prisma.user.findUnique({
       where: { email: normalizedEmail },
     });
 
     if (!user || user.eliminadoEm) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException('Email ou password incorrectos.');
+    }
+
+    // Account lockout: rejeita imediatamente sem revelar se a password é boa
+    if (this.securityService.isLocked(user.lockedUntil)) {
+      const minutes = this.securityService.minutesUntilUnlock(user.lockedUntil);
+      throw new ForbiddenException(
+        `Conta bloqueada temporariamente. Tente novamente em ${minutes} minutos.`,
+      );
     }
 
     const isPasswordValid = await bcrypt.compare(input.password, user.passwordHash);
 
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Invalid credentials');
+      await this.securityService.log(user.id, SecurityEventType.LOGIN_FAILED, ctx);
+      const { justLocked } = await this.securityService.registerFailedAttempt(user.id);
+      if (justLocked) {
+        await this.securityService.log(user.id, SecurityEventType.ACCOUNT_LOCKED, ctx);
+        await this.sendAccountLockedEmail(user.email).catch(() => undefined);
+      }
+      throw new UnauthorizedException('Email ou password incorrectos.');
     }
 
-    return this.issueSession(user.id, user.role as ContractUserRole);
+    // Login ok: audit + clear lockout + detectar novo dispositivo
+    const newDevice = await this.securityService.isNewDevice(user.id, ctx);
+    await this.securityService.resetFailedAttempts(user.id);
+    await this.securityService.log(user.id, SecurityEventType.LOGIN_SUCCESS, ctx);
+    await this.securityService.clearRevocation(user.id);
+
+    if (newDevice) {
+      await this.sendNewDeviceEmail(user.email, ctx).catch(() => undefined);
+    }
+
+    return this.issueSession(user.id, user.role as ContractUserRole, ctx);
   }
 
-  async refresh(input: RefreshDto): Promise<LoginResponse> {
-    const userId = extractUserIdFromRefreshToken(input.refresh_token);
-    if (!userId) {
-      throw new UnauthorizedException('Invalid refresh token');
-    }
-
-    const redis = this.redisService.getClient();
-    const rawSession = await redis.get(getUserSessionKey(userId));
-
-    if (!rawSession) {
-      throw new UnauthorizedException('Invalid refresh token');
-    }
-
-    const session = JSON.parse(rawSession) as StoredSession;
-    if (session.refreshTokenHash !== hashToken(input.refresh_token)) {
-      throw new UnauthorizedException('Invalid refresh token');
+  async refresh(input: RefreshDto, ctx: RequestContext): Promise<LoginResponse> {
+    const rotated = await this.sessionService.rotate(input.refresh_token);
+    if (!rotated) {
+      // Reuse detection: token usado/inexistente → revoga toda a cadeia
+      const possibleUserId = extractUserIdFromRefreshToken(input.refresh_token);
+      if (possibleUserId) {
+        await this.sessionService.revokeAll(possibleUserId);
+        await this.securityService.revokeUser(possibleUserId);
+        await this.securityService
+          .log(possibleUserId, SecurityEventType.DEVICE_REVOKED, ctx)
+          .catch(() => undefined);
+      }
+      throw new UnauthorizedException('Sessão inválida. Faça login novamente.');
     }
 
     const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        id: true,
-        role: true,
-        eliminadoEm: true,
-      },
+      where: { id: rotated.userId },
+      select: { id: true, role: true, eliminadoEm: true, lockedUntil: true },
     });
 
-    if (!user || user.eliminadoEm) {
-      await redis.del(getUserSessionKey(userId));
-      throw new UnauthorizedException('Invalid refresh token');
+    if (!user || user.eliminadoEm || this.securityService.isLocked(user.lockedUntil)) {
+      throw new UnauthorizedException('Sessão inválida. Faça login novamente.');
     }
 
-    return this.issueSession(user.id, user.role as ContractUserRole);
+    return this.issueSession(user.id, user.role as ContractUserRole, ctx);
   }
 
   async logout(userId: string): Promise<void> {
+    await this.sessionService.revokeAll(userId);
+    await this.securityService.revokeUser(userId);
+    // Compat com o fluxo antigo (1 sessão por user em Redis)
     await this.redisService.getClient().del(getUserSessionKey(userId));
   }
 
@@ -243,12 +282,21 @@ export class AuthService {
     await Promise.all([
       redis.del(resetKey),
       redis.del(getUserSessionKey(userId)),
+      this.sessionService.revokeAll(userId),
+      this.securityService.revokeUser(userId),
+      this.securityService
+        .log(userId, SecurityEventType.PASSWORD_CHANGED, {
+          ipAddress: 'reset-flow',
+          userAgent: null,
+        })
+        .catch(() => undefined),
     ]);
   }
 
   private async issueSession(
     userId: string,
     role: ContractUserRole,
+    ctx: RequestContext,
   ): Promise<LoginResponse> {
     const accessToken = await this.jwtService.signAsync({
       sub: userId,
@@ -256,10 +304,12 @@ export class AuthService {
     } satisfies JwtPayload);
 
     const refreshToken = `${userId}.${randomBytes(32).toString('hex')}`;
-    const session: StoredSession = {
-      refreshTokenHash: hashToken(refreshToken),
-    };
 
+    // Persistir ActiveSession (multi-sessão por user, suporta revogação remota)
+    await this.sessionService.create(userId, refreshToken, ctx);
+
+    // Compat: continuar a guardar a "última sessão" em Redis para fluxos legacy
+    const session: StoredSession = { refreshTokenHash: hashToken(refreshToken) };
     await this.redisService
       .getClient()
       .set(
@@ -275,6 +325,28 @@ export class AuthService {
       requires_2fa: false,
       pre_auth_token: null,
     };
+  }
+
+  private async sendAccountLockedEmail(email: string): Promise<void> {
+    if (!this.isPasswordEmailConfigured()) return;
+    await this.mailService.send('account-locked', {
+      to: email,
+      subject: 'ecoBairro — Conta bloqueada temporariamente',
+      variables: { minutes: 30 },
+    });
+  }
+
+  private async sendNewDeviceEmail(email: string, ctx: RequestContext): Promise<void> {
+    if (!this.isPasswordEmailConfigured()) return;
+    await this.mailService.send('new-device-login', {
+      to: email,
+      subject: 'ecoBairro — Novo dispositivo detectado',
+      variables: {
+        ipAddress: ctx.ipAddress,
+        userAgent: ctx.userAgent ?? 'desconhecido',
+        dateTime: new Date().toISOString(),
+      },
+    });
   }
 
   private isPasswordEmailConfigured(): boolean {
