@@ -50,7 +50,6 @@ function QuizPage() {
 
     fetchJson<QuizMeResponse>('/v1/gamification/quiz/me', {
       baseUrl: clientEnv.apiBaseUrl,
-      headers,
     })
       .then((data) => { setMe(data); setListError(null) })
       .catch((err) => {

@@ -52,7 +52,6 @@ const novaPartilhaSchema = z.object({
 type NovaPartilhaForm = z.infer<typeof novaPartilhaSchema>
 
 const POR_PAGINA = 12
-}
 
 function PartilhasPage() {
   const [filtro, setFiltro]     = useState<PartilhaCategoria | 'todos'>('todos')

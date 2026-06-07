@@ -27,7 +27,6 @@ const estadoBadge: Record<ReportStatus, { label: string; variant: 'default' | 's
 }
 
 const RECENT_LIMIT = 50
-}
 
 function DashboardPage() {
   const user = getUser()

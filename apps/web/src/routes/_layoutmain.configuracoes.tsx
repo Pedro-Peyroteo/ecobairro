@@ -47,7 +47,6 @@ const DEFAULT_NOTIF: NotifState = {
   pushAlertas:   true,
   pushCampanhas: true,
 }
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Modal genérico com focus trap

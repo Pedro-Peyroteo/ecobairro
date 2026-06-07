@@ -45,7 +45,6 @@ function FilaPage() {
     try {
       const res = await fetchJson<ListFilaResponse>('/v1/fila', {
         baseUrl: clientEnv.apiBaseUrl,
-        headers,
       })
       setTarefas(res.tarefas)
     } catch (err) {
@@ -61,7 +60,6 @@ function FilaPage() {
   async function patchTarefa(id: string, data: Record<string, unknown>) {
     const updated = await fetchJson<TarefaRecord>(`/v1/fila/${id}`, {
       baseUrl: clientEnv.apiBaseUrl,
-      headers,
       method: 'PATCH',
       body: JSON.stringify(data),
     })

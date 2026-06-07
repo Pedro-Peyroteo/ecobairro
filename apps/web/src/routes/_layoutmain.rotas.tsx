@@ -48,7 +48,6 @@ function RotasPage() {
     try {
       const res = await fetchJson<ListRotasResponse>('/v1/rotas', {
         baseUrl: clientEnv.apiBaseUrl,
-        headers,
       })
       setRotas(res.rotas)
       if (res.rotas.length > 0) setRotaSelecionada(res.rotas[0]!)
@@ -65,7 +64,6 @@ function RotasPage() {
   async function updateEstado(id: string, estado: EstadoRota) {
     const updated = await fetchJson<RotaRecord>(`/v1/rotas/${id}`, {
       baseUrl: clientEnv.apiBaseUrl,
-      headers,
       method: 'PATCH',
       body: JSON.stringify({ estado }),
     })

@@ -151,7 +151,6 @@ function RecolhasPage() {
       }
       await fetchJson<CreateRecolhaResponse>('/v1/recolhas', {
         baseUrl: clientEnv.apiBaseUrl,
-        headers,
         method: 'POST',
         body: JSON.stringify(body),
       })

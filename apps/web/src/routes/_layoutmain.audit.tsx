@@ -51,7 +51,6 @@ function AuditPage() {
       if (pesquisa) params.set('q', pesquisa)
       const res = await fetchJson<ListAuditLogsResponse>(`/v1/audit-logs?${params}`, {
         baseUrl: clientEnv.apiBaseUrl,
-        headers,
       })
       setLogs(res.logs)
       setTotal(res.total)

@@ -24,7 +24,6 @@ const papelConfig: Record<string, { label: string; color: string }> = {
 }
 
 const papeis: FrontRole[] = ['cidadao', 'operador', 'tecnico_autarquia', 'tecnico_ccdr', 'admin']
-}
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('pt-PT', { day: '2-digit', month: 'short', year: 'numeric' })

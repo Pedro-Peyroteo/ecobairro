@@ -45,7 +45,6 @@ const ecopontoSchema = z.object({
 })
 
 type EcopontoForm = z.infer<typeof ecopontoSchema>
-}
 
 function EcopontosPage() {
   const [ecopontos, setEcopontos] = useState<EcopontoRecord[]>([])

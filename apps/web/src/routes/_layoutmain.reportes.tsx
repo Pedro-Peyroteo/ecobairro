@@ -82,7 +82,6 @@ const novoReporteSchema = z.object({
 type NovoReporteForm = z.infer<typeof novoReporteSchema>
 
 const POR_PAGINA = 5
-}
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('pt-PT', {

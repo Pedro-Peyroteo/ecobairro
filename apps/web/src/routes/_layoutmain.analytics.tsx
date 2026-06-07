@@ -12,7 +12,6 @@ export const Route = createFileRoute('/_layoutmain/analytics')({
   beforeLoad: requireRole(['tecnico_autarquia', 'tecnico_ccdr', 'admin']),
   component: AnalyticsPage,
 })
-}
 
 function BarChart({ data, color = 'var(--primary)' }: { data: { label: string; value: number }[]; color?: string }) {
   const max = Math.max(...data.map(d => d.value), 1)

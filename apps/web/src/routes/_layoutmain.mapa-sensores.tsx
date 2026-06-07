@@ -47,7 +47,6 @@ function MapaSensoresPage() {
   useEffect(() => {
     fetchJson<ListEcopontosResponse>('/v1/ecopontos', {
       baseUrl: clientEnv.apiBaseUrl,
-      headers,
     })
       .then(res => {
         setEcopontos(res.ecopontos)

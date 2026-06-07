@@ -68,7 +68,6 @@ function CampanhasPage() {
       if (pesquisa) params.set('q', pesquisa)
       const res = await fetchJson<ListCampanhasResponse>(`/v1/campanhas?${params}`, {
         baseUrl: clientEnv.apiBaseUrl,
-        headers,
       })
       setCampanhas(res.campanhas)
       setTotal(res.total)
@@ -102,7 +101,6 @@ function CampanhasPage() {
       if (editando) {
         await fetchJson<CampanhaRecord>(`/v1/campanhas/${editando.id}`, {
           baseUrl: clientEnv.apiBaseUrl,
-          headers,
           method: 'PATCH',
           body: JSON.stringify({ titulo: data.titulo, corpo: data.corpo, dataValidade: data.dataValidade }),
         })
@@ -114,7 +112,6 @@ function CampanhasPage() {
         }
         await fetchJson<CampanhaRecord>('/v1/campanhas', {
           baseUrl: clientEnv.apiBaseUrl,
-          headers,
           method: 'POST',
           body: JSON.stringify(body),
         })
@@ -131,7 +128,6 @@ function CampanhasPage() {
   async function publicar(id: string) {
     await fetchJson<CampanhaRecord>(`/v1/campanhas/${id}`, {
       baseUrl: clientEnv.apiBaseUrl,
-      headers,
       method: 'PATCH',
       body: JSON.stringify({ estado: 'publicada' }),
     })
@@ -141,7 +137,6 @@ function CampanhasPage() {
   async function arquivar(id: string) {
     await fetchJson<CampanhaRecord>(`/v1/campanhas/${id}`, {
       baseUrl: clientEnv.apiBaseUrl,
-      headers,
       method: 'PATCH',
       body: JSON.stringify({ estado: 'expirada' }),
     })
