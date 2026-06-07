@@ -95,6 +95,7 @@ export class AuthService {
           cidadaoPerfil: {
             create: {
               rgpdAccepted: input.rgpd_accepted,
+              nomeCompleto: input.nome_completo?.trim() || null,
             },
           },
         },

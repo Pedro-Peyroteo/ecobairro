@@ -7,14 +7,7 @@ import { Eye, EyeOff, Leaf, Recycle, MapPin, BarChart3, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { setAuthSession } from '@/lib/auth'
-import {
-  getMe,
-  loginRequest,
-  registerRequest,
-  toUiRole,
-  updateCitizenProfile,
-} from '@/lib/api/auth'
+import { registerRequest } from '@/lib/api/auth'
 import { getApiErrorMessage } from '@/lib/http/api-error'
 import { cn } from '@/lib/utils'
 
@@ -22,20 +15,27 @@ export const Route = createFileRoute('/register')({
   component: RegisterPage,
 })
 
-const schema = z.object({
-  name: z.string().min(2, 'O nome deve ter pelo menos 2 caracteres'),
-  email: z.string().min(1, 'O email é obrigatório').email('Introduz um email válido'),
-  password: z.string().min(6, 'A password deve ter pelo menos 6 caracteres'),
-  terms: z.boolean().refine((val) => val === true, {
-    message: 'Tens de aceitar os termos e condições',
-  }),
-})
+const schema = z
+  .object({
+    name: z.string().min(2, 'O nome deve ter pelo menos 2 caracteres'),
+    email: z.string().min(1, 'O email é obrigatório').email('Introduz um email válido'),
+    password: z.string().min(6, 'A password deve ter pelo menos 6 caracteres'),
+    confirmPassword: z.string().min(1, 'Confirma a tua password'),
+    terms: z.boolean().refine((val) => val === true, {
+      message: 'Tens de aceitar os termos e condições',
+    }),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: 'As passwords não coincidem',
+    path: ['confirmPassword'],
+  })
 
 type FormData = z.infer<typeof schema>
 
 function RegisterPage() {
   const navigate = useNavigate()
   const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
@@ -55,39 +55,12 @@ function RegisterPage() {
       await registerRequest({
         email: data.email,
         password: data.password,
+        nome_completo: data.name.trim(),
         rgpd_accepted: data.terms,
       })
 
-      const login = await loginRequest({
-        email: data.email,
-        password: data.password,
-      })
-
-      const me = await getMe(login.access_token)
-      const role = toUiRole(me.role)
-      let displayName = data.name
-
-      if (role === 'cidadao') {
-        const profile = await updateCitizenProfile(login.access_token, {
-          nome_completo: data.name.trim(),
-        })
-        if (profile.nome_completo?.trim()) {
-          displayName = profile.nome_completo
-        }
-      }
-
-      setAuthSession({
-        user: {
-          id: me.id,
-          name: displayName,
-          email: me.email,
-          role,
-        },
-        accessToken: login.access_token,
-        refreshToken: login.refresh_token,
-      })
-
-      navigate({ to: '/home' })
+      // Redirecionar para o login com mensagem de sucesso — sem auto-login
+      navigate({ to: '/login', search: { registered: '1' } as never })
     } catch (error) {
       setSubmitError(getApiErrorMessage(error, 'Falha ao criar conta. Tente novamente.'))
     } finally {
@@ -217,6 +190,32 @@ function RegisterPage() {
               )}
             </div>
 
+            {/* Confirmar Password */}
+            <div className="space-y-1.5">
+              <Label htmlFor="confirmPassword">Confirmar password</Label>
+              <div className="relative">
+                <Input
+                  id="confirmPassword"
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  placeholder="••••••••"
+                  autoComplete="new-password"
+                  className={cn('pr-10', errors.confirmPassword && 'border-destructive focus-visible:ring-destructive')}
+                  {...register('confirmPassword')}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  aria-label={showConfirmPassword ? 'Ocultar password' : 'Mostrar password'}
+                >
+                  {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              {errors.confirmPassword && (
+                <p className="text-xs text-destructive">{errors.confirmPassword.message}</p>
+              )}
+            </div>
+
             {/* Terms and conditions */}
             <div className="flex flex-col gap-1.5 mt-1">
               <label className="flex items-start gap-2 cursor-pointer select-none">
@@ -240,6 +239,7 @@ function RegisterPage() {
             <Button type="submit" className="w-full mt-2" disabled={loading}>
               {loading ? 'A criar...' : 'Criar conta'}
             </Button>
+
             {submitError && (
               <div role="alert" className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
                 <span className="mt-0.5 shrink-0">⚠</span>

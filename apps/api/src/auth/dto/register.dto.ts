@@ -19,6 +19,12 @@ export class RegisterDto {
 
   @IsOptional()
   @IsString()
+  @MinLength(2)
+  @MaxLength(100)
+  nome_completo?: string;
+
+  @IsOptional()
+  @IsString()
   @MinLength(7)
   @MaxLength(30)
   @Matches(/^\+?[\d\s\-().]+$/, { message: 'phone must be a valid phone number' })

@@ -33,6 +33,7 @@ export type UserRole =
 export interface RegisterRequest {
   email: string;
   password: string;
+  nome_completo?: string;
   phone?: string;
   rgpd_accepted: boolean;
 }
