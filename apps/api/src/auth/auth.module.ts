@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { readNumberEnv, requireEnv } from '@ecobairro/config';
 import { AuthController } from './auth.controller';
@@ -13,7 +13,7 @@ import { SecurityModule } from '../security/security.module';
 @Module({
   imports: [
     MailModule,
-    SecurityModule,
+    forwardRef(() => SecurityModule),
     JwtModule.register({
       secret: requireEnv('JWT_ACCESS_SECRET'),
       signOptions: {
@@ -23,6 +23,6 @@ import { SecurityModule } from '../security/security.module';
   ],
   controllers: [AuthController, TwoFactorController],
   providers: [AuthService, TwoFactorService, JwtAuthGuard, OptionalJwtAuthGuard],
-  exports: [AuthService, TwoFactorService, JwtAuthGuard, OptionalJwtAuthGuard, JwtModule],
+  exports: [AuthService, TwoFactorService, JwtAuthGuard, OptionalJwtAuthGuard, JwtModule, SecurityModule],
 })
 export class AuthModule {}
